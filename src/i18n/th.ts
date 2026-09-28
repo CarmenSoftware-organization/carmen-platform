@@ -436,10 +436,9 @@ export const th: Translations = {
       // ซอร์สที่แยกเป็นข้อความ aria-label คนละสตริง
       searchBusinessUnitsAria: 'ค้นหาหน่วยธุรกิจ',
       noBusinessUnitsFound: 'ไม่พบหน่วยธุรกิจ',
-      // TenantSeedCard.tsx / TenantMigrationCard.tsx / InterfaceEntitlementCard.tsx ทั้งสาม
-      // เช็ค isSuperAdmin ด้วยข้อความ disabledReason นี้เป๊ะเหมือนกันทุกตัวอักษร จึงใช้คีย์
-      // เดียวร่วมกันแทนที่จะสร้างซ้ำสามที่
-      superAdminRequired: 'ต้องเป็นผู้ดูแลระบบสูงสุดเท่านั้น',
+      // ข้อความ disabledReason ร่วมสำหรับ action ที่กั้นด้วย permission key ของแพลตฟอร์ม
+      // (TenantMigrationCard/TenantSeedCard และหน้า tenant management ทั้งสอง)
+      permissionRequired: 'ต้องมีสิทธิ์ {{permission}}',
       // ข้อความเงื่อนไขร่วมของ TenantSeedCard.tsx / TenantMigrationCard.tsx (เหมือนกันเป๊ะ
       // ทั้งสองไฟล์)
       configureDbPoolFirst: 'กรุณาตั้งค่า database pool และ schema ก่อน',
@@ -2387,13 +2386,12 @@ export const th: Translations = {
     },
     tenantMigration: {
       startingDeploy: 'กำลังเริ่ม deploy…',
-      disabledOrSuperAdmin: 'migration ถูกปิดไว้ หรือต้องใช้สิทธิ์ super admin',
+      disabledOrSuperAdmin: 'ปิดการใช้งาน migration อยู่ หรือคุณไม่มีสิทธิ์ tenant migration',
       alreadyRunning: 'มี migration ทำงานอยู่แล้ว กรุณาลองใหม่ในอีกสักครู่',
-      seedDisabledOrSuperAdmin: 'การ seed ถูกปิดไว้ หรือต้องใช้สิทธิ์ super admin',
+      seedDisabledOrSuperAdmin: 'ปิดการใช้งาน seed อยู่ หรือคุณไม่มีสิทธิ์ tenant seed',
       deployingAll: 'กำลัง deploy ทุก tenant…',
       title: 'Tenant migration',
       subtitle: 'ตรวจว่าฐานข้อมูล tenant ใดตามหลัง schema migration อยู่ แล้วสั่งอัปเดต',
-      superAdminRequired: 'ต้องเป็นผู้ดูแลระบบสูงสุด',
       alreadyUpToDate: 'เป็นเวอร์ชันล่าสุดอยู่แล้ว',
       upToDate: 'เป็นเวอร์ชันล่าสุด',
       deployCompleted: 'Deploy เสร็จแล้ว',
@@ -2450,7 +2448,6 @@ export const th: Translations = {
       // TenantSeedManagement — มุมมองทั้ง fleet ของ TenantSeedCard ราย BU
       title: 'ข้อมูลตั้งต้นของ tenant',
       subtitle: 'ตรวจว่า tenant ตัวไหนยังขาดข้อมูลตั้งต้น แล้วเติมส่วนที่ขาด',
-      superAdminRequired: 'ต้องใช้สิทธิ์ super admin',
       loadBuFailed: 'โหลด business unit ไม่สำเร็จ: {{detail}}',
       showingPartial: 'แสดง {{shown}} จาก {{total}} business unit — เพิ่มขนาดหน้าเพื่อดูทั้งหมด',
       statusNotChecked: 'ยังไม่ตรวจ',

@@ -583,10 +583,9 @@ export const en = {
       // none, matching the source's separate aria-label string.
       searchBusinessUnitsAria: 'Search business units',
       noBusinessUnitsFound: 'No business units found.',
-      // TenantSeedCard.tsx / TenantMigrationCard.tsx / InterfaceEntitlementCard.tsx all
-      // gate on isSuperAdmin with this exact disabledReason string — byte-identical
-      // across all three files, so one shared key rather than three copies.
-      superAdminRequired: 'Super-admin required.',
+      // Shared disabled reason for actions gated on a platform permission key
+      // (TenantMigrationCard/TenantSeedCard and the two tenant management pages).
+      permissionRequired: 'Requires the {{permission}} permission.',
       // TenantSeedCard.tsx / TenantMigrationCard.tsx's shared precondition message
       // (byte-identical in both).
       configureDbPoolFirst: 'Configure a database pool and schema first.',
@@ -3414,14 +3413,13 @@ export const en = {
     },
     tenantMigration: {
       startingDeploy: 'Starting deploy…',
-      disabledOrSuperAdmin: 'Migrations are disabled or require super-admin.',
+      disabledOrSuperAdmin: 'Migrations are disabled, or you lack the tenant migration permission.',
       alreadyRunning: 'A migration is already running. Try again shortly.',
-      seedDisabledOrSuperAdmin: 'Seeding is disabled or requires super-admin.',
+      seedDisabledOrSuperAdmin: 'Seeding is disabled, or you lack the tenant seed permission.',
       deployingAll: 'Deploying all tenants…',
       // TenantMigrationManagement
       title: 'Tenant migrations',
       subtitle: 'Check which tenant databases are behind on schema migrations, and roll them out.',
-      superAdminRequired: 'Super-admin required.',
       alreadyUpToDate: 'Already up to date.',
       upToDate: 'up to date',
       deployCompleted: 'Deploy completed.',
@@ -3479,7 +3477,6 @@ export const en = {
       // TenantSeedManagement — fleet view of the per-BU TenantSeedCard
       title: 'Tenant seed data',
       subtitle: 'Check which tenant databases are missing default seed data, and fill the gaps.',
-      superAdminRequired: 'Super-admin required.',
       loadBuFailed: 'Failed to load business units: {{detail}}',
       showingPartial: 'Showing {{shown}} of {{total}} business units. Increase the page size to see all.',
       statusNotChecked: 'Not checked',

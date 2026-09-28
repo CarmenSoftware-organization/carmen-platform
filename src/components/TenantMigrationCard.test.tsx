@@ -25,7 +25,7 @@ const renderCard = () =>
       buCode="CARMEN-AVG"
       buName="Carmen AVG"
       hasDbConnection
-      isSuperAdmin
+      canApply
     />,
   );
 

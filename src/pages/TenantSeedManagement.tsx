@@ -39,6 +39,7 @@ import { toast } from 'sonner';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { BusinessUnit, SeedDeploySummary, SeedProgressEvent } from '../types';
 import { useI18n } from '../hooks/useI18n';
+import { PLATFORM_SCOPED_RECORD } from '../utils/permissions';
 
 interface SeedBatch {
   index: number;
@@ -94,7 +95,10 @@ const BADGE_VARIANT: Record<SeedRowStatus, 'success' | 'warning' | 'secondary' |
 
 const TenantSeedManagement: React.FC = () => {
   const { t } = useI18n();
-  const { isSuperAdmin } = useAuth();
+  const { hasPermission } = useAuth();
+  // Status checks are reads (the route already requires tenant_seed.read); only
+  // seed / seed-all writes to the BU schema.
+  const canApply = hasPermission('tenant_seed.apply', { clusterId: PLATFORM_SCOPED_RECORD });
   const navigate = useNavigate();
   const [bus, setBus] = useState<BusinessUnit[]>([]);
   const [totalRows, setTotalRows] = useState(0);
@@ -129,7 +133,9 @@ const TenantSeedManagement: React.FC = () => {
 
   useGlobalShortcuts({ onSearch: () => searchInputRef.current?.focus() });
 
-  const disabledReason = !isSuperAdmin ? t('pages.tenantSeed.superAdminRequired') : null;
+  const applyReason = !canApply
+    ? t('common.state.permissionRequired', { permission: 'tenant_seed.apply' })
+    : null;
   const batchRunning = batch !== null;
   const anyBusy =
     checkingAll || batchRunning || Object.values(rowState).some((r) => r.checking || r.seeding);
@@ -163,12 +169,10 @@ const TenantSeedManagement: React.FC = () => {
   }, [t]);
 
   const checkOne = useCallback((bu: BusinessUnit) => {
-    if (!isSuperAdmin) return;
     void checkRow(bu, true);
-  }, [checkRow, isSuperAdmin]);
+  }, [checkRow]);
 
   const checkAll = useCallback(async () => {
-    if (!isSuperAdmin) return;
     setCheckingAll(true);
     let failed = 0;
     try {
@@ -187,7 +191,7 @@ const TenantSeedManagement: React.FC = () => {
     const ok = checkableBus.length - failed;
     if (failed > 0) toast.warning(t('pages.tenantSeed.checkAllPartial', { ok, failed }));
     else toast.success(t('pages.tenantSeed.checkAllDone', { count: ok }));
-  }, [checkableBus, checkRow, isSuperAdmin, t]);
+  }, [checkableBus, checkRow, t]);
 
   // Run one BU's seed stream, updating its row. Rejects on failure (row already carries
   // the error); callers decide how to report it.
@@ -232,7 +236,7 @@ const TenantSeedManagement: React.FC = () => {
   }, [t]);
 
   const seedOne = useCallback(async (bu: BusinessUnit, selected: string[]) => {
-    if (!isSuperAdmin) return;
+    if (!canApply) return;
     if (activeStreamControllersRef.current.has(bu.id)) return;
     setSeedTarget(null);
     const { keys, total } = pickMissing(rowState[bu.id]?.status, selected);
@@ -246,10 +250,10 @@ const TenantSeedManagement: React.FC = () => {
       if (cancelledRef.current) return;
       handleSeedError(err, t);
     }
-  }, [checkRow, isSuperAdmin, rowState, runSeed, t]);
+  }, [checkRow, canApply, rowState, runSeed, t]);
 
   const seedAll = useCallback(async (selected: string[]) => {
-    if (!isSuperAdmin) return;
+    if (!canApply) return;
     if (batch !== null) return;
     setConfirmAll(false);
     // Snapshot keys now: rowState changes as each BU is re-checked. Each BU gets only the
@@ -283,7 +287,7 @@ const TenantSeedManagement: React.FC = () => {
     }
     if (failed > 0) toast.warning(t('pages.tenantSeed.seedAllPartial', { ok, failed }));
     else toast.success(t('pages.tenantSeed.seedAllDone', { count: ok }));
-  }, [batch, bus, checkRow, isSuperAdmin, rowState, runSeed, t]);
+  }, [batch, bus, checkRow, canApply, rowState, runSeed, t]);
 
   useEffect(() => {
     (async () => {
@@ -311,7 +315,7 @@ const TenantSeedManagement: React.FC = () => {
   const fleetChecked = counts.seeded + counts.missing + counts.error > 0;
   const nothingToSeed = fleetChecked && counts.missing === 0;
   const seedAllReason =
-    disabledReason ??
+    applyReason ??
     (nothingToSeed
       ? t('pages.tenantSeed.nothingToSeed')
       : !fleetChecked
@@ -445,30 +449,31 @@ const TenantSeedManagement: React.FC = () => {
         const st = seedRowStatusOf(bu, rs);
         if (st === 'no_db') return null;
         const busy = !!rs?.checking || !!rs?.seeding;
-        const disabled = !!disabledReason || busy || batchRunning || checkingAll;
+        const readDisabled = busy || batchRunning || checkingAll;
+        const writeDisabled = !!applyReason || busy || batchRunning || checkingAll;
         return (
           <div className="flex items-center justify-end gap-1.5">
             {iconAction({
               label: t('pages.tenantSeed.check'),
               icon: rs?.checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />,
               onClick: () => checkOne(bu),
-              disabled,
-              reason: disabledReason,
+              disabled: readDisabled,
+              reason: null,
             })}
             {st === 'missing' &&
               iconAction({
                 label: t('pages.tenantSeed.seed'),
                 icon: rs?.seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sprout className="h-4 w-4" />,
                 onClick: () => setSeedTarget(bu),
-                disabled,
-                reason: disabledReason,
+                disabled: writeDisabled,
+                reason: applyReason,
                 variant: 'default',
               })}
           </div>
         );
       },
     },
-  ], [rowState, disabledReason, checkOne, batchRunning, checkingAll, statusText, t]);
+  ], [rowState, applyReason, checkOne, batchRunning, checkingAll, statusText, t]);
 
   const batchProgress = batch?.buId ? rowState[batch.buId]?.progress : undefined;
 
@@ -511,12 +516,12 @@ const TenantSeedManagement: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={checkAll}
-                  disabled={!!disabledReason || anyBusy || checkableBus.length === 0}
+                  disabled={anyBusy || checkableBus.length === 0}
                 >
                   {checkingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                   {checkingAll ? t('pages.tenantSeed.checking') : t('pages.tenantSeed.checkAll')}
                 </Button>,
-                disabledReason,
+                null,
               )}
               {withTooltip(
                 <Button
