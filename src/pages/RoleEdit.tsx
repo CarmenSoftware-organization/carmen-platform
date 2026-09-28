@@ -545,7 +545,7 @@ const RoleEdit: React.FC = () => {
                       // Without the catalog the page still knows every key the role holds, so
                       // it renders those and nothing else. It must not grey anything: it
                       // cannot tell a withheld action from one it never learned about.
-                      <PermissionGrid rows={grantView.rows} />
+                      <PermissionGrid rows={grantView.rows} complete={false} />
                     )
                   ) : catalogLoading ? (
                     <div className="text-muted-foreground flex items-center justify-center py-8 text-sm" role="status">
