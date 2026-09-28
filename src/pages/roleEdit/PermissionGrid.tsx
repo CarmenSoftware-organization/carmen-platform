@@ -3,7 +3,7 @@ import { Button } from '../../components/ui/button';
 import { cn } from '../../lib/utils';
 import { useI18n } from '../../hooks/useI18n';
 import { isEscalationKey } from '../../utils/permissionRisk';
-import { groupGrantRows, resourceMeta, resourceDescriptionKey } from './grantGroups';
+import { groupGrantRows, resourceMeta } from './grantGroups';
 
 export interface PermissionGridAction {
   key: string;
@@ -118,11 +118,9 @@ export function PermissionGrid({ rows, onToggle, onToggleResource, original, com
                 const allOn = row.grantedCount === row.total;
                 const meta = resourceMeta(row.resource);
                 const Icon = meta?.icon;
-                // The catalog's own text wins; the i18n copy only covers a backend that does not
-                // send it yet, and goes once that backend is everywhere.
-                const fromCatalog = (lang === 'th' ? row.resourceDescription?.th : undefined) || row.resourceDescription?.en;
-                const descKey = resourceDescriptionKey(row.resource);
-                const description = fromCatalog || (descKey ? t(descKey) : undefined);
+                // From the backend's permission seed (`PLATFORM_PERMISSION_RESOURCE_SEED`). Thai
+                // falls back to English when a resource has no Thai text; none at all ⇒ no line.
+                const description = (lang === 'th' ? row.resourceDescription?.th : undefined) || row.resourceDescription?.en;
                 // A resource this role cannot touch at all recedes with its verbs — still
                 // counted and still in place, but never competing with the resources the role
                 // actually reaches. It stays legible while editing, where it is a target.
