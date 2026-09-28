@@ -16,6 +16,7 @@ const SEGMENT_KEYS: Record<string, TKey> = {
   clusters: 'breadcrumb.clusters',
   'business-units': 'breadcrumb.businessUnits',
   'tenant-migrations': 'breadcrumb.tenantMigrations',
+  'tenant-seeds': 'breadcrumb.tenantSeeds',
   'tenant-imports': 'breadcrumb.dataImport',
   users: 'breadcrumb.users',
   'report-templates': 'breadcrumb.reportTemplates',
