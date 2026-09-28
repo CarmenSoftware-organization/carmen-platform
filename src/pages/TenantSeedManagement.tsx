@@ -590,7 +590,10 @@ const TenantSeedManagement: React.FC = () => {
             : ''
         }
         confirmText={t('pages.tenantSeed.seed')}
-        onConfirm={() => (seedTarget ? seedOne(seedTarget) : undefined)}
+        // Fire-and-forget: progress lives in the row. Returning the seed promise would keep this
+        // dialog's internal spinner (and its disabled Cancel/Escape) alive for the whole stream,
+        // locking the screen if another row's Seed opens the dialog meanwhile.
+        onConfirm={() => { if (seedTarget) void seedOne(seedTarget); }}
       />
 
       <ConfirmDialog
