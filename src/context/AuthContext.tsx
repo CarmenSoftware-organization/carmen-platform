@@ -12,6 +12,22 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const isDev = import.meta.env.DEV;
 
+/**
+ * Decode a JWT's payload without verifying its signature — safe here because the token was
+ * already validated server-side by Keycloak/micro-business before it reached this browser via
+ * the Google sign-in redirect; this only reads the `email` claim to label the local session.
+ */
+function decodeJwtEmail(token: string): string {
+  try {
+    const payload = token.split('.')[1];
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    const claims = JSON.parse(json) as { email?: string; preferred_username?: string };
+    return claims.email || claims.preferred_username || '';
+  } catch {
+    return '';
+  }
+}
+
 interface AuthProviderProps {
   children: React.ReactNode;
 }
@@ -232,6 +248,60 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  /**
+   * Same session bootstrap as login() (authority gate, profile fetch, list-view reset), but the
+   * tokens already exist — they came from the gateway's Google sign-in redirect
+   * (GET /api/auth/google/callback), not from posting credentials here. Kept as its own function
+   * rather than folded into login() because there is no `credentials.username` to build the
+   * placeholder user label from; it reads `email` off the access token's own claims instead.
+   */
+  const loginWithTokens = async (accessToken: string, refreshToken: string): Promise<LoginResult> => {
+    try {
+      localStorage.setItem('token', accessToken);
+      if (refreshToken) {
+        localStorage.setItem('refresh_token', refreshToken);
+      }
+      api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+
+      const [eff, count, scope] = await Promise.all([
+        fetchEffectivePermissions(),
+        fetchUserCount(),
+        fetchAdminScope(),
+      ]);
+      const hasAnyPermission = checkPlatformAuthority(eff);
+      const hasClusterAdmin = !!scope && (scope.all || scope.clusters.length > 0);
+      const isBootstrap = count !== null && count <= 1;
+      if (!hasAnyPermission && !hasClusterAdmin && !isBootstrap) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('effectivePermissions');
+        localStorage.removeItem('adminScope');
+        delete api.defaults.headers.common['Authorization'];
+        setEffectivePermissions(null);
+        setAdminScope(null);
+        return {
+          success: false,
+          error: t('login.accessDeniedPlatform'),
+        };
+      }
+
+      const email = decodeJwtEmail(accessToken);
+      const userData: User = { id: '', email, name: email };
+      const loginData: LoginResponse = { access_token: accessToken, refresh_token: refreshToken };
+      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('loginResponse', JSON.stringify(loginData));
+      setUser(userData);
+      setLoginResponse(loginData);
+
+      clearListViewState();
+      fetchProfile();
+
+      return { success: true };
+    } catch {
+      return { success: false, error: t('login.unableToLogin') };
+    }
+  };
+
   const refreshUser = useCallback(() => {
     const userData = localStorage.getItem('user');
     if (userData) {
@@ -277,6 +347,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value: AuthContextValue = {
     user,
     login,
+    loginWithTokens,
     logout,
     refreshUser,
     isAuthenticated: !!user,

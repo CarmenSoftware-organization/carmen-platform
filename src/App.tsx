@@ -12,6 +12,7 @@ import { Toaster } from "sonner";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcuts";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
+import GoogleCallback from "./pages/GoogleCallback";
 import Forbidden from "./pages/Forbidden";
 import NotFound from "./pages/NotFound";
 import { SEAT_CONFIG, BU_QUOTA_CONFIG, INTERFACE_CONFIG } from "./pages/licenses/licenseKindConfig";
@@ -98,6 +99,7 @@ function AppContent() {
             <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/login/google-callback" element={<GoogleCallback />} />
             <Route path="/changelog" element={<Changelog />} />
             <Route
               path="/dashboard"

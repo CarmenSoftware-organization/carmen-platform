@@ -851,6 +851,8 @@ export interface LoginResult {
 export interface AuthContextValue {
   user: User | null;
   login: (credentials: LoginCredentials) => Promise<LoginResult>;
+  /** Same session bootstrap as login(), but for tokens already issued by a Google sign-in redirect. */
+  loginWithTokens: (accessToken: string, refreshToken: string) => Promise<LoginResult>;
   logout: () => void;
   refreshUser: () => void;
   isAuthenticated: boolean;
