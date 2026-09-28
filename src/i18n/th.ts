@@ -51,6 +51,7 @@ export const th: Translations = {
     platform: 'Platform',
     database: 'ฐานข้อมูล',
     clusterAdmin: 'การดูแลคลัสเตอร์',
+    other: 'อื่น ๆ',
   },
   sidebar: {
     collapse: 'ย่อเมนู',
@@ -2874,6 +2875,11 @@ export const th: Translations = {
       // แทน noAccessOther/-Plural ที่ถูกถอด — เชิงอรรถนั้นบอกจำนวน resource ที่เอื้อมไม่ถึง
       // ตอนนี้แถวเส้นประบอกเองว่าอันไหน ป้ายนี้จึงอธิบายแค่ว่าเส้นประแปลว่าอะไร
       withheldLegend: 'ปุ่มเส้นประคือสิทธิ์ที่มีใน catalog แต่บทบาทนี้ไม่ได้รับ',
+      escalationWarning: 'ให้สิทธิ์เพิ่มแก่ตัวเองได้:',
+      permissionDelta: '+{{added}} −{{removed}} สิทธิ์',
+      chipAdded: '(เพิ่มใหม่)',
+      chipRemoved: '(ถอดออก)',
+      accessShapeAria: 'รูปทรงสิทธิ์: {{summary}}',
       noPermissionsGranted: 'ยังไม่ได้ให้สิทธิ์',
       nPermissions: '{{count}} สิทธิ์',
       nPermissionsPlural: '{{count}} สิทธิ์',

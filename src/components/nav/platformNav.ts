@@ -3,6 +3,8 @@ import {
   ShieldCheck, ShieldAlert, UserCog, DatabaseZap, Database, DatabaseBackup, LayoutGrid, Mail, FileSpreadsheet,
   BarChart3, MousePointerClick, Settings, Server, KeyRound, ToggleLeft, Tags, Clock, Sprout
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import type { TKey } from '../../i18n/types';
 import type { NavItem } from '../Sidebar';
 import type { FeatureState } from '../../constants/featureFlags';
 
@@ -80,6 +82,23 @@ const NAV_RESOURCE_ORDER: string[] = (() => {
 export const resourceRank = (resource: string): number => {
   const i = NAV_RESOURCE_ORDER.indexOf(resource);
   return i === -1 ? NAV_RESOURCE_ORDER.length : i;
+};
+
+/** What the sidebar calls a permission resource: its section, its label, its icon. */
+export interface ResourceNavMeta {
+  groupKey?: TKey;
+  labelKey: TKey;
+  icon: LucideIcon;
+}
+
+/**
+ * The menu entry that stands for a permission resource — first appearance wins, exactly as
+ * in `resourceRank`, so a role's grant can be read in the sidebar's own words and sections
+ * without a second mapping to keep in sync. `undefined` for a resource with no menu entry.
+ */
+export const resourceNavMeta = (resource: string): ResourceNavMeta | undefined => {
+  const item = ALL_PLATFORM_NAV_ITEMS.find((i) => i.permission?.split('.')[0] === resource);
+  return item ? { groupKey: item.groupKey, labelKey: item.labelKey, icon: item.icon } : undefined;
 };
 
 /** The platform-administration navigation, filtered to what this user may reach. */
