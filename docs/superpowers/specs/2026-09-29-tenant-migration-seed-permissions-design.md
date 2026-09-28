@@ -60,13 +60,18 @@ Order of checks:
 
 1. `TENANT_MIGRATION_API_ENABLED` off → `403 Tenant migration API is disabled` (unchanged).
 2. `x-deploy-token` matches → allow, `deployActor = 'ci:deploy-token'` (unchanged).
-3. `KeycloakGuard.canActivate(context)` — unauthenticated → 403.
+3. Handler carries no `@RequirePlatformPermission` → `403` (**fail closed**). Required because
+   `PlatformPermissionGuard.handleUndecoratedRoute` lets an undecorated route through for every
+   logged-in user while `PLATFORM_PERMISSION_MODE` is `log-only` (the default) — delegating
+   without this check would turn a forgotten decorator into "anyone can deploy", strictly looser
+   than today's super-admin-only guard. Needs `Reflector` injected.
+3a. `KeycloakGuard.canActivate(context)` — unauthenticated → 403.
 4. `PlatformPermissionGuard.canActivate(context)` — reads the handler's
    `@RequirePlatformPermission`, lets super-admin through, otherwise throws
    `403 Missing platform permission: <key>`.
 5. `deployActor = request.platformPermissions.is_super_admin ? 'super-admin:<id>' : 'platform-user:<id>'`.
 
-Constructor injects `KeycloakGuard` and `PlatformPermissionGuard`; `PlatformSuperAdminGuard` is
+Constructor injects `KeycloakGuard`, `PlatformPermissionGuard` and `Reflector`; `PlatformSuperAdminGuard` is
 removed — `PlatformPermissionGuard` already owns the super-admin bypass, so the decision lives in one
 place.
 
