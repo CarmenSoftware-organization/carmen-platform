@@ -19,40 +19,6 @@ const UNMENUED_RESOURCE_META: Record<string, ResourceNavMeta> = {
 export const resourceMeta = (resource: string): ResourceNavMeta | undefined =>
   resourceNavMeta(resource) ?? UNMENUED_RESOURCE_META[resource];
 
-/**
- * FALLBACK ONLY — the source of truth is the backend's `PLATFORM_PERMISSION_RESOURCE_SEED`,
- * delivered on each catalog item as `resource_description` / `_th`. This copy covers a backend
- * deployed before that field existed; delete it (and the `pages.roles.resourceDescription.*`
- * keys) once every backend the app points at sends it.
- */
-const RESOURCE_DESCRIPTION: Record<string, TKey> = {
-  cluster: 'pages.roles.resourceDescription.clusters',
-  tenant_migration: 'pages.roles.resourceDescription.tenantMigration',
-  tenant_seed: 'pages.roles.resourceDescription.tenantSeed',
-  data_import: 'pages.roles.resourceDescription.dataImport',
-  user: 'pages.roles.resourceDescription.user',
-  subscription: 'pages.roles.resourceDescription.subscription',
-  license_feature_group: 'pages.roles.resourceDescription.licenseFeatureGroup',
-  license_feature: 'pages.roles.resourceDescription.licenseFeature',
-  report_template: 'pages.roles.resourceDescription.reportTemplate',
-  news: 'pages.roles.resourceDescription.news',
-  broadcast: 'pages.roles.resourceDescription.broadcast',
-  activity_event: 'pages.roles.resourceDescription.activityEvent',
-  cronjob: 'pages.roles.resourceDescription.cronjob',
-  platform_config: 'pages.roles.resourceDescription.platformConfig',
-  email_setting: 'pages.roles.resourceDescription.emailSetting',
-  application: 'pages.roles.resourceDescription.application',
-  platform_role: 'pages.roles.resourceDescription.platformRole',
-  user_platform: 'pages.roles.resourceDescription.userPlatform',
-  feature_flag: 'pages.roles.resourceDescription.featureFlag',
-  sql_workbench: 'pages.roles.resourceDescription.sqlWorkbench',
-  database_pool: 'pages.roles.resourceDescription.databasePool',
-  activity_log: 'pages.roles.resourceDescription.activityLog',
-  license: 'pages.roles.resourceDescription.license',
-};
-
-export const resourceDescriptionKey = (resource: string): TKey | undefined => RESOURCE_DESCRIPTION[resource];
-
 export interface GrantGroup {
   /** The sidebar section's heading key; resources with no menu entry share `navGroup.other`. */
   labelKey: TKey;
