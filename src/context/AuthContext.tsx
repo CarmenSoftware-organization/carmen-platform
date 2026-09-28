@@ -272,6 +272,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const hasClusterAdmin = !!scope && (scope.all || scope.clusters.length > 0);
       const isBootstrap = count !== null && count <= 1;
       if (!hasAnyPermission && !hasClusterAdmin && !isBootstrap) {
+        // Revoke the Keycloak session this token pair belongs to, not just our own local
+        // storage. This token pair came from a real browser round-trip through Keycloak's
+        // Google broker, which leaves a live KEYCLOAK_SESSION cookie on sso.carmenblue.cloud
+        // bound to this (denied) user — clearing only localStorage leaves that session alive,
+        // so a retry ("Sign in with Google" again, picking a different/correct account) hits
+        // Keycloak while it still thinks this browser is authenticated as the denied user, and
+        // Keycloak refuses with "already authenticated as different user" instead of switching.
+        try {
+          await api.post('/api/auth/logout', { refresh_token: refreshToken });
+        } catch {
+          // Best-effort — we're already bailing out to Access Denied regardless.
+        }
         localStorage.removeItem('token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('effectivePermissions');
