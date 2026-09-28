@@ -3420,7 +3420,6 @@ export const en = {
       // TenantMigrationManagement
       title: 'Tenant migrations',
       subtitle: 'Check which tenant databases are behind on schema migrations, and roll them out.',
-      superAdminRequired: 'Super-admin required.',
       alreadyUpToDate: 'Already up to date.',
       upToDate: 'up to date',
       deployCompleted: 'Deploy completed.',
@@ -3478,7 +3477,6 @@ export const en = {
       // TenantSeedManagement — fleet view of the per-BU TenantSeedCard
       title: 'Tenant seed data',
       subtitle: 'Check which tenant databases are missing default seed data, and fill the gaps.',
-      superAdminRequired: 'Super-admin required.',
       loadBuFailed: 'Failed to load business units: {{detail}}',
       showingPartial: 'Showing {{shown}} of {{total}} business units. Increase the page size to see all.',
       statusNotChecked: 'Not checked',

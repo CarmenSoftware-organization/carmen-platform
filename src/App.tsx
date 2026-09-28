@@ -267,7 +267,7 @@ function AppContent() {
             <Route
               path="/tenant-migrations"
               element={
-                <PrivateRoute requiredPermission="cluster.read" feature="tenant_migrations">
+                <PrivateRoute requiredPermission="tenant_migration.read" feature="tenant_migrations">
                   <TenantMigrationManagement />
                 </PrivateRoute>
               }
@@ -275,7 +275,7 @@ function AppContent() {
             <Route
               path="/tenant-seeds"
               element={
-                <PrivateRoute requiredPermission="cluster.read" feature="tenant_seeds">
+                <PrivateRoute requiredPermission="tenant_seed.read" feature="tenant_seeds">
                   <TenantSeedManagement />
                 </PrivateRoute>
               }

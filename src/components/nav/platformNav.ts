@@ -11,8 +11,8 @@ const ALL_PLATFORM_NAV_ITEMS: NavItem[] = [
   // Organization
   { path: '/clusters', labelKey: 'nav.clusters', icon: Network, permission: 'cluster.read', groupKey: 'navGroup.organization', feature: 'clusters' },
   { path: '/business-units', labelKey: 'nav.businessUnits', icon: Building2, permission: 'cluster.read', groupKey: 'navGroup.organization', feature: 'business_units' },
-  { path: '/tenant-migrations', labelKey: 'nav.tenantMigrations', icon: DatabaseZap, permission: 'cluster.read', groupKey: 'navGroup.organization', feature: 'tenant_migrations' },
-  { path: '/tenant-seeds', labelKey: 'nav.tenantSeeds', icon: Sprout, permission: 'cluster.read', groupKey: 'navGroup.organization', feature: 'tenant_seeds' },
+  { path: '/tenant-migrations', labelKey: 'nav.tenantMigrations', icon: DatabaseZap, permission: 'tenant_migration.read', groupKey: 'navGroup.organization', feature: 'tenant_migrations' },
+  { path: '/tenant-seeds', labelKey: 'nav.tenantSeeds', icon: Sprout, permission: 'tenant_seed.read', groupKey: 'navGroup.organization', feature: 'tenant_seeds' },
   { path: '/tenant-imports', labelKey: 'nav.dataImport', icon: FileSpreadsheet, permission: 'data_import.manage', groupKey: 'navGroup.organization', feature: 'tenant_imports' },
   { path: '/users', labelKey: 'nav.users', icon: Users, permission: 'user.read', groupKey: 'navGroup.organization', feature: 'users' },
   // License management — ต้องอยู่ติดกัน: Sidebar จัดกลุ่มจากแถวที่ groupKey ซ้ำกันติด ๆ
@@ -59,8 +59,8 @@ const ALL_PLATFORM_NAV_ITEMS: NavItem[] = [
 /**
  * The order the sidebar puts resources in, derived from the nav itself so the two can
  * never drift: a role's permission list reads top-to-bottom in the same order as the menu
- * the reader just came from. Several nav items share one resource (Clusters, Business
- * Units and Tenant Migrations are all `cluster.read`) — first appearance wins.
+ * the reader just came from. Several nav items share one resource (Clusters and Business
+ * Units are both `cluster.read`) — first appearance wins.
  */
 const NAV_RESOURCE_ORDER: string[] = (() => {
   const order: string[] = [];

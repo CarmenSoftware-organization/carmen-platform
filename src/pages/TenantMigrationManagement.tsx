@@ -130,7 +130,10 @@ const iconAction = ({
 
 const TenantMigrationManagement: React.FC = () => {
   const { t } = useI18n();
-  const { isSuperAdmin } = useAuth();
+  const { hasPermission } = useAuth();
+  // Status checks are reads (the route already requires tenant_migration.read); only
+  // apply / deploy-all / resolve write to the BU schema.
+  const canApply = hasPermission('tenant_migration.apply');
   const navigate = useNavigate();
   const [bus, setBus] = useState<BusinessUnit[]>([]);
   const [totalRows, setTotalRows] = useState(0);
@@ -165,7 +168,9 @@ const TenantMigrationManagement: React.FC = () => {
 
   useGlobalShortcuts({ onSearch: () => searchInputRef.current?.focus() });
 
-  const disabledReason = !isSuperAdmin ? t('pages.tenantMigration.superAdminRequired') : null;
+  const applyReason = !canApply
+    ? t('common.state.permissionRequired', { permission: 'tenant_migration.apply' })
+    : null;
 
   const batchRunning = batch !== null;
 
@@ -249,10 +254,11 @@ const TenantMigrationManagement: React.FC = () => {
   }, [bus, t]);
 
   const applyOne = useCallback(async (bu: BusinessUnit) => {
-    // Defence-in-depth: mirrors the disabled={!!disabledReason} state on the Apply button.
-    // The button is disabled for non-super-admins today, but that's UI-layer only — fail
-    // closed here too so a future refactor that renders the button enabled can't mutate.
-    if (!isSuperAdmin) return;
+    // Defence-in-depth: mirrors the disabled={!!applyReason} state on the Apply button.
+    // The button is disabled without tenant_migration.apply today, but that's UI-layer
+    // only — fail closed here too so a future refactor that renders the button enabled
+    // can't mutate.
+    if (!canApply) return;
     // Re-entry guard: a ref (not rowState, which can be stale in this closure) so a second
     // trigger for the same BU while one is already streaming is ignored rather than orphaning
     // the first controller's map entry.
@@ -295,13 +301,14 @@ const TenantMigrationManagement: React.FC = () => {
     } finally {
       if (activeStreamControllersRef.current.get(bu.id) === controller) activeStreamControllersRef.current.delete(bu.id);
     }
-  }, [checkOne, isSuperAdmin, t]);
+  }, [checkOne, canApply, t]);
 
   const deployAll = useCallback(async () => {
-    // Defence-in-depth: mirrors the disabled={!!disabledReason} state on the Deploy all
-    // button. The button is disabled for non-super-admins today, but that's UI-layer only —
-    // fail closed here too so a future refactor that renders the button enabled can't mutate.
-    if (!isSuperAdmin) return;
+    // Defence-in-depth: mirrors the disabled={!!applyReason} state on the Deploy all
+    // button. The button is disabled without tenant_migration.apply today, but that's
+    // UI-layer only — fail closed here too so a future refactor that renders the button
+    // enabled can't mutate.
+    if (!canApply) return;
     // Re-entry guard: batchRunning already disables the "Deploy all" button while a batch is in
     // flight, but this ref-backed check is the source of truth (mirrors applyOne) so a second
     // trigger can't orphan the first controller's map entry.
@@ -355,7 +362,7 @@ const TenantMigrationManagement: React.FC = () => {
       activeStreamControllersRef.current.delete(ALL_BU_STREAM_KEY);
       if (!controller.signal.aborted) setBatch(null);
     }
-  }, [isSuperAdmin, t]);
+  }, [canApply, t]);
 
   useEffect(() => {
     (async () => {
@@ -394,7 +401,7 @@ const TenantMigrationManagement: React.FC = () => {
   const behindCount = summary.pending;
   const nothingToDeploy = fleetChecked && behindCount === 0;
   const deployAllReason =
-    disabledReason ??
+    applyReason ??
     (nothingToDeploy
       ? t('pages.tenantMigration.nothingToDeploy')
       : !fleetChecked
@@ -542,7 +549,8 @@ const TenantMigrationManagement: React.FC = () => {
         const bu = row.original;
         const rs = rowState[bu.id];
         const busy = !!rs?.checking || !!rs?.deploying;
-        const disabled = !!disabledReason || busy || batchRunning;
+        const readDisabled = busy || batchRunning;
+        const writeDisabled = !!applyReason || busy || batchRunning;
         // ปุ่ม Resolve โผล่บนแถวที่สถานะเป็น error ทุกแถว ไม่ใช่เฉพาะแถวที่แกะชื่อ migration ได้:
         // ถ้าผูกการโผล่ไว้กับการแกะชื่อสำเร็จ วันที่ prisma เปลี่ยนถ้อยคำสักนิด ปุ่มจะหายไป
         // ตอนที่ต้องใช้พอดี แลกกับการที่แถวซึ่ง error เพราะเชื่อมต่อ DB ไม่ได้ (ยังไม่ผูก pool,
@@ -554,8 +562,8 @@ const TenantMigrationManagement: React.FC = () => {
               label: t('pages.tenantMigration.check'),
               icon: rs?.checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />,
               onClick: () => checkOne(bu),
-              disabled,
-              reason: disabledReason,
+              disabled: readDisabled,
+              reason: null,
               variant: 'outline',
             })}
             {rs?.status?.has_pending &&
@@ -563,8 +571,8 @@ const TenantMigrationManagement: React.FC = () => {
                 label: t('pages.tenantMigration.apply'),
                 icon: <Play className="h-4 w-4" />,
                 onClick: () => setApplyTarget(bu),
-                disabled,
-                reason: disabledReason,
+                disabled: writeDisabled,
+                reason: applyReason,
                 variant: 'destructive',
               })}
             {isError &&
@@ -572,15 +580,15 @@ const TenantMigrationManagement: React.FC = () => {
                 label: t('pages.tenantMigration.resolve'),
                 icon: <Wrench className="h-4 w-4" />,
                 onClick: () => setResolveTarget(bu),
-                disabled,
-                reason: disabledReason,
+                disabled: writeDisabled,
+                reason: applyReason,
                 variant: 'secondary',
               })}
           </div>
         );
       },
     },
-  ], [rowState, disabledReason, checkOne, batchRunning, t]);
+  ], [rowState, applyReason, checkOne, batchRunning, t]);
 
   return (
     <Layout>
@@ -600,12 +608,12 @@ const TenantMigrationManagement: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={checkAll}
-                  disabled={!!disabledReason || anyBusy || bus.length === 0}
+                  disabled={anyBusy || bus.length === 0}
                 >
                   {checkingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                   {checkingAll ? t('pages.tenantMigration.checking') : t('pages.tenantMigration.checkAll')}
                 </Button>,
-                disabledReason,
+                null,
               )}
               {withTooltip(
                 <Button
@@ -617,7 +625,7 @@ const TenantMigrationManagement: React.FC = () => {
                   variant={behindCount > 0 ? 'destructive' : 'outline'}
                   size="sm"
                   onClick={() => setConfirmAll(true)}
-                  disabled={!!disabledReason || anyBusy || bus.length === 0 || nothingToDeploy}
+                  disabled={!!applyReason || anyBusy || bus.length === 0 || nothingToDeploy}
                 >
                   <Play className="mr-2 h-4 w-4" />
                   {/* ปุ่มบอกรัศมีของตัวเองเมื่อรู้แล้วว่าจะแตะกี่ tenant */}
@@ -722,7 +730,7 @@ const TenantMigrationManagement: React.FC = () => {
         defaultMigrationName={resolveTarget ? rowState[resolveTarget.id]?.failedMigration : undefined}
         onOpenChange={(open) => { if (!open) setResolveTarget(null); }}
         onResolved={() => (resolveTarget ? checkOne(resolveTarget) : undefined)}
-        disabledReason={disabledReason}
+        disabledReason={applyReason}
       />
 
       <DevDebugSheet title="API Response" endpoint="GET /api-system/business-units" data={rawResponse} />

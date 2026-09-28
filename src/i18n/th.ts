@@ -2392,7 +2392,6 @@ export const th: Translations = {
       deployingAll: 'กำลัง deploy ทุก tenant…',
       title: 'Tenant migration',
       subtitle: 'ตรวจว่าฐานข้อมูล tenant ใดตามหลัง schema migration อยู่ แล้วสั่งอัปเดต',
-      superAdminRequired: 'ต้องเป็นผู้ดูแลระบบสูงสุด',
       alreadyUpToDate: 'เป็นเวอร์ชันล่าสุดอยู่แล้ว',
       upToDate: 'เป็นเวอร์ชันล่าสุด',
       deployCompleted: 'Deploy เสร็จแล้ว',
@@ -2449,7 +2448,6 @@ export const th: Translations = {
       // TenantSeedManagement — มุมมองทั้ง fleet ของ TenantSeedCard ราย BU
       title: 'ข้อมูลตั้งต้นของ tenant',
       subtitle: 'ตรวจว่า tenant ตัวไหนยังขาดข้อมูลตั้งต้น แล้วเติมส่วนที่ขาด',
-      superAdminRequired: 'ต้องใช้สิทธิ์ super admin',
       loadBuFailed: 'โหลด business unit ไม่สำเร็จ: {{detail}}',
       showingPartial: 'แสดง {{shown}} จาก {{total}} business unit — เพิ่มขนาดหน้าเพื่อดูทั้งหมด',
       statusNotChecked: 'ยังไม่ตรวจ',
