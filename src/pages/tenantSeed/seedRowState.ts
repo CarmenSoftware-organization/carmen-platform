@@ -41,6 +41,16 @@ export const missingKeys = (status?: TenantSeedStatus): string[] =>
 export const missingCount = (status?: TenantSeedStatus): number =>
   status ? status.sets.reduce((acc, s) => acc + s.missing.length, 0) : 0;
 
+/** Missing set keys of `status` restricted to `selected`, and how many rows they would create. */
+export const pickMissing = (
+  status: TenantSeedStatus | undefined,
+  selected: string[],
+): { keys: string[]; total: number } => {
+  const want = new Set(selected);
+  const sets = status ? status.sets.filter((s) => s.missing.length > 0 && want.has(s.key)) : [];
+  return { keys: sets.map((s) => s.key), total: sets.reduce((acc, s) => acc + s.missing.length, 0) };
+};
+
 // "seeded" comes from missingCount, not all_seeded, so the badge and the Sets column can't disagree.
 export const seedRowStatusOf = (bu: BusinessUnit, rs?: SeedRowState): SeedRowStatus => {
   if (!hasDb(bu)) return 'no_db';

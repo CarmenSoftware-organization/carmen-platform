@@ -128,6 +128,19 @@ disables Check, Check all, Seed, Seed all with a tooltip. `checkOne`, `checkAll`
 - The map doubles as the re-entry guard: a second Seed for a BU already streaming is ignored.
 - While Check all or Seed all runs, all row actions and both bulk buttons are disabled.
 
+## Set picker (added 2026-09-29, owner request)
+
+Both Seed dialogs are `SeedSetPickerDialog` (`src/pages/tenantSeed/SeedSetPickerDialog.tsx`, built on
+`ui/dialog` because `ConfirmDialog` only takes a text description): one checkbox per **missing seed set**
+(set-level, because `deploy/stream` takes set keys, not row names), all checked on open, each expandable
+to its missing rows. The confirm button names the row count of the checked sets.
+
+- **Seed (row):** options are that BU's missing sets; sends only the checked keys.
+- **Seed all:** options aggregate every checked-and-missing BU — per set "N missing in M BU", expanding to
+  `BU · n` lines. Each BU is sent the intersection of the checked keys and its own missing sets; a BU whose
+  intersection is empty is skipped (neither ok nor failed).
+- The dialog closes itself and does not await the stream (same reason as the per-row fix).
+
 ## Service change
 
 `tenantSeedService.deployStream` gains an optional trailing `signal?: AbortSignal`, passed to
@@ -171,5 +184,4 @@ Per the owner's standing preference, no new test files. Required:
 ## Out of scope
 
 - Backend fleet endpoints (approach B).
-- Choosing individual sets per BU from this page (use BU Edit's `TenantSeedCard` for that).
 - Cancel button for a running seed.
