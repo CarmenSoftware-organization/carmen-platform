@@ -49,7 +49,8 @@ property, not a data value.
 
 | Field | Value |
 |-------|-------|
-| Base URL | `http://localhost:3304` (`bun run dev:dev` → DEV backend `dev.blueledgers.com:4001`) |
+| Base URL | `http://localhost:3304`. The mode decides the backend: `bun run dev:dev` → DEV `dev.blueledgers.com:4001`; `--mode localhost` → local `localhost:4000`. **Check which one is running** (`ps` shows `vite --mode …`) before labelling captures. |
+| Captures so far | Module 2 screenshots (2026-09-29) came from `--mode localhost` → **local backend**, not DEV |
 | Deployed DEV | `http://dev.blueledgers.com:9902` |
 | BU (Test) | TBD |
 | Cluster | TBD |

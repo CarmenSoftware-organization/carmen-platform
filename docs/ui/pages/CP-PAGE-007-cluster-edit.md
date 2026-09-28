@@ -7,7 +7,7 @@
 **Status:** Draft
 **Created:** 2026-09-29
 **Last Updated:** 2026-09-29
-**Author:** Claude (from code + live capture on DEV)
+**Author:** Claude (from code + live capture on the local backend `localhost:4000`, 2026-09-29)
 **Parent Flow:** CP-FLOW-002 — Cluster onboarding (Planned)
 ---
 
@@ -345,7 +345,7 @@ All calls go to the `/api-system` backend.
 
 | # | Scenario | System Behaviour |
 |---|----------|-----------------|
-| 1a | Create: mandatory field blank → Create cluster | The browser's native `required` check blocks submit and focuses the first empty field (Code). On DEV the capture showed **no inline red message**, only the focus move; the native tooltip does not appear in screenshots. Blur on a blank field shows "Code is required" / "Name is required" inline. |
+| 1a | Create: mandatory field blank → Create cluster | The browser's native `required` check blocks submit and focuses the first empty field (Code). The capture (local backend) showed **no inline red message**, only the focus move; the native tooltip does not appear in screenshots. Blur on a blank field shows "Code is required" / "Name is required" inline. |
 | 1b | Edit: Code blanked on the plate | **No error shown**, and Save is not blocked. The server's response decides. *(Gap)* |
 | 2 | Session expired mid-edit | 401 → the token refreshes silently and the request retries. If the refresh fails → `/login`, and **pending plate edits are lost** (they live only in memory). `beforeunload` does not fire on this redirect. |
 | 3a | Unknown / deleted cluster id | The whole page is replaced by "Cluster not found" — "This cluster doesn't exist, or it may have been deleted. Check the link, or pick one from the cluster list." + **Back to clusters**. |

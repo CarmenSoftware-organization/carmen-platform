@@ -6,7 +6,7 @@
 **Status:** Draft
 **Created:** 2026-09-29
 **Last Updated:** 2026-09-29
-**Author:** Claude (from code + live capture on DEV)
+**Author:** Claude (from code + live capture on the local backend `localhost:4000`, 2026-09-29)
 ---
 
 ## 2. Clusters
