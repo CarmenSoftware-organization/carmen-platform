@@ -5,7 +5,7 @@ import type { BusinessUnit } from '../types';
 export interface FetchAllBusinessUnitsOptions {
   /** กรองด้วย cluster_id ฝั่ง server (advance where) */
   clusterId?: string;
-  /** เช่น 'code:asc' — ไม่ส่ง = ลำดับของ backend */
+  /** เช่น 'code:asc' — ไม่ส่ง = 'code:asc' */
   sort?: string;
   /** ชื่อใน devLog เมื่อชนเพดาน */
   label: string;
@@ -24,7 +24,7 @@ export function fetchAllBusinessUnits({
       businessUnitService.getAll({
         page,
         perpage,
-        ...(sort ? { sort } : {}),
+        sort: sort ?? 'code:asc',
         ...(advance ? { advance } : {}),
       }) as Promise<PagedResponse<BusinessUnit>>,
     { pageSize: 100, maxPages: 10, label, context: clusterId ? { clusterId } : undefined },

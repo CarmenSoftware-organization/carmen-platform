@@ -68,7 +68,7 @@ export default function ReportConfigFields({
       try {
         setLoadingRecipientUsers(true);
         const items = await fetchAllPages<User>(
-          (page, perpage) => userService.getAll({ page, perpage }) as Promise<PagedResponse<User>>,
+          (page, perpage) => userService.getAll({ page, perpage, sort: 'username:asc' }) as Promise<PagedResponse<User>>,
           { label: 'ReportConfigFields.users' },
         );
         if (!ignore) setRecipientUsers(items);

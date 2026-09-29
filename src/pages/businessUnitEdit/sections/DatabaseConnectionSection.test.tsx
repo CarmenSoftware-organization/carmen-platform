@@ -89,7 +89,7 @@ describe('DatabaseConnectionSection', () => {
       ...pools,
       { id: 'p2', name: 'tenant-db-sg-02', host: 'h', port: 5432, database: 'd', username: 'u', is_active: true },
     ];
-    vi.mocked(databasePoolService.getAll).mockResolvedValue({ data: twoPools });
+    vi.mocked(databasePoolService.getAll).mockResolvedValue({ data: twoPools, paginate: { total: twoPools.length, page: 1, perpage: 100 } });
     render(<DatabaseConnectionSection {...baseProps({ editing: true, onPoolChange })} />);
 
     const select = await screen.findByLabelText('Database Pool');
@@ -100,7 +100,7 @@ describe('DatabaseConnectionSection', () => {
 
   it('keeps a bound-but-inactive pool in the options, labelled (inactive)', async () => {
     const inactivePool = { id: 'p9', name: 'legacy-pool', host: 'h', port: 5432, database: 'd', username: 'u', is_active: false };
-    vi.mocked(databasePoolService.getAll).mockResolvedValue({ data: [inactivePool] });
+    vi.mocked(databasePoolService.getAll).mockResolvedValue({ data: [inactivePool], paginate: { total: 1, page: 1, perpage: 100 } });
     render(<DatabaseConnectionSection {...baseProps({
       editing: true,
       formData: { ...initialFormData, database_pool_id: 'p9', db_schema: 'x', database_pool_name: 'legacy-pool' },

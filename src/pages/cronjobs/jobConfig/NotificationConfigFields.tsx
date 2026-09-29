@@ -30,7 +30,7 @@ export default function NotificationConfigFields({
       try {
         setLoadingUsers(true);
         const items = await fetchAllPages<User>(
-          (page, perpage) => userService.getAll({ page, perpage }) as Promise<PagedResponse<User>>,
+          (page, perpage) => userService.getAll({ page, perpage, sort: 'username:asc' }) as Promise<PagedResponse<User>>,
           { label: 'NotificationConfigFields.users' },
         );
         if (!ignore) setUsers(items);
