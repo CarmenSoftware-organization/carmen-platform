@@ -7,7 +7,8 @@ import {
 import { UserPicker } from '../../components/UserPicker';
 import userPlatformService from '../../services/userPlatformService';
 import roleService from '../../services/roleService';
-import clusterService from '../../services/clusterService';
+import { fetchAllPages, type PagedResponse } from '../../utils/fetchAllPages';
+import { fetchAllClusters } from '../../hooks/useAllClusters';
 import { parseApiError } from '../../utils/errorParser';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
@@ -55,22 +56,16 @@ export const GrantAccessDialog: React.FC<GrantAccessDialogProps> = ({
     setConflictRoleIds([]);
     (async () => {
       try {
-        const r = await roleService.getAll({ perpage: 200, sort: 'name:asc' });
-        const items = r.data || r;
-        setRoleOptions(
-          (Array.isArray(items) ? items : []).map((x: { id: string; name: string }) => ({
-            id: x.id, name: x.name,
-          })),
+        const roles = await fetchAllPages<{ id: string; name: string }>(
+          (page, perpage) =>
+            roleService.getAll({ page, perpage, sort: 'name:asc' }) as Promise<PagedResponse<{ id: string; name: string }>>,
+          { label: 'GrantAccessDialog.roles' },
         );
+        setRoleOptions(roles.map((x) => ({ id: x.id, name: x.name })));
       } catch { /* the dialog still works with an empty list; the toast on submit explains */ }
       try {
-        const c = await clusterService.getAll({ perpage: 200, sort: 'name:asc' });
-        const items = c.data || c;
-        setClusterOptions(
-          (Array.isArray(items) ? items : []).map((x: { id: string; name: string }) => ({
-            id: x.id, name: x.name,
-          })),
-        );
+        const clusters = await fetchAllClusters();
+        setClusterOptions(clusters.map((x) => ({ id: x.id, name: x.name })));
       } catch { /* same */ }
     })();
   }, [open]);
