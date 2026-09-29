@@ -15,10 +15,10 @@ describe('currencyService', () => {
 
   it('getForBu fetches the tenant currencies endpoint sorted by code', async () => {
     const rows = [{ id: '1', code: 'USD', name: 'US Dollar', is_active: true }];
-    mockApi.get.mockResolvedValue({ data: { data: rows } });
+    mockApi.get.mockResolvedValue({ data: { data: rows, paginate: { total: rows.length } } });
     const result = await currencyService.getForBu('T02');
     expect(mockApi.get).toHaveBeenCalledWith(
-      '/api/config/T02/currencies?perpage=500&sort=code:asc',
+      '/api/config/T02/currencies?page=1&perpage=100&sort=code:asc',
     );
     expect(result).toEqual(rows);
   });

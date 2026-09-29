@@ -37,7 +37,7 @@ describe('TenantMigrationManagement', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(useAuth).mockReturnValue(authAs(true));
-    vi.mocked(businessUnitService.getAll).mockResolvedValue({ data: BUS } as never);
+    vi.mocked(businessUnitService.getAll).mockResolvedValue({ data: BUS, paginate: { total: BUS.length } } as never);
   });
 
   it('renders a row per BU with Unknown status and does NOT fetch status on load', async () => {
@@ -292,7 +292,7 @@ describe('TenantMigrationManagement — table fit-content & sticky', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(useAuth).mockReturnValue(authAs(true));
-    vi.mocked(businessUnitService.getAll).mockResolvedValue({ data: BUS } as never);
+    vi.mocked(businessUnitService.getAll).mockResolvedValue({ data: BUS, paginate: { total: BUS.length } } as never);
   });
 
   it('uses content-based (table-auto) layout and freezes three left columns', async () => {

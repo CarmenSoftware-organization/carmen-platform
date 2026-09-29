@@ -54,6 +54,7 @@ vi.mock('../../services/businessUnitService', () => ({
         { id: '1', code: 'T02', name: 'Test Hotel', is_active: true },
         { id: '2', code: 'T03', name: 'Other Hotel', is_active: true },
       ],
+      paginate: { total: 2 },
     }),
   },
 }));

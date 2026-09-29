@@ -8,6 +8,7 @@ import { ActivityTrailSheet } from '../components/activityTrail/ActivityTrailShe
 import { AUDIT_RECORDING_STARTED_ON_PHASE_2 } from '../components/activityTrail/constants';
 import businessUnitService from '../services/businessUnitService';
 import clusterService from '../services/clusterService';
+import { fetchAllClusters } from '../hooks/useAllClusters';
 import currencyService from '../services/currencyService';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
@@ -256,9 +257,7 @@ const BusinessUnitEdit: React.FC = () => {
 
   const fetchClusters = async () => {
     try {
-      const data = await clusterService.getAll({ perpage: -1 });
-      const items = data.data || data;
-      setClusters(Array.isArray(items) ? items : []);
+      setClusters(await fetchAllClusters());
     } catch (err) {
       devLog('Failed to load clusters:', err);
     }

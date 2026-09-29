@@ -10,6 +10,7 @@ import { Badge } from '../../../components/ui/badge';
 import { Skeleton } from '../../../components/ui/skeleton';
 import { FetchErrorState } from '../../../components/FetchErrorState';
 import { ChevronRight, ChevronDown, ExternalLink, X } from 'lucide-react';
+import { fetchAllPages, type PagedResponse } from '../../../utils/fetchAllPages';
 
 export interface GroupSelectionCardProps {
   /** กลุ่มที่ใบนี้เลือกไว้ — id ล้วน */
@@ -54,7 +55,11 @@ export function GroupSelectionCard({
       setLoading(true);
       setError('');
       const [list, cat] = await Promise.allSettled([
-        licenseFeatureGroupService.getAll({ page: 1, perpage: 200, sort: 'sort_order:asc' }),
+        fetchAllPages<LicenseFeatureGroup>(
+          (page, perpage) =>
+            licenseFeatureGroupService.getAll({ page, perpage, sort: 'sort_order:asc' }) as Promise<PagedResponse<LicenseFeatureGroup>>,
+          { label: 'GroupSelectionCard.groups' },
+        ),
         subscriptionService.getFeatureCatalog(),
       ]);
       if (list.status === 'rejected') throw list.reason;
@@ -62,7 +67,7 @@ export function GroupSelectionCard({
       // (ขายบนใบ INF ใบสัญญาห้ามถือ backend 400 ตั้งแต่เฟส 4) แต่ถ้ากรองทิ้งตั้งแต่ตรงนี้ สัญญาที่
       // ยังค้างกลุ่ม interface อยู่จะไม่เห็นมันที่ไหนเลย นับไม่เข้าสรุป และเอาออกไม่ได้ — บันทึกก็ 400
       // ทุกครั้ง กลายเป็นสัญญาที่ซ่อมผ่านหน้าจอไม่ได้ (ดู `leftoverGroups`)
-      setGroups(Array.isArray(list.value?.data) ? list.value.data : []);
+      setGroups(list.value);
       // catalog ใช้แค่แปลง key เป็นชื่อที่อ่านออก — ล้มได้โดยไม่ทำให้การ์ดพัง
       if (cat.status === 'fulfilled') {
         setCatalog(Array.isArray(cat.value?.data) ? cat.value.data : []);

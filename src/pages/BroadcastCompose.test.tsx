@@ -56,7 +56,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   auth.isSuperAdmin = false;
   auth.hasPermission = () => true;
-  asMock(businessUnitService.getAll).mockResolvedValue({ data: [fakeBu] });
+  asMock(businessUnitService.getAll).mockResolvedValue({ data: [fakeBu], paginate: { total: 1 } });
 });
 
 // hasPermission()=>false forces the default/only reachable tab to 'bu' (system tabs

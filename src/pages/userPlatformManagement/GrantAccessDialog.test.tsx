@@ -65,8 +65,8 @@ const pickUser = async (user: ReturnType<typeof userEvent.setup>) => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  asMock(roleService.getAll).mockResolvedValue({ data: roleOptions });
-  asMock(clusterService.getAll).mockResolvedValue({ data: clusterOptions });
+  asMock(roleService.getAll).mockResolvedValue({ data: roleOptions, paginate: { total: roleOptions.length } });
+  asMock(clusterService.getAll).mockResolvedValue({ data: clusterOptions, paginate: { total: clusterOptions.length } });
 });
 
 describe('GrantAccessDialog', () => {

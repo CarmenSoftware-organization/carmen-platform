@@ -62,7 +62,7 @@ const ReportFormGroupManagement: React.FC = () => {
       // or not the backend honours a "fetch all" perpage sentinel and even if it
       // caps page size below PAGE_SIZE. The common case (few form templates) is a
       // single request; MAX_PAGES is a runaway guard.
-      const PAGE_SIZE = 500;
+      const PAGE_SIZE = 100;
       const MAX_PAGES = 50;
       const all: ReportTemplate[] = [];
       let firstResponse: unknown = null;
