@@ -3,7 +3,6 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import { PageHeader } from '../../components/PageHeader';
 import subscriptionService from '../../services/subscriptionService';
-import businessUnitService from '../../services/businessUnitService';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
@@ -17,7 +16,7 @@ import { getErrorDetail, devLog, isNotFoundError, parseApiError } from '../../ut
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 import { useAllClusters } from '../../hooks/useAllClusters';
-import { fetchAllPages } from '../../utils/fetchAllPages';
+import { fetchAllBusinessUnits } from '../../utils/fetchAllBusinessUnits';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../hooks/useI18n';
@@ -55,28 +54,6 @@ const endDateOrderError = (
   start && end && new Date(end).getTime() <= new Date(start).getTime()
     ? t('pages.subscriptions.endDateAfterStart')
     : '';
-
-// Every BU of the subscription's cluster, for Task B4's feature picker — bounded pagination,
-// never `perpage: -1` (BusinessUnitEdit.tsx:168 / ClusterEdit.tsx:178 are the trap this repo
-// already decided against). perpage:100 up to 10 pages is far beyond any real cluster's BU
-// count; hitting the cap is a signal something is wrong, not a size this cluster should reach.
-// The loop itself (and the cap warning) lives in `fetchAllPages`, shared with the cluster
-// picker's `useAllClusters` — review M7: those two were paginated differently in this one file.
-const CLUSTER_BU_PAGE_SIZE = 100;
-const CLUSTER_BU_MAX_PAGES = 10;
-
-function fetchAllClusterBus(clusterId: string): Promise<BusinessUnit[]> {
-  const advance = JSON.stringify({ where: { cluster_id: clusterId } });
-  return fetchAllPages<BusinessUnit>(
-    (page, perpage) => businessUnitService.getAll({ page, perpage, advance }),
-    {
-      pageSize: CLUSTER_BU_PAGE_SIZE,
-      maxPages: CLUSTER_BU_MAX_PAGES,
-      label: 'fetchAllClusterBus',
-      context: { clusterId },
-    },
-  );
-}
 
 const emptyFormData: SubscriptionFormData = {
   cluster_id: '',
@@ -210,7 +187,7 @@ const SubscriptionForm: React.FC = () => {
     if (!isNew || !clusterId) { setClusterBus([]); return; }
     let cancelled = false;
     setClusterBusLoading(true);
-    fetchAllClusterBus(clusterId)
+    fetchAllBusinessUnits({ clusterId, label: 'SubscriptionForm.clusterBus' })
       .then((rows) => { if (!cancelled) setClusterBus(rows); })
       .catch((err) => { if (!cancelled) devLog('Failed to load cluster business units:', err); })
       .finally(() => { if (!cancelled) setClusterBusLoading(false); });

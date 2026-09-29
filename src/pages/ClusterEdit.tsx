@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import clusterService from '../services/clusterService';
-import businessUnitService from '../services/businessUnitService';
+import { fetchAllBusinessUnits } from '../utils/fetchAllBusinessUnits';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -245,12 +245,9 @@ const ClusterEdit: React.FC = () => {
   const fetchBusinessUnits = async () => {
     try {
       setBuLoading(true);
-      const data = await businessUnitService.getAll({ perpage: -1 });
-      setRawBuResponse(data);
-      const items = data.data || data;
-      const allBus: BusinessUnit[] = Array.isArray(items) ? items : [];
-      const filtered = allBus.filter(bu => bu.cluster_id === id);
-      const sorted = [...filtered].sort((a, b) =>
+      const bus = await fetchAllBusinessUnits({ clusterId: id, label: 'ClusterEdit.businessUnits' });
+      setRawBuResponse({ data: bus, paginate: { total: bus.length } });
+      const sorted = [...bus].sort((a, b) =>
         (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase())
       );
       setBusinessUnits(sorted);

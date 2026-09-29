@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
-import businessUnitService from '../services/businessUnitService';
+import { fetchAllBusinessUnits } from '../utils/fetchAllBusinessUnits';
 import tenantSeedService from '../services/tenantSeedService';
 import { getErrorDetail } from '../utils/errorParser';
 import { handleSeedError } from '../utils/seedError';
@@ -293,13 +293,11 @@ const TenantSeedManagement: React.FC = () => {
     (async () => {
       try {
         setLoading(true);
-        const data = await businessUnitService.getAll({ perpage: 1000, sort: 'code:asc' });
+        const arr = await fetchAllBusinessUnits({ sort: 'code:asc', label: 'TenantSeed.bus' });
         if (cancelledRef.current) return;
-        setRawResponse(data);
-        const items = (data.data || data) as BusinessUnit[];
-        const arr = Array.isArray(items) ? items : [];
+        setRawResponse({ data: arr, paginate: { total: arr.length } });
         setBus(arr);
-        setTotalRows(data.paginate?.total ?? arr.length);
+        setTotalRows(arr.length);
         setError('');
       } catch (err) {
         if (cancelledRef.current) return;

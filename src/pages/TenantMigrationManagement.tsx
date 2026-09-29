@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
-import businessUnitService from '../services/businessUnitService';
+import { fetchAllBusinessUnits } from '../utils/fetchAllBusinessUnits';
 import { getErrorDetail } from '../utils/errorParser';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
@@ -369,15 +369,10 @@ const TenantMigrationManagement: React.FC = () => {
     (async () => {
       try {
         setLoading(true);
-        const data = await businessUnitService.getAll({ perpage: 1000, sort: 'code:asc' });
-        setRawResponse(data);
-        const items = (data.data || data) as BusinessUnit[];
-        const arr = Array.isArray(items) ? items : [];
+        const arr = await fetchAllBusinessUnits({ sort: 'code:asc', label: 'TenantMigration.bus' });
+        setRawResponse({ data: arr, paginate: { total: arr.length } });
         setBus(arr);
-        setTotalRows(data.paginate?.total ?? arr.length);
-        if (typeof data.paginate?.total === 'number' && data.paginate.total > arr.length) {
-          toast.warning(`Showing ${arr.length} of ${data.paginate.total} business units. Increase the page size to see all.`);
-        }
+        setTotalRows(arr.length);
         setError('');
       } catch (err) {
         setError(t('pages.tenantMigration.loadBuFailed', { detail: getErrorDetail(err, t) }));
