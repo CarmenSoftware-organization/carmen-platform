@@ -13,6 +13,29 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const isDev = import.meta.env.DEV;
 
 /**
+ * A real user-initiated reload (F5 / Ctrl+R / the browser's reload button) always gets one
+ * fresh silent-SSO-check attempt, ignoring the tab-session guard below — someone hitting
+ * reload on /login is deliberately asking "check again," most commonly right after
+ * establishing a session in the *other* app in a different tab. Without this, the guard
+ * (correctly) never re-fires on its own for the rest of the tab's life once tried, so a
+ * reload here would look identical to any other in-app navigation and stay stuck skipping
+ * the check forever.
+ * การ reload จริงของ user (F5 / Ctrl+R / ปุ่ม reload ของ browser) จะได้ลองเช็ค silent SSO ใหม่เสมอ
+ * หนึ่งครั้ง ไม่สนใจ guard ของ tab session ด้านล่าง — คนที่กด reload ที่ /login ตั้งใจจะ "เช็คใหม่อีกที"
+ * ส่วนใหญ่คือเพิ่ง login สำเร็จที่อีกแอปในอีกแท็บมา ถ้าไม่มีเงื่อนไขนี้ guard จะไม่ยิงซ้ำเองอีกเลยตลอด
+ * tab session นั้น (ถูกแล้วสำหรับ in-app navigation ปกติ) ทำให้ reload หน้านี้ดูเหมือน navigation
+ * อื่นๆ แล้วค้างข้ามการเช็คไปตลอดกาล
+ */
+function isUserReload(): boolean {
+  try {
+    const [entry] = performance.getEntriesByType('navigation');
+    return (entry as PerformanceNavigationTiming | undefined)?.type === 'reload';
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Decode a JWT's payload without verifying its signature — safe here because the token was
  * already validated server-side by Keycloak/micro-business before it reached this browser via
  * the Google sign-in redirect; this only reads the `email` claim to label the local session.
@@ -83,7 +106,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // แค่กันไม่ให้ path อื่นที่ยัง logout อยู่ต้องรอ round-trip ซ้ำอีกใน tab session เดียวกัน
         let alreadyTried = false;
         try {
-          alreadyTried = sessionStorage.getItem('carmen.silentSsoTried') === '1';
+          alreadyTried = sessionStorage.getItem('carmen.silentSsoTried') === '1' && !isUserReload();
         } catch {
           // storage unavailable — fall through and just attempt the check
         }
@@ -438,6 +461,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // own KEYCLOAK_SESSION cookie is still live and the user sees Keycloak's confirmation
         // page once, same as before this fix.
       }
+    }
+
+    // Pre-mark the silent-check guard: we are, right now, deterministically ending the only
+    // session there is — the mount effect's silent check landing back on /login after this
+    // redirect chain (Platform → Keycloak → /login) would otherwise fire once more and find
+    // no session (since we just ended it ourselves), costing a guaranteed-to-fail round trip
+    // and a visible flash for no benefit. Set *before* navigating so it's already there by the
+    // time /login's own mount effect runs on the page this redirect lands on.
+    // ตั้ง guard ของ silent-check ไว้ก่อนล่วงหน้า — ตอนนี้เรากำลังปิด session เดียวที่มีอยู่แบบชัวร์
+    // อยู่แล้ว mount effect's silent check ที่ลงเอยที่ /login หลัง redirect chain นี้ (Platform →
+    // Keycloak → /login) จะยิงอีกรอบโดยไม่จำเป็น เจอว่าไม่มี session แน่ๆ (เพราะเราปิดมันเองไปแล้ว)
+    // เสีย round trip ที่พลาดแน่ๆกับจอกระพริบไปเปล่าๆ ตั้งก่อน navigate เพื่อให้มีอยู่แล้วตอน mount
+    // effect ของหน้า /login ที่ redirect นี้ไปจบ ทำงาน
+    try {
+      sessionStorage.setItem('carmen.silentSsoTried', '1');
+    } catch {
+      // ignore — worst case is just the one extra round trip this was meant to skip
     }
 
     // Front-channel: also end this browser's Keycloak SSO session (KEYCLOAK_SESSION cookie),

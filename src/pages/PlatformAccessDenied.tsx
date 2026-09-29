@@ -41,6 +41,14 @@ const PlatformAccessDenied: React.FC = () => {
         actions={
           <Button
             onClick={() => {
+              // Same reasoning as AuthContext.tsx's logout() — pre-mark the silent-check guard
+              // so /login (where this redirect chain lands) doesn't immediately re-check a
+              // session we're deterministically ending right now.
+              try {
+                sessionStorage.setItem('carmen.silentSsoTried', '1');
+              } catch {
+                // ignore
+              }
               window.location.href = `${import.meta.env.REACT_APP_API_BASE_URL}/api/auth/end-session?app=platform&locale=${lang}`;
             }}
           >
