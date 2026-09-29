@@ -52,7 +52,7 @@ const baseProps = (over: Partial<Props> = {}): Props => ({
 describe('DatabaseConnectionSection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(databasePoolService.getAll).mockResolvedValue({ data: pools });
+    vi.mocked(databasePoolService.getAll).mockResolvedValue({ data: pools, paginate: { page: 1, perpage: 100, total: pools.length } });
     auth.hasPermission = () => true;
   });
 

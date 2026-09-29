@@ -30,7 +30,8 @@ import { parseApiError, isNotFoundError, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { Save, Loader2, ArrowLeft, SearchX, Info, X } from 'lucide-react';
 import { toast } from 'sonner';
-import type { LicenseFeatureGroupKind } from '../types';
+import type { LicenseFeatureGroup, LicenseFeatureGroupKind } from '../types';
+import { fetchAllPages, type PagedResponse } from '../utils/fetchAllPages';
 
 interface LicenseFeatureGroupFormData {
   code: string;
@@ -50,9 +51,6 @@ const emptyForm: LicenseFeatureGroupFormData = {
   is_active: true,
   kind: 'standard',
 };
-
-/** เพดานเดียวกับหน้ารายการ — จำนวนกลุ่มมีเพดานเชิงโครงสร้าง ไม่ได้งอกตามการใช้งาน */
-const SIBLING_PAGE_SIZE = 200;
 
 /**
  * ปุ่มหนึ่งข้างของ segmented "ขายอยู่ / หยุดขาย"
@@ -208,11 +206,13 @@ const LicenseFeatureGroupEdit: React.FC = () => {
    */
   useEffect(() => {
     let cancelled = false;
-    licenseFeatureGroupService
-      .getAll({ page: 1, perpage: SIBLING_PAGE_SIZE, sort: 'sort_order:asc' })
-      .then((res) => {
+    fetchAllPages<LicenseFeatureGroup>(
+      (page, perpage) =>
+        licenseFeatureGroupService.getAll({ page, perpage, sort: 'sort_order:asc' }) as Promise<PagedResponse<LicenseFeatureGroup>>,
+      { label: 'LicenseFeatureGroupEdit.groups' },
+    )
+      .then((rows) => {
         if (cancelled) return;
-        const rows = Array.isArray(res?.data) ? res.data : [];
         setSiblingOrders(new Set(rows.filter((g) => g.id !== id).map((g) => g.sort_order)));
       })
       .catch((err: unknown) => {

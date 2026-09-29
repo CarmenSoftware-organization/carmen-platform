@@ -8,6 +8,7 @@ import { Textarea } from '../../../components/ui/textarea';
 import { useI18n } from '../../../hooks/useI18n';
 import userService from '../../../services/userService';
 import { devLog } from '../../../utils/errorParser';
+import { fetchAllPages, type PagedResponse } from '../../../utils/fetchAllPages';
 import type { NotificationJobConfig, User } from '../../../types';
 import type { JobConfigFieldsProps } from './index';
 
@@ -28,9 +29,11 @@ export default function NotificationConfigFields({
     (async () => {
       try {
         setLoadingUsers(true);
-        const data = await userService.getAll({ perpage: 200 });
-        const items = data?.data ?? [];
-        if (!ignore) setUsers(Array.isArray(items) ? items : []);
+        const items = await fetchAllPages<User>(
+          (page, perpage) => userService.getAll({ page, perpage }) as Promise<PagedResponse<User>>,
+          { label: 'NotificationConfigFields.users' },
+        );
+        if (!ignore) setUsers(items);
       } catch (err) {
         devLog('Failed to load users:', err);
         if (!ignore) setLoadError(t('cronjob.config.userIdsLoadFailed'));

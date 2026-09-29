@@ -8,6 +8,7 @@ import { Loader2, Wand2 } from 'lucide-react';
 import databasePoolService from '../../../services/databasePoolService';
 import { generateSchemaName } from '../../../utils/databasePool';
 import { getErrorDetail } from '../../../utils/errorParser';
+import { fetchAllPages, type PagedResponse } from '../../../utils/fetchAllPages';
 import { CollapsibleSection, ReadOnlyText, selectClassName } from '../shared';
 import { useI18n } from '../../../hooks/useI18n';
 import type { DatabasePool } from '../../../types';
@@ -37,11 +38,12 @@ const PoolPicker: React.FC<PoolPickerProps> = ({ formData, fieldErrors, onBlur, 
     let cancelled = false;
     setLoadingPools(true);
     setLoadFailed(false);
-    databasePoolService
-      .getAll({ page: 1, perpage: 200, sort: 'name:asc' })
-      .then((res) => {
+    fetchAllPages<DatabasePool>(
+      (page, perpage) => databasePoolService.getAll({ page, perpage, sort: 'name:asc' }) as Promise<PagedResponse<DatabasePool>>,
+      { label: 'DatabaseConnectionSection.pools' },
+    )
+      .then((rows) => {
         if (cancelled) return;
-        const rows = Array.isArray(res?.data) ? res.data : [];
         setPools(rows);
       })
       .catch((err) => {
@@ -64,7 +66,7 @@ const PoolPicker: React.FC<PoolPickerProps> = ({ formData, fieldErrors, onBlur, 
   // pool ที่ผูกอยู่แต่ถูกปิดใช้งานต้องยังอยู่ในตัวเลือก ไม่งั้นจะดูเหมือนไม่เคยตั้งค่า
   const activePools = pools.filter((p) => p.is_active);
   const current = pools.find((p) => p.id === formData.database_pool_id);
-  // pool ที่ผูกอยู่แต่ไม่อยู่ในหน้าที่โหลดมา (perpage: 200) ก็ต้องสังเคราะห์ตัวเลือกขึ้นมาเอง
+  // pool ที่ผูกอยู่แต่ไม่อยู่ในหน้าที่โหลดมา (กรณีเกินเพดาน 1,000 ของ fetchAllPages) ก็ต้องสังเคราะห์ตัวเลือกขึ้นมาเอง
   // ไม่งั้น <select value={id}> จะหาตัวเลือกที่ตรงกันไม่เจอ แล้ว browser จะเลือกตัวแรกให้แทน
   // ทั้งที่ formData.database_pool_id ไม่ได้เปลี่ยน — จอจะโกหกว่ายังไม่ได้ตั้งค่า
   const missingCurrent: DatabasePool | null =

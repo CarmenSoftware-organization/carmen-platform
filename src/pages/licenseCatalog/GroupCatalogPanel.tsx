@@ -29,6 +29,7 @@ import { cn } from '../../lib/utils';
 import { generateCSV, downloadCSV } from '../../utils/csvExport';
 import { LayoutGrid, Plus, Search, Download, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { fetchAllPages, type PagedResponse } from '../../utils/fetchAllPages';
 
 /**
  * ตารางชุดสิทธิ์ license — client-filtered ไม่ใช่ server-side
@@ -48,7 +49,6 @@ import { toast } from 'sonner';
  * ปุ่ม Export กับ New group จึงลงมาอยู่ในแถบเครื่องมือของ panel นี้เอง ไม่ขึ้นไปบนหัวหน้าที่
  * ใช้ร่วมกับ tab Features: ปุ่ม primary ที่สลับตัวเองตาม tab อ่านสะดุดในงานที่ทำซ้ำทุกวัน
  */
-const PAGE_SIZE = 200;
 
 export const GroupCatalogPanel: React.FC = () => {
   const navigate = useNavigate();
@@ -70,13 +70,13 @@ export const GroupCatalogPanel: React.FC = () => {
     try {
       setLoading(true);
       setError('');
-      const response = await licenseFeatureGroupService.getAll({
-        page: 1,
-        perpage: PAGE_SIZE,
-        sort: 'sort_order:asc',
-      });
-      setRawResponse(response);
-      setGroups(Array.isArray(response?.data) ? response.data : []);
+      const rows = await fetchAllPages<LicenseFeatureGroup>(
+        (page, perpage) =>
+          licenseFeatureGroupService.getAll({ page, perpage, sort: 'sort_order:asc' }) as Promise<PagedResponse<LicenseFeatureGroup>>,
+        { label: 'GroupCatalogPanel.groups' },
+      );
+      setRawResponse({ data: rows, paginate: { total: rows.length } });
+      setGroups(rows);
     } catch (err: unknown) {
       devLog('fetch license feature groups failed', err);
       setError(getErrorDetail(err, t));

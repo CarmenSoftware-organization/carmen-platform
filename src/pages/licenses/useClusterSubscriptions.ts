@@ -5,6 +5,7 @@ import { getErrorDetail, devLog } from '../../utils/errorParser';
 import { useI18n } from '../../hooks/useI18n';
 import { useExpiryThresholds } from '../../context/ExpiryThresholdContext';
 import type { Subscription } from '../../types';
+import { fetchAllPages, type PagedResponse } from '../../utils/fetchAllPages';
 
 /**
  * สัญญาทั้งหมดของ cluster หนึ่ง — ไม่มี endpoint เฉพาะ cluster จึงใช้ `getAll` + advance filter
@@ -42,18 +43,21 @@ export function useClusterSubscriptions(
     setFailed(false);
     try {
       const paginate = {
-        perpage: -1,
         sort: 'end_date:desc',
         advance: buildAdvance(
           { search: '', states: [], expiringSoon: false, clusterId },
           thresholds.subscription_days,
         ),
       };
-      const res = scope === 'cluster'
-        ? await subscriptionService.listForCluster(clusterId, paginate)
-        : await subscriptionService.getAll(paginate);
+      const list = (page: number, perpage: number) => {
+        const p = { ...paginate, page, perpage };
+        return (scope === 'cluster'
+          ? subscriptionService.listForCluster(clusterId, p)
+          : subscriptionService.getAll(p)) as Promise<PagedResponse<Subscription>>;
+      };
+      const rows = await fetchAllPages<Subscription>(list, { label: 'useClusterSubscriptions', context: { clusterId } });
       if (mine !== reqId.current) return;
-      setItems(res?.data ?? []);
+      setItems(rows);
     } catch (err) {
       if (mine !== reqId.current) return;
       devLog('Failed to load subscriptions for cluster:', err);

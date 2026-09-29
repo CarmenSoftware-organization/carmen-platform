@@ -11,6 +11,7 @@ import { useI18n } from '../../../hooks/useI18n';
 import reportTemplateService, { type ReportTemplate } from '../../../services/reportTemplateService';
 import userService from '../../../services/userService';
 import { devLog } from '../../../utils/errorParser';
+import { fetchAllPages, type PagedResponse } from '../../../utils/fetchAllPages';
 import type { ReportJobConfig, User } from '../../../types';
 import type { JobConfigFieldsProps } from './index';
 
@@ -45,9 +46,11 @@ export default function ReportConfigFields({
     (async () => {
       try {
         setLoadingTemplates(true);
-        const data = await reportTemplateService.getAll({ perpage: 200 });
-        const items = data?.data ?? [];
-        if (!ignore) setTemplates(Array.isArray(items) ? items : []);
+        const items = await fetchAllPages<ReportTemplate>(
+          (page, perpage) => reportTemplateService.getAll({ page, perpage }) as Promise<PagedResponse<ReportTemplate>>,
+          { label: 'ReportConfigFields.templates' },
+        );
+        if (!ignore) setTemplates(items);
       } catch (err) {
         devLog('Failed to load report templates:', err);
         if (!ignore) setTemplatesError(t('cronjob.config.templateIdLoadFailed'));
@@ -64,9 +67,11 @@ export default function ReportConfigFields({
     (async () => {
       try {
         setLoadingRecipientUsers(true);
-        const data = await userService.getAll({ perpage: 200 });
-        const items = data?.data ?? [];
-        if (!ignore) setRecipientUsers(Array.isArray(items) ? items : []);
+        const items = await fetchAllPages<User>(
+          (page, perpage) => userService.getAll({ page, perpage }) as Promise<PagedResponse<User>>,
+          { label: 'ReportConfigFields.users' },
+        );
+        if (!ignore) setRecipientUsers(items);
       } catch (err) {
         devLog('Failed to load users:', err);
         if (!ignore) setRecipientsLoadError(t('cronjob.config.userIdsLoadFailed'));
