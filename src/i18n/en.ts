@@ -981,6 +981,12 @@ export const en = {
       goToDashboard: 'Go to Dashboard',
       goToClusterAdmin: 'Go to Cluster Admin',
     },
+    platformAccessDenied: {
+      title: 'Access Denied',
+      bodyWithEmail: "You're signed in as {{email}}, but this account doesn't have access to Carmen Platform.",
+      bodyGeneric: "You're signed in, but this account doesn't have access to Carmen Platform.",
+      signOutAndRetry: 'Sign out and try a different account',
+    },
     changelog: {
       title: 'Changelog',
       subtitle: 'Release notes and updates across the platform.',
@@ -4482,7 +4488,6 @@ export const en = {
     passwordLabel: 'Password',
     passwordPlaceholder: 'Enter your password',
     passwordRequired: 'Password is required',
-    accessDenied: 'Access denied',
     failed: 'Login failed',
     submit: 'Sign in',
     submitting: 'Signing in…',
@@ -4490,6 +4495,6 @@ export const en = {
     backToHome: 'Back to home',
     orDivider: 'or',
     signInWithGoogle: 'Sign in with Google',
-    googleAuthFailed: 'Google sign-in failed. Please try again.',
+    signInFailed: 'Sign-in failed. Please try again.',
   },
 };

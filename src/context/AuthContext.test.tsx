@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -41,15 +42,31 @@ const makeLocalStorage = () => {
   };
 };
 
-function Probe() {
+function Probe({ accessToken = 'gacc' }: { accessToken?: string }) {
   const { login, logout, loginWithTokens } = useAuth();
+  const [deniedEmail, setDeniedEmail] = useState('');
   return (
     <div>
       <button onClick={() => login({ username: 'a@b.com', password: 'p' })}>login</button>
       <button onClick={() => logout()}>logout</button>
-      <button onClick={() => loginWithTokens('gacc', 'grfr')}>loginWithTokens</button>
+      <button
+        onClick={() =>
+          loginWithTokens(accessToken, 'grfr').then((result) => setDeniedEmail(result.deniedEmail ?? ''))
+        }
+      >
+        loginWithTokens
+      </button>
+      <div data-testid="denied-email">{deniedEmail}</div>
     </div>
   );
+}
+
+/** A structurally-real (unsigned) JWT so decodeJwtEmail's actual base64url + JSON parsing
+ *  runs for real, instead of every test silently exercising its catch-all '' fallback. */
+function fakeJwt(claims: Record<string, unknown>): string {
+  const header = btoa(JSON.stringify({ alg: 'none', typ: 'JWT' }));
+  const payload = btoa(JSON.stringify(claims)).replace(/\+/g, '-').replace(/\//g, '_');
+  return `${header}.${payload}.signature`;
 }
 
 describe('AuthContext refresh_token handling', () => {
@@ -137,27 +154,32 @@ describe('AuthContext.loginWithTokens (Google sign-in callback)', () => {
     vi.unstubAllGlobals();
   });
 
-  it('revokes the Keycloak session via /api/auth/logout before clearing storage when the user has no platform authority', async () => {
+  it('denies locally without touching the Keycloak session when the user has no platform authority', async () => {
     // No permissions, no cluster-admin scope, and userCount > 1 — so this is a genuine
     // access-denied case, not the first-admin bootstrap escape hatch.
+    //
+    // Deliberately does NOT call /api/auth/logout here: this account may still have valid,
+    // active access on carmen-inventory-frontend-react via the same shared Keycloak SSO
+    // session, and Platform denying its own authority must not end that shared session out
+    // from under App. Regression guard for a fix tried and reverted earlier — see the comment
+    // at this call site in AuthContext.tsx.
     mockPerm.getMyPlatformPermissions.mockResolvedValue({ is_super_admin: false, platform: [], clusters: {} });
-    mockApi.post.mockResolvedValue({ data: {} }); // the /api/auth/logout call itself
+    const token = fakeJwt({ email: 'denied@example.com' });
 
-    render(<AuthProvider><Probe /></AuthProvider>);
+    render(<AuthProvider><Probe accessToken={token} /></AuthProvider>);
     await userEvent.click(screen.getByText('loginWithTokens'));
 
-    await waitFor(() =>
-      expect(mockApi.post).toHaveBeenCalledWith('/api/auth/logout', { refresh_token: 'grfr' }),
-    );
-    // Revoking the Keycloak-side session must happen while this token pair is still the
-    // authenticated one — otherwise the very next Google sign-in attempt in this browser
-    // hits Keycloak's "already authenticated as different user" wall (root cause of the bug
-    // this test guards against).
-    expect(localStorage.getItem('token')).toBeNull();
+    await waitFor(() => expect(localStorage.getItem('token')).toBeNull());
     expect(localStorage.getItem('refresh_token')).toBeNull();
+    expect(mockApi.post).not.toHaveBeenCalled();
+    // PlatformAccessDenied.tsx reads this off loginWithTokens's returned result (GoogleCallback.tsx
+    // forwards it as a query param) — a real base64url-encoded JWT here catches a regression in
+    // decodeJwtEmail itself (wrong claim name, broken unescape), which a token like 'gacc' (no
+    // dots, always falls into the catch → '') would silently miss.
+    await waitFor(() => expect(screen.getByTestId('denied-email')).toHaveTextContent('denied@example.com'));
   });
 
-  it('does not call /api/auth/logout when the user has platform authority', async () => {
+  it('persists tokens when the user has platform authority', async () => {
     mockPerm.getMyPlatformPermissions.mockResolvedValue({ is_super_admin: true, platform: [], clusters: {} });
 
     render(<AuthProvider><Probe /></AuthProvider>);

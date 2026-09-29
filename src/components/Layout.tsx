@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 import { BrandMark } from './BrandMark';
@@ -60,7 +60,6 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, headerSlot, brandTo, brand = PRODUCT_BRAND, hideBreadcrumbs = false }) => {
   const { user, logout, hasPermission, isSuperAdmin, hasPlatformAuthority } = useAuth();
   const { flagOf, isReady: flagsReady } = useFeatureFlags();
-  const navigate = useNavigate();
   const location = useLocation();
   const { t } = useI18n();
   const backendVersion = useBackendVersion();
@@ -84,8 +83,9 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
   }, [location.pathname]);
 
   const handleLogout = () => {
+    // logout() now performs the front-channel redirect itself (ends the Keycloak SSO session,
+    // not just this app's local one) — it navigates the browser away, so nothing further here.
     logout();
-    navigate('/login');
   };
 
   const toggleSidebar = () => {

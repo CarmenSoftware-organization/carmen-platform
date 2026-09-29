@@ -846,6 +846,9 @@ export interface LoginResponse {
 export interface LoginResult {
   success: boolean;
   error?: string;
+  /** Set only by loginWithTokens's access-denied branch, so PlatformAccessDenied.tsx can show
+   *  which account it is without relying on AuthContext state (user stays null on denial). */
+  deniedEmail?: string;
 }
 
 export interface AuthContextValue {

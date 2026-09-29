@@ -1,115 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Loader2 } from 'lucide-react';
-import type { LoginCredentials } from '../types';
-import { validateField } from '../utils/validation';
 import { useI18n } from '../hooks/useI18n';
 import LanguageToggle from '../components/LanguageToggle';
+import { resolveNextPath } from '../utils/resolveNextPath';
 
 const env = import.meta.env.REACT_APP_ENV as string | undefined;
 
-// AuthContext.login() maps HTTP 429 to 'Too many login attempts. Please try
-// again later.' (prod) or a dev-mode '[429] ...' message that may carry a
-// different backend-supplied detail string. Match a stable substring instead
-// of the exact prod copy so both paths lock the button.
-const RATE_LIMIT_PATTERN = /too many|rate limit/i;
-
 const Login: React.FC = () => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
 
-  // Built inside the component: the messages are translated, and `t` only exists at
-  // render time. validateField() short-circuits to '' for an empty value (it only
-  // checks format), so "required" has to be handled here before delegating to it.
-  const getFieldError = (name: string, value: string): string => {
-    if (!value.trim()) {
-      if (name === 'username') return t('login.usernameRequired');
-      if (name === 'password') return t('login.passwordRequired');
-      return '';
-    }
-    // 'username' is dual-purpose (email OR plain username per the field label
-    // "Email or username" and the backend's 'Invalid email/username or
-    // password'), so don't force email format here — that would block valid
-    // username-based logins.
-    if (name === 'username') return '';
-    return validateField(name, value, undefined, t);
-  };
-
-  const [credentials, setCredentials] = useState<LoginCredentials>({
-    username: '',
-    password: ''
-  });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  // Set when login() reports a rate-limit (429) response — keeps submit
-  // disabled so the user can't immediately resubmit into the same window.
-  // No countdown: the backend doesn't return a Retry-After, so a plain
-  // disabled state + the existing error banner is the honest fix.
-  const [locked, setLocked] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
-  const { login, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  // ตั้งโดย gateway (GET /api/auth/google/callback) หรือ GoogleCallback.tsx ตอน Google sign-in ล้มเหลว
+  // ตั้งโดย gateway (GET /api/auth/google/callback) ตอน callback ล้มเหลวก่อนถึงขั้น loginWithTokens
+  // (เช่น state/nonce ไม่ตรง) — ความล้มเหลวเรื่องสิทธิ์ Platform ไปที่หน้า /access-denied แยกแล้ว
   const googleError = searchParams.get('error');
+  // ตั้งโดย AuthContext's silent-SSO-check redirect (protected route ที่ยัง logout อยู่) หรือ
+  // caller อื่นที่อยากกลับมาที่ path เดิมหลัง login — ส่งต่อไปทั้งสองปุ่ม sign-in ด้านล่าง
+  const next = searchParams.get('next');
 
-  // Redirect to dashboard if already logged in
+  // Redirect to dashboard (or `next`, if a protected route sent us here) if already logged in
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
+      navigate(resolveNextPath(next), { replace: true });
     }
-  }, [isAuthenticated, navigate]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setCredentials({
-      ...credentials,
-      [name]: value
-    });
-    setError('');
-    setLocked(false);
-    setFieldErrors(prev => ({ ...prev, [name]: '' }));
-  };
-
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFieldErrors(prev => ({ ...prev, [name]: getFieldError(name, value) }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    // Defense-in-depth: the disabled attribute already blocks this today, but
-    // this effort has a recurring keyboard-bypass class (W2/W3/W4) — lock the
-    // invariant in code too, not just in the DOM.
-    if (locked) return;
-
-    const usernameError = getFieldError('username', credentials.username);
-    const passwordError = getFieldError('password', credentials.password);
-    if (usernameError || passwordError) {
-      setFieldErrors({ username: usernameError, password: passwordError });
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
-    const result = await login(credentials);
-
-    if (result.success) {
-      navigate('/dashboard', { replace: true });
-    } else {
-      setError(result.error || t('login.failed'));
-      setLocked(RATE_LIMIT_PATTERN.test(result.error ?? ''));
-    }
-
-    setLoading(false);
-  };
-
-  const accessDenied = error.includes('Access Denied');
+  }, [isAuthenticated, navigate, next]);
 
   return (
     <div className="min-h-dvh grid lg:grid-cols-2 bg-background">
@@ -184,71 +101,29 @@ const Login: React.FC = () => {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="username">{t('login.usernameLabel')}</Label>
-              <Input
-                type="text"
-                id="username"
-                name="username"
-                autoComplete="username"
-                value={credentials.username}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                required
-                placeholder={t('login.usernamePlaceholder')}
-                className={fieldErrors.username ? 'border-destructive' : ''}
-              />
-              {fieldErrors.username && (
-                <p className="text-xs text-destructive">{fieldErrors.username}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">{t('login.passwordLabel')}</Label>
-              <Input
-                type="password"
-                id="password"
-                name="password"
-                autoComplete="current-password"
-                value={credentials.password}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                required
-                placeholder={t('login.passwordPlaceholder')}
-                className={fieldErrors.password ? 'border-destructive' : ''}
-              />
-              {fieldErrors.password && (
-                <p className="text-xs text-destructive">{fieldErrors.password}</p>
-              )}
-            </div>
-
-            {!error && googleError && (
+          <div className="space-y-5">
+            {googleError && (
               <div
                 role="alert"
                 className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
               >
-                {/* GoogleCallback.tsx forwards loginWithTokens()'s own (already-localized)
-                    error text via this param when there is one — e.g. the platform's
-                    authority-denied message — falling back to a generic string only for the
-                    sentinel it uses when the redirect carried no tokens at all. */}
-                {googleError === 'google_auth_failed' ? t('login.googleAuthFailed') : googleError}
+                {googleError === 'google_auth_failed' ? t('login.signInFailed') : googleError}
               </div>
             )}
 
-            {error && (
-              <div
-                role="alert"
-                className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
-              >
-                {accessDenied && <div className="mb-1 font-bold">{t('login.accessDenied')}</div>}
-                {error}
-              </div>
-            )}
-
-            <Button type="submit" className="w-full" disabled={loading || locked}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {loading ? t('login.submitting') : locked ? t('login.locked') : t('login.submit')}
+            {/* Real page navigation, not an axios call — Keycloak's own hosted login page
+                (username/password + any configured Identity Provider buttons) lives on a
+                different origin, which a JSON call can never reach. */}
+            <Button
+              type="button"
+              className="w-full"
+              onClick={() => {
+                const params = new URLSearchParams({ app: 'platform', locale: lang });
+                if (next) params.set('next', next);
+                window.location.href = `${import.meta.env.REACT_APP_API_BASE_URL}/api/auth/authorize?${params.toString()}`;
+              }}
+            >
+              {t('login.submit')}
             </Button>
 
             <div className="my-1 flex items-center gap-3" aria-hidden>
@@ -262,9 +137,9 @@ const Login: React.FC = () => {
               variant="outline"
               className="w-full gap-2"
               onClick={() => {
-                // Real page navigation, not an axios call — leaving the SPA is the point: the
-                // browser has to land on Google, which a JSON call can never do.
-                window.location.href = `${import.meta.env.REACT_APP_API_BASE_URL}/api/auth/google/authorize?app=platform`;
+                const params = new URLSearchParams({ app: 'platform', locale: lang });
+                if (next) params.set('next', next);
+                window.location.href = `${import.meta.env.REACT_APP_API_BASE_URL}/api/auth/google/authorize?${params.toString()}`;
               }}
             >
               <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
@@ -287,7 +162,7 @@ const Login: React.FC = () => {
               </svg>
               {t('login.signInWithGoogle')}
             </Button>
-          </form>
+          </div>
 
           <div className="text-center">
             <Link

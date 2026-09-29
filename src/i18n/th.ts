@@ -757,6 +757,12 @@ export const th: Translations = {
       goToDashboard: 'ไปที่ Dashboard',
       goToClusterAdmin: 'ไปที่ Cluster Admin',
     },
+    platformAccessDenied: {
+      title: 'ไม่มีสิทธิ์เข้าถึง',
+      bodyWithEmail: 'คุณ login เป็น {{email}} แล้ว แต่บัญชีนี้ไม่มีสิทธิ์เข้าใช้ Carmen Platform',
+      bodyGeneric: 'คุณ login แล้ว แต่บัญชีนี้ไม่มีสิทธิ์เข้าใช้ Carmen Platform',
+      signOutAndRetry: 'ออกจากระบบแล้วลองด้วยบัญชีอื่น',
+    },
     changelog: {
       title: 'บันทึกการเปลี่ยนแปลง',
       subtitle: 'บันทึกการปล่อยเวอร์ชันและการอัปเดตทั้งหมดของ platform',
@@ -3441,7 +3447,6 @@ export const th: Translations = {
     passwordLabel: 'รหัสผ่าน',
     passwordPlaceholder: 'กรอกรหัสผ่านของคุณ',
     passwordRequired: 'กรุณากรอกรหัสผ่าน',
-    accessDenied: 'ไม่มีสิทธิ์เข้าใช้งาน',
     failed: 'เข้าสู่ระบบไม่สำเร็จ',
     submit: 'เข้าสู่ระบบ',
     submitting: 'กำลังเข้าสู่ระบบ…',
@@ -3449,6 +3454,6 @@ export const th: Translations = {
     backToHome: 'กลับหน้าแรก',
     orDivider: 'หรือ',
     signInWithGoogle: 'เข้าสู่ระบบด้วย Google',
-    googleAuthFailed: 'เข้าสู่ระบบด้วย Google ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง',
+    signInFailed: 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง',
   },
 };
