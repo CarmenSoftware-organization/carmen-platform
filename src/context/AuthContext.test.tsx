@@ -73,8 +73,12 @@ describe('AuthContext refresh_token handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal('localStorage', makeLocalStorage());
-    // pathname '/login' is public → the no-token mount effect won't navigate.
+    // pathname '/login' with no token now DOES attempt the silent-check redirect (mutating this
+    // stub's own `href`, never a real navigation) — harmless to every assertion below, all of
+    // which are about localStorage/fetch, not location. Cleared below so one test's silent-check
+    // attempt (real sessionStorage, not stubbed) can't skip another's.
     vi.stubGlobal('location', { href: '', pathname: '/login' });
+    sessionStorage.clear();
     mockApi.get.mockResolvedValue({ data: { data: {} } });
     mockPerm.getMyPlatformPermissions.mockResolvedValue({ is_super_admin: true, platform: [], clusters: {} });
     mockUser.getAll.mockResolvedValue({ paginate: { total: 5 } });

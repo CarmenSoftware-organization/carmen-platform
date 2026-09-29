@@ -63,7 +63,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       setLoading(false);
 
-      const publicPaths = ['/', '/login', '/changelog', '/access-denied'];
+      // `/`, /changelog and /access-denied are deliberately still skipped: `/` is the public
+      // marketing landing page (not an admin page — auto-redirecting a mere visitor into the
+      // dashboard is a separate product decision, not made here), changelog is genuinely
+      // public content, and access-denied must never retry (its whole point is showing a
+      // denied user their own email + a Logout button, not silently bouncing them around).
+      // /login is NOT skipped — landing there directly (e.g. a bookmark) with a live Keycloak
+      // session already open (from the other app) should sign in just as silently as any
+      // protected route would, not require an extra manual click on [Sign in].
+      const publicPaths = ['/', '/changelog', '/access-denied'];
       if (!publicPaths.includes(window.location.pathname)) {
         if (silentCheckStartedRef.current) return; // see the ref's own comment above
         silentCheckStartedRef.current = true;
@@ -85,9 +93,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           } catch {
             // ignore
           }
-          const next = `${window.location.pathname}${window.location.search}`;
+          // On /login itself, wrapping the whole current URL as `next` (like every other path
+          // does) would round-trip back through /login for no reason — Login.tsx already reads
+          // its own `next` param and forwards there once `isAuthenticated` flips true. Reusing
+          // that same param directly here skips the pointless extra hop and, on success, lands
+          // GoogleCallback straight on the real deep link (or /dashboard, its own fallback).
+          // ที่ /login เอง การ wrap ทั้ง URL ปัจจุบันเป็น `next` แบบ path อื่นๆ จะกลับไปที่ /login
+          // เฉยๆโดยไม่ได้ประโยชน์อะไร — Login.tsx อ่าน `next` ของตัวเองแล้ว forward ต่ออยู่แล้วเมื่อ
+          // `isAuthenticated` เป็น true ใช้ param เดียวกันนี้ตรงๆ เลยตัด hop ที่ไม่จำเป็นออก พอสำเร็จ
+          // GoogleCallback จะไปที่ deep link จริง (หรือ /dashboard ค่า fallback ของมันเอง) ได้ตรงๆ
+          const next =
+            window.location.pathname === '/login'
+              ? new URLSearchParams(window.location.search).get('next') ?? ''
+              : `${window.location.pathname}${window.location.search}`;
           window.location.href = `${import.meta.env.REACT_APP_API_BASE_URL}/api/auth/authorize?app=platform&silent=true&next=${encodeURIComponent(next)}`;
-        } else {
+        } else if (window.location.pathname !== '/login') {
+          // Already at /login (e.g. this very effect's own failed silent check just landed
+          // back here) — nothing to navigate to, let Login.tsx render normally instead of
+          // reassigning `location.href` to the exact URL already loaded.
           window.location.href = '/login';
         }
       }
@@ -357,36 +380,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const logout = () => {
+  const logout = async () => {
     const accessToken = localStorage.getItem('token');
     const refreshToken = localStorage.getItem('refresh_token');
 
-    // Best-effort, fire-and-forget: revoke this session's refresh_token at Keycloak.
-    // `keepalive: true` because the front-channel redirect below unloads this document right
-    // after — without it the browser is free to cancel the request mid-flight.
-    //
-    // Deliberately raw `fetch()`, NOT the shared `api` axios instance: `api`'s own request
-    // interceptor (services/api.ts) re-reads `localStorage.getItem('token')` on every call and
-    // hard-redirects to `/login` (`window.location.href`, a real page reload) whenever it finds
-    // none — so if this ran through `api` *after* the localStorage.removeItem() calls below,
-    // the interceptor would see no token, reject before the request ever reaches the network,
-    // and force-navigate away before the reject's `.catch()` below even runs. Confirmed via
-    // production console output: the interceptor's own "No access token" error, zero network
-    // entries, and a hard navigation to /login — not the intended revoke call at all.
-    if (accessToken || refreshToken) {
-      fetch(`${import.meta.env.REACT_APP_API_BASE_URL}/api/auth/logout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        },
-        body: JSON.stringify({ refresh_token: refreshToken ?? '' }),
-        keepalive: true,
-      }).catch(() => {
-        // Local session is already gone — nothing left to roll back.
-      });
-    }
-
+    // Local state clears synchronously, before the network call below — the UI must not wait
+    // on it (matches the previous, pre-await behavior; see the test asserting this).
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
@@ -399,8 +398,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setEffectivePermissions(null);
     setAdminScope(null);
 
+    // Awaited (not fire-and-forget) — this is the actual difference from carmen-inventory-
+    // frontend-react's logout() that this function was supposed to already match, and turned
+    // out not to: `/api/auth/logout` → micro-business → micro-keycloak's
+    // `logoutWithRefreshToken()` POSTs the refresh_token straight to Keycloak's own
+    // `/protocol/openid-connect/logout`, which genuinely ends the underlying Keycloak session
+    // (contrary to an earlier, narrower finding from before this SSO migration existed).
+    // Firing this without awaiting it (the previous code here) started the front-channel
+    // redirect below in the same tick — the multi-hop RPC chain (gateway → micro-business →
+    // micro-keycloak → Keycloak) hadn't finished yet, so Keycloak's end-session endpoint below
+    // still found a live session and had to ask the user to confirm (no `id_token_hint` on that
+    // call — see the earlier investigation). Awaiting first means the session is already gone
+    // by the time end-session runs, so Keycloak just redirects straight through (302) with no
+    // confirmation page — exactly what App's already-sequential `useLogout()`/`logout()` gets.
+    // ยิงแบบ await (ไม่ใช่ fire-and-forget) — นี่คือความต่างจริงจาก logout() ของ
+    // carmen-inventory-frontend-react ที่ฟังก์ชันนี้ควรจะเหมือนอยู่แล้วแต่ไม่เหมือน:
+    // `/api/auth/logout` → micro-business → micro-keycloak's `logoutWithRefreshToken()` ยิง
+    // refresh_token ตรงไป Keycloak's `/protocol/openid-connect/logout` เอง ซึ่ง**ปิด session ของ
+    // Keycloak จริง** (ต่างจาก finding เดิมที่แคบกว่า จากก่อนมี SSO migration นี้) การยิงแบบไม่
+    // await (โค้ดเดิมตรงนี้) ทำให้ front-channel redirect ด้านล่างเริ่มในติ๊กเดียวกัน — RPC chain
+    // หลายชั้น (gateway → micro-business → micro-keycloak → Keycloak) ยังไม่เสร็จ ทำให้
+    // end-session ของ Keycloak ด้านล่างยังเจอ session ที่ live อยู่ ต้องถาม confirm ก่อน (ไม่มี
+    // `id_token_hint` ในคอลนั้น — ดูการสอบสวนก่อนหน้า) การ await ก่อน ทำให้ session หายไปแล้วตอน
+    // end-session รัน Keycloak เลย redirect ผ่านตรง (302) ไม่ถาม confirm เหมือนกับที่ App's
+    // `useLogout()`/`logout()` ที่ sequential อยู่แล้วได้ผลลัพธ์
+    if (accessToken || refreshToken) {
+      try {
+        await fetch(`${import.meta.env.REACT_APP_API_BASE_URL}/api/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
+          body: JSON.stringify({ refresh_token: refreshToken ?? '' }),
+          signal: AbortSignal.timeout(5000),
+        });
+      } catch {
+        // Best-effort — proceed to front-channel logout regardless. Worst case: the browser's
+        // own KEYCLOAK_SESSION cookie is still live and the user sees Keycloak's confirmation
+        // page once, same as before this fix.
+      }
+    }
+
     // Front-channel: also end this browser's Keycloak SSO session (KEYCLOAK_SESSION cookie),
-    // not just the local one — under the SSO model, the revoke above alone leaves that cookie
+    // not just the local one — under the SSO model, skipping this alone would leave that cookie
     // live, so the very next protected-route visit's silent-SSO check (this file's mount
     // effect, or App's require-auth.tsx) would find a session and silently sign the user right
     // back in, undoing this logout entirely. Real navigation, so nothing after this line runs.
