@@ -4493,8 +4493,6 @@ export const en = {
     submitting: 'Signing in…',
     locked: 'Please wait',
     backToHome: 'Back to home',
-    orDivider: 'or',
-    signInWithGoogle: 'Sign in with Google',
     signInFailed: 'Sign-in failed. Please try again.',
   },
 };

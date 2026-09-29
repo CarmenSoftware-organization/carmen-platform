@@ -3452,8 +3452,6 @@ export const th: Translations = {
     submitting: 'กำลังเข้าสู่ระบบ…',
     locked: 'กรุณารอสักครู่',
     backToHome: 'กลับหน้าแรก',
-    orDivider: 'หรือ',
-    signInWithGoogle: 'เข้าสู่ระบบด้วย Google',
     signInFailed: 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง',
   },
 };

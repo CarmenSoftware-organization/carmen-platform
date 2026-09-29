@@ -15,8 +15,10 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // ตั้งโดย gateway (GET /api/auth/google/callback) ตอน callback ล้มเหลวก่อนถึงขั้น loginWithTokens
-  // (เช่น state/nonce ไม่ตรง) — ความล้มเหลวเรื่องสิทธิ์ Platform ไปที่หน้า /access-denied แยกแล้ว
-  const googleError = searchParams.get('error');
+  // (เช่น state/nonce ไม่ตรง) — ชื่อ endpoint เป็นของเดิมตั้งแต่ก่อนมีปุ่ม [Sign in] เดียว (ตอนนั้นมี
+  // ปุ่ม Google แยก) ตอนนี้ callback นี้ใช้ร่วมกันทั้ง password และ Google (เลือกที่หน้า Keycloak เอง)
+  // ความล้มเหลวเรื่องสิทธิ์ Platform ไปที่หน้า /access-denied แยกแล้ว
+  const authError = searchParams.get('error');
   // ตั้งโดย AuthContext's silent-SSO-check redirect (protected route ที่ยัง logout อยู่) หรือ
   // caller อื่นที่อยากกลับมาที่ path เดิมหลัง login — ส่งต่อไปทั้งสองปุ่ม sign-in ด้านล่าง
   const next = searchParams.get('next');
@@ -102,18 +104,18 @@ const Login: React.FC = () => {
           </div>
 
           <div className="space-y-5">
-            {googleError && (
+            {authError && (
               <div
                 role="alert"
                 className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
               >
-                {googleError === 'google_auth_failed' ? t('login.signInFailed') : googleError}
+                {authError === 'google_auth_failed' ? t('login.signInFailed') : authError}
               </div>
             )}
 
             {/* Real page navigation, not an axios call — Keycloak's own hosted login page
-                (username/password + any configured Identity Provider buttons) lives on a
-                different origin, which a JSON call can never reach. */}
+                (username/password + any configured Identity Provider buttons, incl. Google)
+                lives on a different origin, which a JSON call can never reach. */}
             <Button
               type="button"
               className="w-full"
@@ -124,43 +126,6 @@ const Login: React.FC = () => {
               }}
             >
               {t('login.submit')}
-            </Button>
-
-            <div className="my-1 flex items-center gap-3" aria-hidden>
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-xs text-muted-foreground">{t('login.orDivider')}</span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full gap-2"
-              onClick={() => {
-                const params = new URLSearchParams({ app: 'platform', locale: lang });
-                if (next) params.set('next', next);
-                window.location.href = `${import.meta.env.REACT_APP_API_BASE_URL}/api/auth/google/authorize?${params.toString()}`;
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
-                <path
-                  fill="#4285F4"
-                  d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.85 2.09-1.8 2.73v2.27h2.92c1.7-1.57 2.68-3.88 2.68-6.64z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.27c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.71H.96v2.34C2.44 15.98 5.48 18 9 18z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M3.97 10.7c-.18-.54-.28-1.11-.28-1.7s.1-1.16.28-1.7V4.96H.96A8.996 8.996 0 000 9c0 1.45.35 2.83.96 4.04l3.01-2.34z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0 5.48 0 2.44 2.02.96 4.96l3.01 2.34C4.68 5.16 6.66 3.58 9 3.58z"
-                />
-              </svg>
-              {t('login.signInWithGoogle')}
             </Button>
           </div>
 

@@ -55,15 +55,10 @@ describe('Login — sign-in entry points', () => {
     );
   });
 
-  it('navigates to the Google-hinted authorize endpoint on "Sign in with Google"', async () => {
-    const user = userEvent.setup();
+  it('renders exactly one sign-in button — Google is chosen at Keycloak\'s own page, not here', () => {
     renderLogin();
-
-    await user.click(screen.getByRole('button', { name: /sign in with google/i }));
-
-    expect(window.location.href).toBe(
-      `${API_BASE}/api/auth/google/authorize?app=platform&locale=en`,
-    );
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /google/i })).toBeNull();
   });
 
   it('does not render a username/password form', () => {
