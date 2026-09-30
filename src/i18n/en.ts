@@ -989,6 +989,9 @@ export const en = {
       bodyWithEmail: "You're signed in as {{email}}, but this account doesn't have access to Carmen Platform.",
       bodyGeneric: "You're signed in, but this account doesn't have access to Carmen Platform.",
       signOutAndRetry: 'Sign out and try a different account',
+      signOutConfirmTitle: 'Sign out?',
+      signOutConfirmDescription:
+        "You'll be signed out of Carmen Platform and the Carmen inventory app, so you can try a different account.",
     },
     changelog: {
       title: 'Changelog',

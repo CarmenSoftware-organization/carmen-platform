@@ -764,6 +764,8 @@ export const th: Translations = {
       bodyWithEmail: 'คุณ login เป็น {{email}} แล้ว แต่บัญชีนี้ไม่มีสิทธิ์เข้าใช้ Carmen Platform',
       bodyGeneric: 'คุณ login แล้ว แต่บัญชีนี้ไม่มีสิทธิ์เข้าใช้ Carmen Platform',
       signOutAndRetry: 'ออกจากระบบแล้วลองด้วยบัญชีอื่น',
+      signOutConfirmTitle: 'ออกจากระบบ?',
+      signOutConfirmDescription: 'จะออกจากระบบทั้ง Carmen Platform และแอป inventory เพื่อลองเข้าด้วยบัญชีอื่น',
     },
     changelog: {
       title: 'บันทึกการเปลี่ยนแปลง',
