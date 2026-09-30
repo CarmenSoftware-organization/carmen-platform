@@ -64,6 +64,8 @@ export const th: Translations = {
     clusterAdminView: 'มุมมองผู้ดูแล Cluster',
     profile: 'โปรไฟล์',
     logOut: 'ออกจากระบบ',
+    logoutConfirmTitle: 'ออกจากระบบ?',
+    logoutConfirmDescription: 'จะออกจากระบบแอป inventory ด้วย',
     theme: 'ธีม',
     viewChangelog: 'ดูบันทึกการเปลี่ยนแปลง',
     version: 'เวอร์ชัน',

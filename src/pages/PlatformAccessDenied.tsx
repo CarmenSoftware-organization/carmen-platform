@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ShieldX } from 'lucide-react';
+import { LogOut, ShieldX } from 'lucide-react';
 import { StatusPage } from '../components/StatusPage';
 import { Button } from '../components/ui/button';
+import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { useI18n } from '../hooks/useI18n';
 
 /**
@@ -25,6 +26,19 @@ const PlatformAccessDenied: React.FC = () => {
   const { t, lang } = useI18n();
   const [searchParams] = useSearchParams();
   const email = searchParams.get('email');
+  const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
+
+  const signOutAndRetry = () => {
+    // Same reasoning as AuthContext.tsx's logout() — pre-mark the silent-check guard so /login
+    // (where this redirect chain lands) doesn't immediately re-check a session we're
+    // deterministically ending right now.
+    try {
+      sessionStorage.setItem('carmen.silentSsoTried', '1');
+    } catch {
+      // ignore
+    }
+    window.location.href = `${import.meta.env.REACT_APP_API_BASE_URL}/api/auth/end-session?app=platform&locale=${lang}`;
+  };
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-background p-6">
@@ -39,22 +53,21 @@ const PlatformAccessDenied: React.FC = () => {
             : t('pages.platformAccessDenied.bodyGeneric')
         }
         actions={
-          <Button
-            onClick={() => {
-              // Same reasoning as AuthContext.tsx's logout() — pre-mark the silent-check guard
-              // so /login (where this redirect chain lands) doesn't immediately re-check a
-              // session we're deterministically ending right now.
-              try {
-                sessionStorage.setItem('carmen.silentSsoTried', '1');
-              } catch {
-                // ignore
-              }
-              window.location.href = `${import.meta.env.REACT_APP_API_BASE_URL}/api/auth/end-session?app=platform&locale=${lang}`;
-            }}
-          >
+          <Button onClick={() => setSignOutConfirmOpen(true)}>
             {t('pages.platformAccessDenied.signOutAndRetry')}
           </Button>
         }
+      />
+
+      <ConfirmDialog
+        open={signOutConfirmOpen}
+        onOpenChange={setSignOutConfirmOpen}
+        title={t('pages.platformAccessDenied.signOutConfirmTitle')}
+        description={t('pages.platformAccessDenied.signOutConfirmDescription')}
+        confirmText={t('pages.platformAccessDenied.signOutAndRetry')}
+        confirmVariant="destructive"
+        onConfirm={signOutAndRetry}
+        icon={<LogOut className="size-4.5" />}
       />
     </div>
   );

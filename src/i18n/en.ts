@@ -67,6 +67,9 @@ export const en = {
     clusterAdminView: 'Cluster Admin view',
     profile: 'Profile',
     logOut: 'Log out',
+    logoutConfirmTitle: 'Log out?',
+    logoutConfirmDescription:
+      "You'll be signed out of the Carmen inventory app too.",
     theme: 'Theme',
     viewChangelog: 'view changelog',
     version: 'Version',
