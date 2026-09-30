@@ -6,6 +6,7 @@ import clusterAdminService from '../services/clusterAdminService';
 import type { User, LoginCredentials, LoginResult, LoginResponse, AuthContextValue, EffectivePermissions, AdminScope } from '../types';
 import { checkPermission, checkPlatformAuthority } from '../utils/permissions';
 import { clearListViewState } from '../utils/clearListViewState';
+import { clearDeniedTokens, stashDeniedTokens } from '../utils/deniedSession';
 import { useI18n } from '../hooks/useI18n';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -356,6 +357,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // was tried and reverted: under the single-sign-on model, ending a session belongs to
         // an explicit Logout action (global, ends it everywhere on purpose), never to an
         // implicit side effect of one app's own authorization check.
+        // Tokens are parked in sessionStorage (not revoked) so the access-denied page's explicit
+        // sign-out button can revoke them first — see utils/deniedSession.ts.
+        stashDeniedTokens(accessToken, refreshToken);
         localStorage.removeItem('token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('effectivePermissions');
@@ -380,6 +384,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       clearListViewState();
       fetchProfile();
+      clearDeniedTokens(); // a successful sign-in supersedes any earlier denied one
 
       // เคลียร์ guard ของ silent SSO check (mount effect ด้านบน) — login สำเร็จแล้ว รอบหน้าที่
       // token หายไปอีก (เช่น หลัง logout) ควรลอง silent check ใหม่ได้อีกครั้ง ไม่ใช่ข้ามไปตลอด

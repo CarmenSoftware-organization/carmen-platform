@@ -5,6 +5,7 @@ import { StatusPage } from '../components/StatusPage';
 import { Button } from '../components/ui/button';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { useI18n } from '../hooks/useI18n';
+import { revokeDeniedSession } from '../utils/deniedSession';
 
 /**
  * Reached after a successful Keycloak sign-in (Google or the plain Keycloak-hosted login)
@@ -17,10 +18,11 @@ import { useI18n } from '../hooks/useI18n';
  * "authenticated, zero Platform authority at all", reached before any session exists here).
  *
  * "Sign out and try a different account" is a front-channel redirect to Keycloak's own
- * end-session endpoint (`/api/auth/end-session`), not the regular `logout()` — there is no
- * refresh_token left to revoke by the time this page renders (already cleared), and ending
- * this browser's shared Keycloak SSO session is what actually lets a retry with a different
- * account succeed instead of hitting "already authenticated as different user".
+ * end-session endpoint (`/api/auth/end-session`), not the regular `logout()` — the tokens were
+ * already cleared from localStorage by the time this page renders, so they are read back from
+ * the sessionStorage stash (utils/deniedSession.ts) and revoked first. Ending this browser's
+ * shared Keycloak SSO session is what lets a retry with a different account succeed instead of
+ * hitting "already authenticated as different user".
  */
 const PlatformAccessDenied: React.FC = () => {
   const { t, lang } = useI18n();
@@ -28,7 +30,11 @@ const PlatformAccessDenied: React.FC = () => {
   const email = searchParams.get('email');
   const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
 
-  const signOutAndRetry = () => {
+  const signOutAndRetry = async () => {
+    // Revoke the parked denied-session tokens first (awaited) so Keycloak's end-session below
+    // finds no live session and redirects straight through (302) instead of asking to confirm —
+    // same as the regular Logout. See utils/deniedSession.ts.
+    await revokeDeniedSession();
     // Same reasoning as AuthContext.tsx's logout() — pre-mark the silent-check guard so /login
     // (where this redirect chain lands) doesn't immediately re-check a session we're
     // deterministically ending right now.
