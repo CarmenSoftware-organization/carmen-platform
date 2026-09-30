@@ -4,12 +4,12 @@ import { useAuth } from '../context/AuthContext';
 import { resolveNextPath } from '../utils/resolveNextPath';
 
 /**
- * ปลายทางที่ gateway redirect กลับมาหลัง Google sign-in สำเร็จ (`GET /api/auth/google/callback`
- * บน backend) — token มากับ `window.location.hash` ไม่ใช่ query string เพราะ fragment ไม่ถูกส่งไป
- * server/CDN ใดๆ ต่างจาก query string ที่ติด access log ได้ อ่านครั้งเดียวแล้วผ่าน
- * `loginWithTokens()` ของ AuthContext ซึ่งทำ authority gate เดียวกับ login() ปกติ
+ * Where the gateway redirects after a successful Keycloak sign-in. The tokens arrive in the URL fragment
+ * (never sent to a server or CDN, unlike a query string) and go through `loginWithTokens()`'s authority gate.
+ * ปลายทางที่ gateway redirect กลับมาหลัง sign-in ผ่าน Keycloak สำเร็จ token มาใน URL fragment
+ * (ไม่ถูกส่งไป server/CDN ต่างจาก query string) แล้วผ่าน authority gate ของ `loginWithTokens()`
  */
-const GoogleCallback: React.FC = () => {
+const AuthCallback: React.FC = () => {
   const { loginWithTokens } = useAuth();
   const navigate = useNavigate();
   const ran = useRef(false);
@@ -24,12 +24,11 @@ const GoogleCallback: React.FC = () => {
     const params = new URLSearchParams(hash);
     const accessToken = params.get('access_token');
     const refreshToken = params.get('refresh_token');
-    // ตั้งโดย authorize's state round-trip (ดู auth.controller.ts's googleCallback) — deep-link
-    // เดิม (เช่น protected route ที่ silent-SSO-check redirect มา) ที่ควรกลับไปหลัง login สำเร็จ
+    // The deep link to return to, round-tripped through the authorize `state` (see auth.controller.ts).
     const next = params.get('next');
 
     if (!accessToken || !refreshToken) {
-      const failParams = new URLSearchParams({ error: 'google_auth_failed' });
+      const failParams = new URLSearchParams({ error: 'auth_failed' });
       if (next) failParams.set('next', next);
       navigate(`/login?${failParams.toString()}`, { replace: true });
       return;
@@ -59,7 +58,7 @@ const GoogleCallback: React.FC = () => {
         // ความล้มเหลวอื่นตรงนี้เป็น catch-all ทั่วไปของ loginWithTokens (เช่น localStorage throw ใน
         // private browsing) — เป็นปัญหาทางเทคนิค ไม่ใช่การปฏิเสธสิทธิ์ จึงควรอยู่ที่ banner ของหน้า
         // sign-in ไม่ใช่หน้า access-denied
-        const failParams = new URLSearchParams({ error: result.error || 'google_auth_failed' });
+        const failParams = new URLSearchParams({ error: result.error || 'auth_failed' });
         if (next) failParams.set('next', next);
         navigate(`/login?${failParams.toString()}`, { replace: true });
       }
@@ -69,4 +68,4 @@ const GoogleCallback: React.FC = () => {
   return null;
 };
 
-export default GoogleCallback;
+export default AuthCallback;

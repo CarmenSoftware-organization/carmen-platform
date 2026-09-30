@@ -12,7 +12,7 @@ import { Toaster } from "sonner";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcuts";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
-import GoogleCallback from "./pages/GoogleCallback";
+import AuthCallback from "./pages/AuthCallback";
 import PlatformAccessDenied from "./pages/PlatformAccessDenied";
 import Forbidden from "./pages/Forbidden";
 import NotFound from "./pages/NotFound";
@@ -100,7 +100,7 @@ function AppContent() {
             <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/login/google-callback" element={<GoogleCallback />} />
+            <Route path="/login/callback" element={<AuthCallback />} />
             <Route path="/access-denied" element={<PlatformAccessDenied />} />
             <Route path="/changelog" element={<Changelog />} />
             <Route

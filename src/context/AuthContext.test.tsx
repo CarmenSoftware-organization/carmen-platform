@@ -176,7 +176,7 @@ describe('AuthContext.loginWithTokens (Google sign-in callback)', () => {
     await waitFor(() => expect(localStorage.getItem('token')).toBeNull());
     expect(localStorage.getItem('refresh_token')).toBeNull();
     expect(mockApi.post).not.toHaveBeenCalled();
-    // PlatformAccessDenied.tsx reads this off loginWithTokens's returned result (GoogleCallback.tsx
+    // PlatformAccessDenied.tsx reads this off loginWithTokens's returned result (AuthCallback.tsx
     // forwards it as a query param) — a real base64url-encoded JWT here catches a regression in
     // decodeJwtEmail itself (wrong claim name, broken unescape), which a token like 'gacc' (no
     // dots, always falls into the catch → '') would silently miss.

@@ -69,9 +69,9 @@ describe('Login — sign-in entry points', () => {
   });
 });
 
-describe('Login — google callback error banner', () => {
-  it('shows the translated message for the google_auth_failed sentinel', () => {
-    renderLogin(['/login?error=google_auth_failed']);
+describe('Login — sign-in callback error banner', () => {
+  it('shows the translated message for the auth_failed sentinel', () => {
+    renderLogin(['/login?error=auth_failed']);
 
     expect(screen.getByRole('alert')).toHaveTextContent(/sign-in failed/i);
   });

@@ -8,21 +8,14 @@ import { useI18n } from '../hooks/useI18n';
 import { revokeDeniedSession } from '../utils/deniedSession';
 
 /**
- * Reached after a successful Keycloak sign-in (Google or the plain Keycloak-hosted login)
- * whose account has no Platform authority — `loginWithTokens`'s access-denied branch never
- * sets `user`, so this can't read who's denied from AuthContext; GoogleCallback.tsx passes
- * the decoded email through as a query param instead.
- *
- * Deliberately its own page, not a reuse of `Forbidden.tsx`'s 403 (that one assumes an
- * authenticated user with *some* Platform authority, just missing one permission — this is
- * "authenticated, zero Platform authority at all", reached before any session exists here).
- *
- * "Sign out and try a different account" is a front-channel redirect to Keycloak's own
- * end-session endpoint (`/api/auth/end-session`), not the regular `logout()` — the tokens were
- * already cleared from localStorage by the time this page renders, so they are read back from
- * the sessionStorage stash (utils/deniedSession.ts) and revoked first. Ending this browser's
- * shared Keycloak SSO session is what lets a retry with a different account succeed instead of
- * hitting "already authenticated as different user".
+ * Shown after a successful Keycloak sign-in whose account has no Platform authority. `user` is never set
+ * on this path, so AuthCallback.tsx passes the denied email in as a query param.
+ * Its own page, not `Forbidden.tsx`: that one is for a signed-in user missing one permission; this one is
+ * "zero Platform authority, no session here".
+ * "Sign out and try a different account" redirects to Keycloak's end-session (not the regular `logout()`):
+ * the tokens were already cleared, so they are read back from the sessionStorage stash
+ * (utils/deniedSession.ts) and revoked first. Ending the shared SSO session is what lets a retry with another
+ * account succeed instead of hitting "already authenticated as different user".
  */
 const PlatformAccessDenied: React.FC = () => {
   const { t, lang } = useI18n();
@@ -31,13 +24,9 @@ const PlatformAccessDenied: React.FC = () => {
   const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
 
   const signOutAndRetry = async () => {
-    // Revoke the parked denied-session tokens first (awaited) so Keycloak's end-session below
-    // finds no live session and redirects straight through (302) instead of asking to confirm —
-    // same as the regular Logout. See utils/deniedSession.ts.
+    // Revoke the parked tokens first (awaited) so end-session finds no live session and redirects straight
+    // through (302), like the regular Logout. Then pre-mark the silent-check guard, as logout() does.
     await revokeDeniedSession();
-    // Same reasoning as AuthContext.tsx's logout() — pre-mark the silent-check guard so /login
-    // (where this redirect chain lands) doesn't immediately re-check a session we're
-    // deterministically ending right now.
     try {
       sessionStorage.setItem('carmen.silentSsoTried', '1');
     } catch {

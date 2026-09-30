@@ -14,13 +14,13 @@ const Login: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  // ตั้งโดย gateway (GET /api/auth/google/callback) ตอน callback ล้มเหลวก่อนถึงขั้น loginWithTokens
-  // (เช่น state/nonce ไม่ตรง) — ชื่อ endpoint เป็นของเดิมตั้งแต่ก่อนมีปุ่ม [Sign in] เดียว (ตอนนั้นมี
-  // ปุ่ม Google แยก) ตอนนี้ callback นี้ใช้ร่วมกันทั้ง password และ Google (เลือกที่หน้า Keycloak เอง)
-  // ความล้มเหลวเรื่องสิทธิ์ Platform ไปที่หน้า /access-denied แยกแล้ว
+  // Set by the gateway callback when sign-in failed before `loginWithTokens` (e.g. state/nonce mismatch).
+  // Platform-authority denials go to /access-denied instead.
+  // ตั้งโดย callback ของ gateway เมื่อ sign-in ล้มเหลวก่อนถึง `loginWithTokens` (เช่น state/nonce ไม่ตรง)
+  // ส่วนการไม่มีสิทธิ์ Platform ไปที่ /access-denied
   const authError = searchParams.get('error');
-  // ตั้งโดย AuthContext's silent-SSO-check redirect (protected route ที่ยัง logout อยู่) หรือ
-  // caller อื่นที่อยากกลับมาที่ path เดิมหลัง login — ส่งต่อไปทั้งสองปุ่ม sign-in ด้านล่าง
+  // The path to return to after sign-in (set by the silent-SSO redirect from a protected route).
+  // path ที่จะกลับไปหลัง sign-in (ตั้งโดย silent-SSO redirect จาก protected route)
   const next = searchParams.get('next');
 
   // Redirect to dashboard (or `next`, if a protected route sent us here) if already logged in
@@ -109,7 +109,7 @@ const Login: React.FC = () => {
                 role="alert"
                 className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
               >
-                {authError === 'google_auth_failed' ? t('login.signInFailed') : authError}
+                {authError === 'auth_failed' ? t('login.signInFailed') : authError}
               </div>
             )}
 

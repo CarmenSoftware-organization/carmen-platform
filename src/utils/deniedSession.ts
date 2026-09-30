@@ -1,12 +1,8 @@
 /**
- * Tokens of a sign-in that Platform denied (no Platform authority), parked in sessionStorage
- * — not localStorage, so they never look like a live Platform session to the rest of the app.
- *
- * They exist for exactly one reason: the access-denied page's explicit "sign out" button needs
- * a refresh_token to revoke *before* it front-channel-redirects into Keycloak's end-session,
- * otherwise Keycloak still sees a live session and shows its own confirmation page (same race
- * AuthContext's logout() fixes). Nothing revokes on mere denial — that account may be valid on
- * the inventory app, so only an explicit sign-out may end the shared SSO session.
+ * Tokens of a sign-in Platform denied, parked in sessionStorage (not localStorage, so they never look like a
+ * live Platform session). Their one job: the access-denied page's sign-out button revokes them before the
+ * end-session redirect, or Keycloak still sees a live session and shows its own confirmation page. Nothing is
+ * revoked on mere denial: the account may be valid on App, so only an explicit sign-out may end the SSO session.
  */
 const KEY = 'carmen.deniedTokens';
 
