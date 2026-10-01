@@ -846,11 +846,14 @@ export interface LoginResponse {
 export interface LoginResult {
   success: boolean;
   error?: string;
+  /** Set by `loginWithTokens` so the callback page can pick a translated message by code, not by text. */
+  code?: 'access_denied_platform' | 'login_failed';
 }
 
 export interface AuthContextValue {
   user: User | null;
   login: (credentials: LoginCredentials) => Promise<LoginResult>;
+  loginWithTokens: (accessToken: string, refreshToken: string) => Promise<LoginResult>;
   logout: () => void;
   refreshUser: () => void;
   isAuthenticated: boolean;

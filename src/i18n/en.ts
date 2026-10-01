@@ -4488,5 +4488,13 @@ export const en = {
     submitting: 'Signing in…',
     locked: 'Please wait',
     backToHome: 'Back to home',
+    orDivider: 'or',
+    googleContinue: 'Continue with Google',
+    googleFailed: 'Google sign-in failed. Please try again.',
+    googleNoAccount:
+      'No Carmen Platform account exists for this Google email address. Ask an administrator to add you first.',
+    googleAccountConflict:
+      'This email address conflicts with another account. Please contact your administrator.',
+    googleTooManyAttempts: 'Too many sign-in attempts. Please wait a moment and try again.',
   },
 };

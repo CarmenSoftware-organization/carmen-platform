@@ -12,6 +12,23 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const isDev = import.meta.env.DEV;
 
+/**
+ * Best-effort label for the signed-in user, read from the access token's own claims (no signature check —
+ * display only, the server validates every token it receives).
+ * @param token - Keycloak access token
+ * @returns `email`, else `preferred_username`, else an empty string
+ */
+function decodeJwtEmail(token: string): string {
+  try {
+    const payload = token.split('.')[1];
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    const claims = JSON.parse(json) as { email?: string; preferred_username?: string };
+    return claims.email || claims.preferred_username || '';
+  } catch {
+    return '';
+  }
+}
+
 interface AuthProviderProps {
   children: React.ReactNode;
 }
@@ -39,7 +56,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       setLoading(false);
 
-      const publicPaths = ['/', '/login', '/changelog'];
+      // `/login/callback` must stay public: Google sign-in lands there with no token yet, and a redirect to
+      // `/login` here would throw away the tokens in the URL fragment.
+      const publicPaths = ['/', '/login', '/login/callback', '/changelog'];
       if (!publicPaths.includes(window.location.pathname)) {
         window.location.href = '/login';
       }
@@ -239,6 +258,68 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
+  /**
+   * Same session bootstrap and the same Platform-authority gate as login(), for tokens the gateway hands back
+   * after a Google sign-in. Separate because there are no credentials: the user label comes from the token.
+   * The gateway never creates an account for Platform, so a Google user with no Platform authority is refused
+   * here exactly like a password user would be.
+   */
+  const loginWithTokens = async (accessToken: string, refreshToken: string): Promise<LoginResult> => {
+    try {
+      // Drop whatever identity an earlier session left behind BEFORE storing the new token, synchronously: the
+      // provider's mount effect runs right after this and restores any stored `user` when it finds a token, which
+      // would pair the new token with the old user (and, on a refusal, leave that old user signed in).
+      localStorage.removeItem('user');
+      localStorage.removeItem('loginResponse');
+      localStorage.removeItem('effectivePermissions');
+      localStorage.removeItem('adminScope');
+
+      localStorage.setItem('token', accessToken);
+      if (refreshToken) {
+        localStorage.setItem('refresh_token', refreshToken);
+      }
+      api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+
+      const [eff, count, scope] = await Promise.all([
+        fetchEffectivePermissions(),
+        fetchUserCount(),
+        fetchAdminScope(),
+      ]);
+      const hasAnyPermission = checkPlatformAuthority(eff);
+      const hasClusterAdmin = !!scope && (scope.all || scope.clusters.length > 0);
+      const isBootstrap = count !== null && count <= 1; // first-admin escape hatch
+      if (!hasAnyPermission && !hasClusterAdmin && !isBootstrap) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('loginResponse');
+        localStorage.removeItem('effectivePermissions');
+        localStorage.removeItem('adminScope');
+        delete api.defaults.headers.common['Authorization'];
+        setUser(null);
+        setLoginResponse(null);
+        setEffectivePermissions(null);
+        setAdminScope(null);
+        return { success: false, error: t('login.accessDeniedPlatform'), code: 'access_denied_platform' };
+      }
+
+      const email = decodeJwtEmail(accessToken);
+      const userData: User = { id: '', email, name: email };
+      const loginData: LoginResponse = { access_token: accessToken, refresh_token: refreshToken };
+      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('loginResponse', JSON.stringify(loginData));
+      setUser(userData);
+      setLoginResponse(loginData);
+
+      clearListViewState();
+      fetchProfile();
+
+      return { success: true };
+    } catch {
+      return { success: false, error: t('login.unableToLogin'), code: 'login_failed' };
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');
@@ -277,6 +358,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value: AuthContextValue = {
     user,
     login,
+    loginWithTokens,
     logout,
     refreshUser,
     isAuthenticated: !!user,

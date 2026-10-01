@@ -3447,5 +3447,12 @@ export const th: Translations = {
     submitting: 'กำลังเข้าสู่ระบบ…',
     locked: 'กรุณารอสักครู่',
     backToHome: 'กลับหน้าแรก',
+    orDivider: 'หรือ',
+    googleContinue: 'ดำเนินการต่อด้วย Google',
+    googleFailed: 'เข้าสู่ระบบด้วย Google ไม่สำเร็จ กรุณาลองใหม่',
+    googleNoAccount:
+      'ไม่พบบัญชี Carmen Platform สำหรับอีเมล Google นี้ กรุณาให้ผู้ดูแลระบบเพิ่มบัญชีให้ก่อน',
+    googleAccountConflict: 'อีเมลนี้ขัดแย้งกับบัญชีอื่น กรุณาติดต่อผู้ดูแลระบบ',
+    googleTooManyAttempts: 'พยายามเข้าสู่ระบบบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่',
   },
 };

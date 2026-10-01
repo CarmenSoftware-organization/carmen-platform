@@ -26,16 +26,74 @@ import { BatchLogRecordProcessor, LoggerProvider } from '@opentelemetry/sdk-logs
 import {
   BatchSpanProcessor,
   ParentBasedSampler,
+  type ReadableSpan,
+  type SpanExporter,
   TraceIdRatioBasedSampler,
   WebTracerProvider,
 } from '@opentelemetry/sdk-trace-web';
 import {
   ATTR_SERVICE_NAME,
   ATTR_SERVICE_VERSION,
+  ATTR_URL_FULL,
 } from '@opentelemetry/semantic-conventions';
 
 const LOGGER_NAME = 'carmen.platform';
 const SERVICE_NAME = 'carmen-platform';
+
+/**
+ * ตัด `#fragment` ออกจาก URL — Google sign-in ส่ง access/refresh token กลับมาใน fragment ของ `/login/callback`
+ * (`#access_token=…&refresh_token=…`) และ DocumentLoadInstrumentation ใส่ `location.href` ทั้งก้อนลง `url.full`
+ * ของ span หน้าเว็บ ถ้าไม่ตัดตรงนี้ token ที่ยังใช้ได้จะไปนอนอยู่ใน SigNoz
+ */
+export function stripUrlFragment(url: string): string {
+  const index = url.indexOf('#');
+  return index === -1 ? url : url.slice(0, index);
+}
+
+const URL_ATTRIBUTES = [ATTR_URL_FULL, 'http.url'];
+
+function withoutFragments(span: ReadableSpan): ReadableSpan {
+  const attributes = { ...span.attributes };
+  let changed = false;
+  for (const key of URL_ATTRIBUTES) {
+    const value = attributes[key];
+    if (typeof value !== 'string') continue;
+    const safe = stripUrlFragment(value);
+    if (safe !== value) {
+      attributes[key] = safe;
+      changed = true;
+    }
+  }
+  // Object.create keeps the span's own methods (spanContext(), …) that the OTLP transform calls; only
+  // `attributes` is shadowed.
+  return changed
+    ? Object.create(span, { attributes: { value: attributes, enumerable: true } })
+    : span;
+}
+
+/**
+ * ห่อ exporter จริงแล้วตัด fragment ออกจาก URL ของทุก span ก่อนส่ง — ต้องทำที่ชั้น export เพราะ
+ * DocumentLoadInstrumentation ตั้ง `url.full` **หลัง** span เริ่ม (หลัง load event) และการแก้ที่นี่ได้ผล
+ * ไม่ว่า URL ปัจจุบันจะถูกล้างทันเวลาหรือไม่ (โครงเดียวกับ carmen-inventory-frontend-react/lib/telemetry.ts)
+ */
+export class FragmentRedactingSpanExporter implements SpanExporter {
+  constructor(private readonly inner: SpanExporter) {}
+
+  export(
+    spans: ReadableSpan[],
+    resultCallback: Parameters<SpanExporter['export']>[1],
+  ): void {
+    this.inner.export(spans.map(withoutFragments), resultCallback);
+  }
+
+  shutdown(): Promise<void> {
+    return this.inner.shutdown();
+  }
+
+  forceFlush(): Promise<void> {
+    return this.inner.forceFlush?.() ?? Promise.resolve();
+  }
+}
 
 /** เบราว์เซอร์สร้าง span เร็วกว่า backend มาก เก็บทุกอันคือถมดิสก์เปล่า ๆ */
 const TRACE_SAMPLE_RATIO = 0.1;
@@ -111,7 +169,9 @@ export function initTelemetry(version: string): void {
     }),
     spanProcessors: [
       new BatchSpanProcessor(
-        new OTLPTraceExporter({ url: `${base}/traces`, headers: telemetryHeaders }),
+        new FragmentRedactingSpanExporter(
+          new OTLPTraceExporter({ url: `${base}/traces`, headers: telemetryHeaders }),
+        ),
       ),
     ],
   });

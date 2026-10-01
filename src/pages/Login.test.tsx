@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -19,9 +19,9 @@ import Login from './Login';
 
 const asMock = (fn: unknown) => fn as ReturnType<typeof vi.fn>;
 
-function renderLogin() {
+function renderLogin(entry = '/login') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[entry]}>
       <Login />
     </MemoryRouter>,
   );
@@ -183,5 +183,116 @@ describe('Login — happy path and generic error', () => {
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/login failed/i);
+  });
+});
+
+describe('Login — Google sign-in', () => {
+  const originalLocation = window.location;
+  const assign = vi.fn();
+
+  beforeEach(() => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...originalLocation, assign },
+    });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, 'location', { configurable: true, value: originalLocation });
+  });
+
+  it('sends the browser to the gateway authorize endpoint for Platform', async () => {
+    const user = userEvent.setup();
+    renderLogin();
+
+    await user.click(screen.getByRole('button', { name: /continue with google/i }));
+
+    expect(assign).toHaveBeenCalledTimes(1);
+    const url = new URL(assign.mock.calls[0][0] as string, 'http://x');
+    expect(url.pathname).toBe('/api/auth/google/authorize');
+    expect(url.searchParams.get('app')).toBe('platform');
+    expect(url.searchParams.get('locale')).toBe('en');
+    expect(url.searchParams.has('next')).toBe(false);
+  });
+
+  it('carries a deep link through to the gateway as `next`', async () => {
+    const user = userEvent.setup();
+    renderLogin('/login?next=%2Fclusters');
+
+    await user.click(screen.getByRole('button', { name: /continue with google/i }));
+
+    const url = new URL(assign.mock.calls[0][0] as string, 'http://x');
+    expect(url.searchParams.get('next')).toBe('/clusters');
+  });
+
+  it.each([
+    ['google_no_account', /no carmen platform account/i],
+    ['google_account_conflict', /conflicts with another account/i],
+    ['google_too_many_attempts', /too many sign-in attempts/i],
+    ['google_failed', /google sign-in failed/i],
+    ['access_denied_platform', /not authorized to access this platform/i],
+  ])('translates the error code %s into a banner', (code, text) => {
+    renderLogin(`/login?error=${code}`);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(text);
+  });
+
+  it('never renders free text from the URL: an unknown code shows the generic message', () => {
+    renderLogin('/login?error=Your%20account%20is%20suspended%20call%20555-0100');
+
+    const banner = screen.getByRole('alert');
+    expect(banner).toHaveTextContent(/google sign-in failed/i);
+    expect(banner).not.toHaveTextContent(/555-0100/);
+  });
+
+  it('shows no banner when there is no error code', () => {
+    renderLogin('/login');
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
+describe('Login — hardening of URL-supplied values', () => {
+  const originalLocation = window.location;
+  const assign = vi.fn();
+
+  beforeEach(() => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...originalLocation, assign },
+    });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, 'location', { configurable: true, value: originalLocation });
+  });
+
+  it.each(['constructor', '__proto__', 'toString', 'hasOwnProperty'])(
+    'treats the object-prototype name %s as an unknown code, not a crash',
+    (code) => {
+      renderLogin(`/login?error=${code}`);
+
+      expect(screen.getByRole('alert')).toHaveTextContent(/google sign-in failed/i);
+    },
+  );
+
+  it('does not forward an unsafe `next` (tab-smuggled host) to the gateway', async () => {
+    const user = userEvent.setup();
+    renderLogin('/login?next=%2F%09%2Fevil.example.com');
+
+    await user.click(screen.getByRole('button', { name: /continue with google/i }));
+
+    const url = new URL(assign.mock.calls[0][0] as string, 'http://x');
+    expect(url.searchParams.has('next')).toBe(false);
+  });
+
+  it('drops the bold Access Denied heading once the user starts typing again', async () => {
+    const user = userEvent.setup();
+    renderLogin('/login?error=access_denied_platform');
+    expect(screen.getByRole('alert')).toHaveTextContent(/access denied/i);
+
+    await user.type(screen.getByLabelText(/username|email/i), 'a');
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
