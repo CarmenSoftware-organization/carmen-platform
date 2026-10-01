@@ -1,34 +1,112 @@
-import React, { useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Loader2 } from 'lucide-react';
+import type { LoginCredentials } from '../types';
+import { validateField } from '../utils/validation';
 import { useI18n } from '../hooks/useI18n';
 import LanguageToggle from '../components/LanguageToggle';
-import { resolveNextPath } from '../utils/resolveNextPath';
 
 const env = import.meta.env.REACT_APP_ENV as string | undefined;
 
+// AuthContext.login() maps HTTP 429 to 'Too many login attempts. Please try
+// again later.' (prod) or a dev-mode '[429] ...' message that may carry a
+// different backend-supplied detail string. Match a stable substring instead
+// of the exact prod copy so both paths lock the button.
+const RATE_LIMIT_PATTERN = /too many|rate limit/i;
+
 const Login: React.FC = () => {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
 
-  const { isAuthenticated } = useAuth();
+  // Built inside the component: the messages are translated, and `t` only exists at
+  // render time. validateField() short-circuits to '' for an empty value (it only
+  // checks format), so "required" has to be handled here before delegating to it.
+  const getFieldError = (name: string, value: string): string => {
+    if (!value.trim()) {
+      if (name === 'username') return t('login.usernameRequired');
+      if (name === 'password') return t('login.passwordRequired');
+      return '';
+    }
+    // 'username' is dual-purpose (email OR plain username per the field label
+    // "Email or username" and the backend's 'Invalid email/username or
+    // password'), so don't force email format here — that would block valid
+    // username-based logins.
+    if (name === 'username') return '';
+    return validateField(name, value, undefined, t);
+  };
+
+  const [credentials, setCredentials] = useState<LoginCredentials>({
+    username: '',
+    password: ''
+  });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  // Set when login() reports a rate-limit (429) response — keeps submit
+  // disabled so the user can't immediately resubmit into the same window.
+  // No countdown: the backend doesn't return a Retry-After, so a plain
+  // disabled state + the existing error banner is the honest fix.
+  const [locked, setLocked] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  // Set by the gateway callback when sign-in failed before `loginWithTokens` (e.g. state/nonce mismatch).
-  // Platform-authority denials go to /access-denied instead.
-  // ตั้งโดย callback ของ gateway เมื่อ sign-in ล้มเหลวก่อนถึง `loginWithTokens` (เช่น state/nonce ไม่ตรง)
-  // ส่วนการไม่มีสิทธิ์ Platform ไปที่ /access-denied
-  const authError = searchParams.get('error');
-  // The path to return to after sign-in (set by the silent-SSO redirect from a protected route).
-  // path ที่จะกลับไปหลัง sign-in (ตั้งโดย silent-SSO redirect จาก protected route)
-  const next = searchParams.get('next');
 
-  // Redirect to dashboard (or `next`, if a protected route sent us here) if already logged in
+  // Redirect to dashboard if already logged in
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(resolveNextPath(next), { replace: true });
+      navigate('/dashboard', { replace: true });
     }
-  }, [isAuthenticated, navigate, next]);
+  }, [isAuthenticated, navigate]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setCredentials({
+      ...credentials,
+      [name]: value
+    });
+    setError('');
+    setLocked(false);
+    setFieldErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFieldErrors(prev => ({ ...prev, [name]: getFieldError(name, value) }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    // Defense-in-depth: the disabled attribute already blocks this today, but
+    // this effort has a recurring keyboard-bypass class (W2/W3/W4) — lock the
+    // invariant in code too, not just in the DOM.
+    if (locked) return;
+
+    const usernameError = getFieldError('username', credentials.username);
+    const passwordError = getFieldError('password', credentials.password);
+    if (usernameError || passwordError) {
+      setFieldErrors({ username: usernameError, password: passwordError });
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    const result = await login(credentials);
+
+    if (result.success) {
+      navigate('/dashboard', { replace: true });
+    } else {
+      setError(result.error || t('login.failed'));
+      setLocked(RATE_LIMIT_PATTERN.test(result.error ?? ''));
+    }
+
+    setLoading(false);
+  };
+
+  const accessDenied = error.includes('Access Denied');
 
   return (
     <div className="min-h-dvh grid lg:grid-cols-2 bg-background">
@@ -103,31 +181,60 @@ const Login: React.FC = () => {
             </p>
           </div>
 
-          <div className="space-y-5">
-            {authError && (
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="username">{t('login.usernameLabel')}</Label>
+              <Input
+                type="text"
+                id="username"
+                name="username"
+                autoComplete="username"
+                value={credentials.username}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                required
+                placeholder={t('login.usernamePlaceholder')}
+                className={fieldErrors.username ? 'border-destructive' : ''}
+              />
+              {fieldErrors.username && (
+                <p className="text-xs text-destructive">{fieldErrors.username}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">{t('login.passwordLabel')}</Label>
+              <Input
+                type="password"
+                id="password"
+                name="password"
+                autoComplete="current-password"
+                value={credentials.password}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                required
+                placeholder={t('login.passwordPlaceholder')}
+                className={fieldErrors.password ? 'border-destructive' : ''}
+              />
+              {fieldErrors.password && (
+                <p className="text-xs text-destructive">{fieldErrors.password}</p>
+              )}
+            </div>
+
+            {error && (
               <div
                 role="alert"
                 className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
               >
-                {authError === 'auth_failed' ? t('login.signInFailed') : authError}
+                {accessDenied && <div className="mb-1 font-bold">{t('login.accessDenied')}</div>}
+                {error}
               </div>
             )}
 
-            {/* Real page navigation, not an axios call — Keycloak's own hosted login page
-                (username/password + any configured Identity Provider buttons, incl. Google)
-                lives on a different origin, which a JSON call can never reach. */}
-            <Button
-              type="button"
-              className="w-full"
-              onClick={() => {
-                const params = new URLSearchParams({ app: 'platform', locale: lang });
-                if (next) params.set('next', next);
-                window.location.href = `${import.meta.env.REACT_APP_API_BASE_URL}/api/auth/authorize?${params.toString()}`;
-              }}
-            >
-              {t('login.submit')}
+            <Button type="submit" className="w-full" disabled={loading || locked}>
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {loading ? t('login.submitting') : locked ? t('login.locked') : t('login.submit')}
             </Button>
-          </div>
+          </form>
 
           <div className="text-center">
             <Link

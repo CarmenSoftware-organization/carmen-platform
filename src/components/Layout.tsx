@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 import { BrandMark } from './BrandMark';
 import { ProductLogo } from './ProductLogo';
 import { Button } from './ui/button';
-import { LogOut, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import Sidebar, { PRODUCT_BRAND, isProductBrand, type BrandIdentity, type NavItem } from './Sidebar';
 import { Breadcrumbs } from './Breadcrumbs';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -19,7 +19,6 @@ import { CURRENT_VERSION } from './VersionBadge';
 import { buildPlatformNav } from './nav/platformNav';
 import { useFeatureFlags } from '../context/FeatureFlagContext';
 import { Skeleton } from './ui/skeleton';
-import { ConfirmDialog } from './ui/confirm-dialog';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -61,6 +60,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, headerSlot, brandTo, brand = PRODUCT_BRAND, hideBreadcrumbs = false }) => {
   const { user, logout, hasPermission, isSuperAdmin, hasPlatformAuthority } = useAuth();
   const { flagOf, isReady: flagsReady } = useFeatureFlags();
+  const navigate = useNavigate();
   const location = useLocation();
   const { t } = useI18n();
   const backendVersion = useBackendVersion();
@@ -77,23 +77,15 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
     }
   });
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
   // Close mobile sheet on route change
   useEffect(() => {
     setIsMobileOpen(false);
   }, [location.pathname]);
 
-  const handleLogout = async () => {
-    // Awaited so ConfirmDialog's own `loading` state (spinner on the confirm button) covers the
-    // real wait — logout() awaits a backchannel revoke (network round trip) before performing
-    // the front-channel redirect itself, which ends the Keycloak SSO session (not just this
-    // app's local one) and navigates the browser away — nothing further needed here after that.
-    // The confirmation dialog (rendered below) is what actually triggers this — HeaderUserMenu's
-    // "Log out" item opens it instead of calling this directly, since logging out here also
-    // signs the user out of the Carmen inventory app (shared SSO session) and that isn't obvious
-    // from the menu item's label alone.
-    await logout();
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   const toggleSidebar = () => {
@@ -246,7 +238,7 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
               </Link>
               {!isDesktop && (
                 <div className="ml-auto">
-                  <HeaderUserMenu compact userInfo={userInfo} onLogout={() => setLogoutConfirmOpen(true)} />
+                  <HeaderUserMenu compact userInfo={userInfo} onLogout={handleLogout} />
                 </div>
               )}
             </div>
@@ -268,7 +260,7 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
                   (มีรุ่นหลังบ้านคู่กัน) ป้ายบน header เป็นการพูดซ้ำในที่ที่แพงที่สุดของจอ */}
               <LanguageToggle />
               <ThemeToggle />
-              <HeaderUserMenu userInfo={userInfo} onLogout={() => setLogoutConfirmOpen(true)} />
+              <HeaderUserMenu userInfo={userInfo} onLogout={handleLogout} />
             </div>
           )}
         </div>
@@ -307,17 +299,6 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
           </div>
         </footer>
       </div>
-
-      <ConfirmDialog
-        open={logoutConfirmOpen}
-        onOpenChange={setLogoutConfirmOpen}
-        title={t('header.logoutConfirmTitle')}
-        description={t('header.logoutConfirmDescription')}
-        confirmText={t('header.logOut')}
-        confirmVariant="destructive"
-        onConfirm={handleLogout}
-        icon={<LogOut className="size-4.5" />}
-      />
     </div>
   );
 };

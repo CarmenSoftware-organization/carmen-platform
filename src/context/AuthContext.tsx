@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import userService from '../services/userService';
 import permissionService from '../services/permissionService';
@@ -6,42 +6,11 @@ import clusterAdminService from '../services/clusterAdminService';
 import type { User, LoginCredentials, LoginResult, LoginResponse, AuthContextValue, EffectivePermissions, AdminScope } from '../types';
 import { checkPermission, checkPlatformAuthority } from '../utils/permissions';
 import { clearListViewState } from '../utils/clearListViewState';
-import { clearDeniedTokens, stashDeniedTokens } from '../utils/deniedSession';
 import { useI18n } from '../hooks/useI18n';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const isDev = import.meta.env.DEV;
-
-/**
- * A user-initiated reload gets one fresh silent-SSO check, ignoring the once-per-tab guard
- * (typically pressed right after signing in through the other app in another tab).
- * การ reload ของ user ได้ลองเช็ค silent SSO ใหม่หนึ่งครั้ง ไม่สน guard แบบครั้งเดียวต่อแท็บ
- * (มักกดหลัง login ผ่านอีกแอปในอีกแท็บ)
- */
-function isUserReload(): boolean {
-  try {
-    const [entry] = performance.getEntriesByType('navigation');
-    return (entry as PerformanceNavigationTiming | undefined)?.type === 'reload';
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Reads the `email` claim from a JWT without verifying it: the server already validated the token
- * before the sign-in redirect, so this only labels the local session.
- */
-function decodeJwtEmail(token: string): string {
-  try {
-    const payload = token.split('.')[1];
-    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-    const claims = JSON.parse(json) as { email?: string; preferred_username?: string };
-    return claims.email || claims.preferred_username || '';
-  } catch {
-    return '';
-  }
-}
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -49,16 +18,13 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // I18nProvider ครอบ AuthProvider ใน App.tsx จึงเรียก useI18n ตรงนี้ได้
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [loginResponse, setLoginResponse] = useState<LoginResponse | null>(null);
   const [userCount, setUserCount] = useState<number | null>(null);
   const [effectivePermissions, setEffectivePermissions] = useState<EffectivePermissions | null>(null);
   const [adminScope, setAdminScope] = useState<AdminScope | null>(null);
-  // Guards the silent-check redirect against StrictMode's dev double-invoke, whose 2nd run would overwrite
-  // the in-flight navigation with '/login'. A ref, not sessionStorage: it must reset on every real mount.
-  const silentCheckStartedRef = useRef(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -73,42 +39,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       setLoading(false);
 
-      // Skipped: `/` (public landing page), /changelog (public content) and /access-denied (must never retry;
-      // it shows the denied user their email + Logout). /login is NOT skipped: opening it with a live Keycloak
-      // session (from the other app) should sign in silently, without an extra click.
-      const publicPaths = ['/', '/changelog', '/access-denied'];
+      const publicPaths = ['/', '/login', '/changelog'];
       if (!publicPaths.includes(window.location.pathname)) {
-        if (silentCheckStartedRef.current) return; // see the ref's own comment above
-        silentCheckStartedRef.current = true;
-        // One silent SSO check per tab session (like App's RequireAuth): a live Keycloak session returns tokens
-        // with no click; otherwise Keycloak answers `login_required` and the gateway sends us to /login.
-        // ลอง silent SSO check หนึ่งครั้งต่อ tab session (เหมือน RequireAuth ของ App): มี session ที่ live อยู่ก็ได้ token
-        // โดยไม่ต้องกด ไม่มีก็ Keycloak ตอบ `login_required` แล้ว gateway ส่งกลับ /login
-        let alreadyTried = false;
-        try {
-          alreadyTried = sessionStorage.getItem('carmen.silentSsoTried') === '1' && !isUserReload();
-        } catch {
-          // storage unavailable — fall through and just attempt the check
-        }
-        if (!alreadyTried) {
-          try {
-            sessionStorage.setItem('carmen.silentSsoTried', '1');
-          } catch {
-            // ignore
-          }
-          // On /login, reuse its own `next` param rather than wrapping the whole URL as `next`,
-          // which would round-trip back through /login for nothing.
-          // ที่ /login ใช้ `next` ของหน้านั้นเอง แทนการ wrap ทั้ง URL เป็น `next` ที่จะวนกลับ /login เปล่าๆ
-          const next =
-            window.location.pathname === '/login'
-              ? new URLSearchParams(window.location.search).get('next') ?? ''
-              : `${window.location.pathname}${window.location.search}`;
-          window.location.href = `${import.meta.env.REACT_APP_API_BASE_URL}/api/auth/authorize?app=platform&silent=true&next=${encodeURIComponent(next)}`;
-        } else if (window.location.pathname !== '/login') {
-          // Already on /login (a failed silent check just landed here): let Login.tsx render.
-          // อยู่ที่ /login แล้ว (silent check ที่ล้มเหลวเพิ่งกลับมาที่นี่): ให้ Login.tsx render
-          window.location.href = '/login';
-        }
+        window.location.href = '/login';
       }
       return;
     }
@@ -299,72 +232,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  /**
-   * Same session bootstrap as login() (authority gate, profile fetch, list-view reset) for tokens issued by
-   * the gateway's sign-in redirect. Separate because there is no `credentials.username`; the user label is
-   * built from the token's `email` claim.
-   */
-  const loginWithTokens = async (accessToken: string, refreshToken: string): Promise<LoginResult> => {
-    try {
-      localStorage.setItem('token', accessToken);
-      if (refreshToken) {
-        localStorage.setItem('refresh_token', refreshToken);
-      }
-      api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-
-      const [eff, count, scope] = await Promise.all([
-        fetchEffectivePermissions(),
-        fetchUserCount(),
-        fetchAdminScope(),
-      ]);
-      const hasAnyPermission = checkPlatformAuthority(eff);
-      const hasClusterAdmin = !!scope && (scope.all || scope.clusters.length > 0);
-      const isBootstrap = count !== null && count <= 1;
-      if (!hasAnyPermission && !hasClusterAdmin && !isBootstrap) {
-        // Local-only on purpose: this account may still be valid on App (shared SSO session), so an implicit
-        // revoke here would sign it out there; only an explicit Logout ends the shared session. The tokens are
-        // parked in sessionStorage so the access-denied page's sign-out button can revoke them first
-        // (see utils/deniedSession.ts).
-        stashDeniedTokens(accessToken, refreshToken);
-        localStorage.removeItem('token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('effectivePermissions');
-        localStorage.removeItem('adminScope');
-        delete api.defaults.headers.common['Authorization'];
-        setEffectivePermissions(null);
-        setAdminScope(null);
-        return {
-          success: false,
-          error: t('login.accessDeniedPlatform'),
-          deniedEmail: decodeJwtEmail(accessToken),
-        };
-      }
-
-      const email = decodeJwtEmail(accessToken);
-      const userData: User = { id: '', email, name: email };
-      const loginData: LoginResponse = { access_token: accessToken, refresh_token: refreshToken };
-      localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('loginResponse', JSON.stringify(loginData));
-      setUser(userData);
-      setLoginResponse(loginData);
-
-      clearListViewState();
-      fetchProfile();
-      clearDeniedTokens(); // a successful sign-in supersedes any earlier denied one
-
-      // Clear the silent-check guard so a later token loss (e.g. after logout) can retry the check.
-      try {
-        sessionStorage.removeItem('carmen.silentSsoTried');
-      } catch {
-        // ignore — storage unavailable, nothing to clear
-      }
-
-      return { success: true };
-    } catch {
-      return { success: false, error: t('login.unableToLogin') };
-    }
-  };
-
   const refreshUser = useCallback(() => {
     const userData = localStorage.getItem('user');
     if (userData) {
@@ -372,12 +239,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const logout = async () => {
-    const accessToken = localStorage.getItem('token');
-    const refreshToken = localStorage.getItem('refresh_token');
-
-    // Local state clears synchronously, before the network call below — the UI must not wait
-    // on it (matches the previous, pre-await behavior; see the test asserting this).
+  const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
@@ -389,41 +251,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoginResponse(null);
     setEffectivePermissions(null);
     setAdminScope(null);
-
-    // Await the backchannel revoke before the front-channel redirect: unawaited, it raced end-session, so Keycloak
-    // still saw a live session and showed its own confirmation page; awaited, end-session redirects straight
-    // through (302), as App's useLogout() does.
-    // ต้อง await revoke ก่อน redirect: ถ้าไม่ await จะชนกับ end-session ทำให้ Keycloak เจอ session ที่ยัง live
-    // แล้วโชว์หน้ายืนยันของมันเอง; await แล้ว end-session redirect ผ่านตรง (302) เหมือน useLogout() ของ App
-    if (accessToken || refreshToken) {
-      try {
-        await fetch(`${import.meta.env.REACT_APP_API_BASE_URL}/api/auth/logout`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-          },
-          body: JSON.stringify({ refresh_token: refreshToken ?? '' }),
-          signal: AbortSignal.timeout(5000),
-        });
-      } catch {
-        // Best-effort: continue to the front-channel logout regardless (worst case Keycloak shows its confirm page once).
-      }
-    }
-
-    // Pre-mark the silent-check guard: we just ended the only session, so the check on the /login this redirect
-    // lands on would fire once more and fail (a wasted round trip and a visible flash).
-    // ตั้ง guard ของ silent check ไว้ก่อน: เพิ่งปิด session เดียวที่มี การเช็คที่ /login ปลายทางจะยิงซ้ำเปล่าประโยชน์
-    // (เสียเวลาและจอกระพริบ)
-    try {
-      sessionStorage.setItem('carmen.silentSsoTried', '1');
-    } catch {
-      // ignore — worst case is just the one extra round trip this was meant to skip
-    }
-
-    // Front-channel: also end the Keycloak SSO session, or the next silent check would find it and sign the
-    // user straight back in. A real navigation, so nothing after it runs.
-    window.location.href = `${import.meta.env.REACT_APP_API_BASE_URL}/api/auth/end-session?app=platform&locale=${lang}`;
   };
 
   const isSuperAdmin = !!effectivePermissions?.is_super_admin;
@@ -450,7 +277,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value: AuthContextValue = {
     user,
     login,
-    loginWithTokens,
     logout,
     refreshUser,
     isAuthenticated: !!user,

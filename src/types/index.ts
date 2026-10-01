@@ -846,16 +846,11 @@ export interface LoginResponse {
 export interface LoginResult {
   success: boolean;
   error?: string;
-  /** Set only by loginWithTokens's access-denied branch, so PlatformAccessDenied.tsx can show
-   *  which account it is without relying on AuthContext state (user stays null on denial). */
-  deniedEmail?: string;
 }
 
 export interface AuthContextValue {
   user: User | null;
   login: (credentials: LoginCredentials) => Promise<LoginResult>;
-  /** Same session bootstrap as login(), but for tokens already issued by a Google sign-in redirect. */
-  loginWithTokens: (accessToken: string, refreshToken: string) => Promise<LoginResult>;
   logout: () => void;
   refreshUser: () => void;
   isAuthenticated: boolean;

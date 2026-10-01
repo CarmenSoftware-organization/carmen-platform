@@ -67,9 +67,6 @@ export const en = {
     clusterAdminView: 'Cluster Admin view',
     profile: 'Profile',
     logOut: 'Log out',
-    logoutConfirmTitle: 'Log out?',
-    logoutConfirmDescription:
-      "You'll be signed out of the Carmen inventory app too.",
     theme: 'Theme',
     viewChangelog: 'view changelog',
     version: 'Version',
@@ -983,15 +980,6 @@ export const en = {
       goBack: 'Go Back',
       goToDashboard: 'Go to Dashboard',
       goToClusterAdmin: 'Go to Cluster Admin',
-    },
-    platformAccessDenied: {
-      title: 'Access Denied',
-      bodyWithEmail: "You're signed in as {{email}}, but this account doesn't have access to Carmen Platform.",
-      bodyGeneric: "You're signed in, but this account doesn't have access to Carmen Platform.",
-      signOutAndRetry: 'Sign out and try a different account',
-      signOutConfirmTitle: 'Sign out?',
-      signOutConfirmDescription:
-        "You'll be signed out of Carmen Platform and the Carmen inventory app, so you can try a different account.",
     },
     changelog: {
       title: 'Changelog',
@@ -4494,11 +4482,11 @@ export const en = {
     passwordLabel: 'Password',
     passwordPlaceholder: 'Enter your password',
     passwordRequired: 'Password is required',
+    accessDenied: 'Access denied',
     failed: 'Login failed',
     submit: 'Sign in',
     submitting: 'Signing in…',
     locked: 'Please wait',
     backToHome: 'Back to home',
-    signInFailed: 'Sign-in failed. Please try again.',
   },
 };

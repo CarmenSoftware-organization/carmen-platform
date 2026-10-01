@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
-import { syncThemeCookie } from "../utils/themeCookie";
 
 type Theme = "light" | "dark" | "system";
 
@@ -40,9 +39,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     localStorage.setItem("theme", theme);
-    // Also expose the choice to the Keycloak login page (a different origin, so it cannot see
-    // localStorage) — see utils/themeCookie.ts.
-    syncThemeCookie(theme);
   }, [theme]);
 
   // Listen for OS preference changes when in system mode
