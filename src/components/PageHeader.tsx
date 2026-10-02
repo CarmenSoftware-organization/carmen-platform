@@ -43,7 +43,7 @@ export function PageHeader({
           ) : (
             <h1 className="text-xl font-semibold tracking-tight truncate">{title}</h1>
           )}
-          {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+          {subtitle && <div className="text-sm text-muted-foreground">{subtitle}</div>}
           {audit && <AuditMeta variant="header" audit={audit} now={now} />}
         </div>
       </div>
