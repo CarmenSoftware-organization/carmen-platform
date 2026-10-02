@@ -31,9 +31,9 @@ describe('crumbsFromPath', () => {
     ]);
   });
 
-  it('leaves the broadcasts section crumb unlinked (no index route)', () => {
+  it('links the broadcasts section crumb (it has an index route)', () => {
     expect(crumbsFromPath('/broadcasts/new')).toEqual([
-      { labelKey: 'breadcrumb.broadcasts', fallback: 'Broadcasts' },
+      { labelKey: 'breadcrumb.broadcasts', fallback: 'Broadcasts', to: '/broadcasts' },
       { labelKey: 'breadcrumb.new', fallback: 'New' },
     ]);
   });

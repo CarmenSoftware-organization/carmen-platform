@@ -46,10 +46,19 @@ const SEGMENT_KEYS: Record<string, TKey> = {
 const titleCase = (seg: string): string =>
   seg.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
-// Section segments with no index route of their own — only child routes exist
-// (e.g. /platform/roles, /broadcasts/new). Linking to the bare segment would
-// hit the router's catch-all, which now renders the 404 page.
-const NON_NAVIGABLE = new Set(['platform', 'broadcasts', 'cluster-admin']);
+// Section paths with no index route of their own — only child routes exist (e.g.
+// /platform/roles, /licenses/bu-quota/new). Keyed by full path, not segment name: the
+// same segment can be a real page elsewhere (/subscriptions vs /licenses/subscriptions).
+// Linking to one of these hits the catch-all 404, or worse a param route —
+// /licenses/bu-quota matches /licenses/:clusterId and fires requests with clusterId
+// "bu-quota". Keep in sync with the routes in App.tsx.
+const NON_NAVIGABLE = new Set([
+  '/platform',
+  '/licenses/bu-quota',
+  '/licenses/interface',
+  '/licenses/seats',
+  '/licenses/subscriptions',
+]);
 
 // Segments that are opaque record ids (uuid-ish) carry no label of their own.
 const isIdSegment = (seg: string): boolean =>
@@ -76,8 +85,9 @@ export function crumbsFromPath(pathname: string): Crumb[] {
     .filter(({ seg }) => !isIdSegment(seg));
   return meaningful.map(({ seg, index }, i) => {
     const isLast = i === meaningful.length - 1;
-    if (isLast || NON_NAVIGABLE.has(seg)) return crumbFor(seg);
-    return crumbFor(seg, `/${segs.slice(0, index + 1).join('/')}`);
+    const to = `/${segs.slice(0, index + 1).join('/')}`;
+    if (isLast || NON_NAVIGABLE.has(to)) return crumbFor(seg);
+    return crumbFor(seg, to);
   });
 }
 
