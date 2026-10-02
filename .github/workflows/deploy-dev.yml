@@ -27,7 +27,7 @@ jobs:
       - run: bun install --frozen-lockfile
 
       # build:dev อ่าน .env.dev ซึ่ง gitignore ไว้ — CI จึงต้องส่งค่าเข้ามาทาง
-      # process env แทน (loadEnv ใน vite.config.ts รวม REACT_APP_* จาก process ให้)
+      # process env แทน (loadEnv ใน vite.config.mts รวม REACT_APP_* จาก process ให้)
       #
       # REACT_APP_OTEL_ENABLED เป็น **build-time** ไม่ใช่ runtime: Vite แทนค่าตอน
       # build ถ้าไม่ตั้งตรงนี้ dynamic import ของ telemetry จะถูกตัดทิ้งทั้งก้อน

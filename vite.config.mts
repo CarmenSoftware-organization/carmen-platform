@@ -1,7 +1,7 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import checker from 'vite-plugin-checker';
-import path from 'path';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'REACT_APP_');
@@ -42,7 +42,7 @@ export default defineConfig(({ mode }) => {
     // ไฟล์เดิมทั้ง repo ยังใช้ relative path ตามเดิม alias นี้ไม่บังคับให้ใครย้าย
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, './src'),
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
     },
     server: {
