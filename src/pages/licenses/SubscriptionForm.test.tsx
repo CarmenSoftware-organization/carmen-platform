@@ -365,11 +365,13 @@ describe('SubscriptionForm — cluster BU roster pagination (bounded, never perp
     expect(businessUnitService.getAll).toHaveBeenNthCalledWith(1, {
       page: 1,
       perpage: 100,
+      sort: 'code:asc',
       advance: JSON.stringify({ where: { cluster_id: 'c1' } }),
     });
     expect(businessUnitService.getAll).toHaveBeenNthCalledWith(2, {
       page: 2,
       perpage: 100,
+      sort: 'code:asc',
       advance: JSON.stringify({ where: { cluster_id: 'c1' } }),
     });
   });

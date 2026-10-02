@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import businessUnitService from '../services/businessUnitService';
+import { fetchAllBusinessUnits } from '../utils/fetchAllBusinessUnits';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { Skeleton } from './ui/skeleton';
@@ -37,9 +37,7 @@ export const BusinessUnitMultiSelect: React.FC<BusinessUnitMultiSelectProps> = (
     (async () => {
       try {
         setLoading(true);
-        const data = await businessUnitService.getAll({ perpage: -1 });
-        const items = data.data || data;
-        const list: BusinessUnit[] = Array.isArray(items) ? items : [];
+        const list = await fetchAllBusinessUnits({ label: 'BusinessUnitMultiSelect' });
         const sorted = [...list].sort((a, b) =>
           (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase()),
         );

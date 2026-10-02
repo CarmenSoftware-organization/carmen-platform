@@ -4,7 +4,7 @@ import Layout from '../../components/Layout';
 import { PageHeader } from '../../components/PageHeader';
 import { TabStrip, type TabStripItem } from '../../components/TabStrip';
 import clusterService from '../../services/clusterService';
-import businessUnitService from '../../services/businessUnitService';
+import { fetchAllBusinessUnits } from '../../utils/fetchAllBusinessUnits';
 import clusterLicenseService from '../../services/clusterLicenseService';
 import { useAuth } from '../../context/AuthContext';
 import { devLog, isNotFoundError } from '../../utils/errorParser';
@@ -97,12 +97,8 @@ const ClusterLicenseDetail: React.FC = () => {
   useEffect(() => {
     void (async () => {
       try {
-        // เส้นทางเดียวกับ ClusterEdit.tsx:205-219 — envelope `{ data }` ต้อง unwrap เอง
-        const data = await businessUnitService.getAll({ perpage: -1 });
-        const items = data.data || data;
-        const all: BusinessUnit[] = Array.isArray(items) ? items : [];
-        const filtered = all.filter((bu) => bu.cluster_id === clusterId);
-        setBus([...filtered].sort((a, b) =>
+        const all = await fetchAllBusinessUnits({ clusterId, label: 'ClusterLicenseDetail.bus' });
+        setBus([...all].sort((a, b) =>
           (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase())));
       } catch (err) {
         devLog('Failed to load business units:', err);

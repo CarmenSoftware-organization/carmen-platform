@@ -15,11 +15,17 @@ const tenantSeedService = {
    * Stream a single-BU seed run as NDJSON SeedProgressEvents. Uses fetch (not
    * EventSource) so it can send the bearer token + x-app-id. Rejects on a
    * pre-stream HTTP error or a terminal error event; resolves with the `done` summary.
+   *
+   * `signal` only stops the browser listening. The gateway unsubscribes from the RPC
+   * stream when the response closes (`tenant-seeds.controller.ts`, `res.on('close')`);
+   * whether micro-business finishes the in-flight set is unverified. Re-running is safe
+   * either way — seeding skips rows that already exist (`SeedDeploySummary.skipped`).
    */
   deployStream: async (
     buId: string,
     onEvent: (e: SeedProgressEvent) => void,
     keys?: string[],
+    signal?: AbortSignal,
   ): Promise<SeedDeploySummary> => {
     const base = api.defaults.baseURL ?? '';
     const hasKeys = Array.isArray(keys) && keys.length > 0;
@@ -31,6 +37,7 @@ const tenantSeedService = {
         ...(hasKeys ? { 'Content-Type': 'application/json' } : {}),
       },
       ...(hasKeys ? { body: JSON.stringify({ keys }) } : {}),
+      signal,
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));

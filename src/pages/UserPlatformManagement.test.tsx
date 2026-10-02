@@ -127,8 +127,9 @@ const roleOptionsResponse = {
     { id: 'role-1', name: 'Support Admin' },
     { id: 'role-2', name: 'Cluster Admin' },
   ],
+  paginate: { total: 2 },
 };
-const clusterOptionsResponse = { data: [{ id: 'cluster-1', name: 'Acme' }] };
+const clusterOptionsResponse = { data: [{ id: 'cluster-1', name: 'Acme' }], paginate: { total: 1 } };
 
 const renderPage = () =>
   render(

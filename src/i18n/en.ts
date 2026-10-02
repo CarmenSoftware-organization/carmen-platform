@@ -19,6 +19,7 @@ export const en = {
     businessUnits: 'Business Units',
     licenses: 'Licenses',
     tenantMigrations: 'Tenant Migrations',
+    tenantSeeds: 'Tenant Seed Data',
     dataImport: 'Data Import',
     users: 'Users',
     reportTemplates: 'Report Templates',
@@ -53,6 +54,8 @@ export const en = {
     // กลุ่มของเมนูฝั่งดูแลคลัสเตอร์ ใช้โดยหน้าสวิตช์ฟีเจอร์เพื่อจัดกลุ่มคีย์ cluster_admin_*
     // ตัว Sidebar ของ ClusterAdminLayout เองไม่ได้ตั้ง groupKey จึงไม่แสดงหัวข้อนี้
     clusterAdmin: 'Cluster administration',
+    // Permission resources with no menu entry of their own (Role Edit groups by menu section)
+    other: 'Other',
   },
   sidebar: {
     collapse: 'Collapse',
@@ -85,6 +88,7 @@ export const en = {
     clusters: 'Clusters',
     businessUnits: 'Business Units',
     tenantMigrations: 'Tenant Migrations',
+    tenantSeeds: 'Tenant Seed Data',
     dataImport: 'Data Import',
     users: 'Users',
     reportTemplates: 'Report Templates',
@@ -441,6 +445,11 @@ export const en = {
       // verbatim from pages.clusterAdmin.fifo (identical to English; FIFO is not translated
       // in either language).
       fifo: 'FIFO',
+      // Third calculation_method value (backend enum_calculation_method gained a third
+      // member). Same two call sites as fifo above: BusinessUnitEdit.tsx's
+      // getCalculationMethodLabel() / CalculationSettingsSection.tsx's <option>, plus
+      // clusterAdmin/BusinessUnitForm.tsx's own getCalculationMethodLabel().
+      averagePerLocation: 'Average per location',
     },
     // Nouns used as labels, headings and column titles — NOT toast-insertable (see entity.*
     // below for the toast-safe forms). Ten of these lived in `entity.*` until the phase-2
@@ -576,10 +585,9 @@ export const en = {
       // none, matching the source's separate aria-label string.
       searchBusinessUnitsAria: 'Search business units',
       noBusinessUnitsFound: 'No business units found.',
-      // TenantSeedCard.tsx / TenantMigrationCard.tsx / InterfaceEntitlementCard.tsx all
-      // gate on isSuperAdmin with this exact disabledReason string — byte-identical
-      // across all three files, so one shared key rather than three copies.
-      superAdminRequired: 'Super-admin required.',
+      // Shared disabled reason for actions gated on a platform permission key
+      // (TenantMigrationCard/TenantSeedCard and the two tenant management pages).
+      permissionRequired: 'Requires the {{permission}} permission.',
       // TenantSeedCard.tsx / TenantMigrationCard.tsx's shared precondition message
       // (byte-identical in both).
       configureDbPoolFirst: 'Configure a database pool and schema first.',
@@ -2915,14 +2923,12 @@ export const en = {
       // --- Task 4: NumberFormatsSection.tsx ---
       numberFormatsTitle: 'Number formats',
       numberFormatsDescription: 'Numeric display format configuration',
-      perPageFormatLabel: 'Per page format',
       amountFormatLabel: 'Amount format',
       quantityFormatLabel: 'Quantity format',
       recipeFormatLabel: 'Recipe format',
       // Live preview beside each JSON blob (2026-08-31). `sample` is the number the format
       // is applied to, so the caption and the rendered value always agree.
       formatPreviewSample: '{{sample}} shows as',
-      formatPreviewPerPage: 'Rows per page:',
       formatPreviewEmpty: 'Not set — the tenant default applies.',
       formatPreviewInvalidJson: "Not valid JSON — this won't apply.",
       formatPreviewInvalidOptions: "Valid JSON, but not a usable format — this won't apply.",
@@ -3409,14 +3415,13 @@ export const en = {
     },
     tenantMigration: {
       startingDeploy: 'Starting deploy…',
-      disabledOrSuperAdmin: 'Migrations are disabled or require super-admin.',
+      disabledOrSuperAdmin: 'Migrations are disabled, or you lack the tenant migration permission.',
       alreadyRunning: 'A migration is already running. Try again shortly.',
-      seedDisabledOrSuperAdmin: 'Seeding is disabled or requires super-admin.',
+      seedDisabledOrSuperAdmin: 'Seeding is disabled, or you lack the tenant seed permission.',
       deployingAll: 'Deploying all tenants…',
       // TenantMigrationManagement
       title: 'Tenant migrations',
       subtitle: 'Check which tenant databases are behind on schema migrations, and roll them out.',
-      superAdminRequired: 'Super-admin required.',
       alreadyUpToDate: 'Already up to date.',
       upToDate: 'up to date',
       deployCompleted: 'Deploy completed.',
@@ -3469,6 +3474,65 @@ export const en = {
       actionRolledBack: 'Rolled back',
       resolveButton: 'Resolve',
       resolveSuccess: 'Resolved {{name}} for {{code}}',
+    },
+    tenantSeed: {
+      // TenantSeedManagement — fleet view of the per-BU TenantSeedCard
+      title: 'Tenant seed data',
+      subtitle: 'Check which tenant databases are missing default seed data, and fill the gaps.',
+      loadBuFailed: 'Failed to load business units: {{detail}}',
+      showingPartial: 'Showing {{shown}} of {{total}} business units. Increase the page size to see all.',
+      statusNotChecked: 'Not checked',
+      statusSeeded: 'Seeded',
+      statusMissing: '{{count}} missing',
+      statusNoDb: 'No DB',
+      statusError: 'Error',
+      noDbReason: 'This business unit has no database pool or schema configured.',
+      seedingProgress: 'Seeding {{done}}/{{total}}',
+      columnSets: 'Missing sets',
+      columnLastChecked: 'Last Checked',
+      columnMissingCsv: 'Missing rows',
+      columnErrorCsv: 'Error',
+      check: 'Check',
+      checkAll: 'Check all',
+      checking: 'Checking...',
+      seed: 'Seed',
+      seedAll: 'Seed all missing',
+      seedMissing: 'Seed {{count}} missing',
+      nothingToSeed: 'Every checked tenant is fully seeded — nothing to seed.',
+      seedUncheckedHint: 'Not checked yet. Run Check all first to see what this would touch.',
+      batchProgress: 'BU {{index}}/{{total}} — {{code}}',
+      checkAllDone: 'Checked {{count}} business units.',
+      checkAllPartial: 'Checked {{ok}} · {{failed}} failed.',
+      seededOne: 'Created {{count}} rows in {{code}}.',
+      nothingCreated: '{{code}} was already fully seeded.',
+      seedAllDone: 'Seeded {{count}} business units.',
+      seedAllPartial: 'Seeded {{ok}} · {{failed}} failed.',
+      seedTitle: 'Seed default data?',
+      seedDescription: 'Choose which sets to seed in {{name}} ({{code}}). Rows that already exist are skipped.',
+      seedAllTitle: 'Seed all missing tenants?',
+      seedAllDescription: 'Choose which sets to seed across {{count}} business units, one at a time. Rows that already exist are skipped. Leaving this page stops before the next business unit.',
+      selectAll: 'Select all',
+      selectNone: 'Clear',
+      setMissing: '{{count}} missing',
+      setMissingInBus: '{{count}} missing in {{buCount}} BU',
+      seedSelected: 'Seed {{count}} rows',
+      nothingSelected: 'Select at least one set',
+      showItemsAria: 'Show missing rows for {{label}}',
+      hideItemsAria: 'Hide missing rows for {{label}}',
+      nothingSelectedToSeed: 'None of the selected sets are missing in any business unit.',
+      searchPlaceholder: 'Search business units...',
+      emptyTitle: 'No business units',
+      emptyDescription: 'Create a business unit before seeding tenant data.',
+      goToBusinessUnits: 'Go to Business Units',
+      tenantsSeeded: 'Tenants seeded',
+      legendSeeded: 'Seeded',
+      legendMissing: 'Missing',
+      legendError: 'Error',
+      legendNoDb: 'No DB',
+      missingRows: 'missing rows',
+      notCheckedYet: 'Not checked yet — run Check all to see which tenants are missing seed data.',
+      chartAria: '{{seeded}} seeded, {{missing}} missing, {{errored}} errored',
+      notCheckedAria: 'Seed status not checked yet',
     },
     // ── slice 9c: Platform Config ──
     // หน้านี้และการ์ดทั้งหมดเป็น "ไทยล้วน" มาก่อน — ผู้ใช้อังกฤษอ่านไทยมาตลอด
@@ -3871,6 +3935,17 @@ export const en = {
       // แทน noAccessOther/-Plural ที่ถูกถอด — เชิงอรรถนั้นบอกจำนวน resource ที่เอื้อมไม่ถึง
       // ตอนนี้แถวเส้นประบอกเองว่าอันไหน ป้ายนี้จึงอธิบายแค่ว่าเส้นประแปลว่าอะไร
       withheldLegend: 'Dashed actions are in the catalog but not granted to this role.',
+      // คีย์ที่ถือแล้วให้สิทธิ์เพิ่มแก่ตัวเองได้ — รายการอยู่ใน utils/permissionRisk.ts
+      escalationWarning: 'Can grant itself more access:',
+      permissionDelta: '+{{added}} −{{removed}} permissions',
+      chipAdded: '(added)',
+      chipRemoved: '(removed)',
+      accessShapeAria: 'Access shape: {{summary}}',
+      // Resources with no menu entry of their own — named for the feature they gate
+      resourceName: {
+        activityLog: 'Record History',
+        license: 'License Enforcement',
+      },
       // grantSummary — ประกอบจากหลายท่อนคั่นด้วย ' · ' เดิมปั้นพหูพจน์ตอนรัน
       noPermissionsGranted: 'No permissions granted',
       nPermissions: '{{count}} permission',

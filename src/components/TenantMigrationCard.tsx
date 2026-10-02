@@ -18,7 +18,7 @@ interface TenantMigrationCardProps {
   buCode: string;
   buName: string;
   hasDbConnection: boolean;
-  isSuperAdmin: boolean;
+  canApply: boolean;
 }
 
 export const TenantMigrationCard = ({
@@ -26,7 +26,7 @@ export const TenantMigrationCard = ({
   buCode,
   buName,
   hasDbConnection,
-  isSuperAdmin,
+  canApply,
 }: TenantMigrationCardProps) => {
   const { t } = useI18n();
   const [status, setStatus] = useState<TenantMigrationStatus | null>(null);
@@ -44,13 +44,15 @@ export const TenantMigrationCard = ({
   const [failedMigration, setFailedMigration] = useState<string | undefined>(undefined);
   const [resolveOpen, setResolveOpen] = useState(false);
 
-  const disabledReason = !isSuperAdmin
-    ? t('common.state.superAdminRequired')
-    : !hasDbConnection
-    ? t('common.state.configureDbPoolFirst')
-    : null;
+  // Checking status is a read; applying/resolving writes to the BU schema. They need different
+  // permissions, so each carries its own reason — a read-only user can still check.
+  const checkReason = !hasDbConnection ? t('common.state.configureDbPoolFirst') : null;
+  const applyReason = !canApply
+    ? t('common.state.permissionRequired', { permission: 'tenant_migration.apply' })
+    : checkReason;
   const busy = loadingStatus || deploying;
-  const actionsDisabled = disabledReason !== null || busy;
+  const checkDisabled = checkReason !== null || busy;
+  const applyDisabled = applyReason !== null || busy;
 
   const fetchStatus = async () => {
     setLoadingStatus(true);
@@ -106,9 +108,9 @@ export const TenantMigrationCard = ({
 
   // Wrap a (possibly disabled) button so its tooltip still fires — Fluent UI tooltips
   // don't fire over a disabled button, so the trigger wraps a focusable span.
-  const withTooltip = (el: ReactElement): ReactElement =>
-    disabledReason ? (
-      <Tooltip content={disabledReason}>
+  const withTooltip = (el: ReactElement, reason: string | null): ReactElement =>
+    reason ? (
+      <Tooltip content={reason}>
         {/* Focusable wrapper so the disabled button's tooltip is reachable by keyboard,
             not just hover (a disabled <button> is removed from the tab order). */}
         {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
@@ -136,7 +138,7 @@ export const TenantMigrationCard = ({
               size="sm"
               variant="outline"
               onClick={fetchStatus}
-              disabled={actionsDisabled}
+              disabled={checkDisabled}
             >
               {loadingStatus ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -149,6 +151,7 @@ export const TenantMigrationCard = ({
                 ? t('common.action.recheckStatus')
                 : t('common.action.checkStatus')}
             </Button>,
+            checkReason,
           )}
 
           {/* Before the first check the card said nothing about state, which reads as
@@ -193,11 +196,12 @@ export const TenantMigrationCard = ({
                 size="sm"
                 variant="destructive"
                 onClick={() => setConfirmOpen(true)}
-                disabled={actionsDisabled}
+                disabled={applyDisabled}
               >
                 <Play className="mr-2 h-4 w-4" />
                 {t('components.tenantMigrationCard.applyMigrationsButton', { count: pending.length })}
               </Button>,
+              applyReason,
             )}
           </div>
         )}
@@ -220,11 +224,12 @@ export const TenantMigrationCard = ({
                 size="sm"
                 variant="secondary"
                 onClick={() => setResolveOpen(true)}
-                disabled={actionsDisabled}
+                disabled={applyDisabled}
               >
                 <Wrench className="mr-2 h-4 w-4" />
                 {t('pages.tenantMigration.resolve')}
               </Button>,
+              applyReason,
             )}
           </div>
         )}
@@ -301,7 +306,7 @@ export const TenantMigrationCard = ({
         defaultMigrationName={failedMigration}
         onOpenChange={setResolveOpen}
         onResolved={fetchStatus}
-        disabledReason={disabledReason}
+        disabledReason={applyReason}
       />
     </Card>
   );

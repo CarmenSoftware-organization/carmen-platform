@@ -71,10 +71,21 @@ interface RoleIdentityHeroProps {
   description?: string;
   audit?: NormalizedAudit;
   actions?: React.ReactNode;
+  /**
+   * The reach drawn as a shape (`AccessShapeStrip`), above the sentence it illustrates. The
+   * page passes it only from a complete catalog — see the strip's own note on why.
+   */
+  shape?: React.ReactNode;
+  /**
+   * Granted keys that let the role raise its own access (`utils/permissionRisk`). Named here,
+   * once, rather than only tinted in the grid below the fold — it is the fact an access
+   * reviewer most needs and the one a blue chip hides best.
+   */
+  escalationKeys?: string[];
 }
 
 /** Read-first identity header for a platform role: who it is + how much it can do. */
-export function RoleIdentityHero({ name, isActive, permissions, catalogSize, reachText, description, audit, actions }: RoleIdentityHeroProps) {
+export function RoleIdentityHero({ name, isActive, permissions, catalogSize, reachText, description, audit, actions, shape, escalationKeys }: RoleIdentityHeroProps) {
   const { t } = useI18n();
   const computed = permissionSummary(permissions, catalogSize, t);
   const reach = computed.full || !reachText ? computed : { ...computed, text: reachText };
@@ -92,12 +103,31 @@ export function RoleIdentityHero({ name, isActive, permissions, catalogSize, rea
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
             <Badge variant={isActive ? 'success' : 'secondary'}>{isActive ? t('common.status.active') : t('common.status.inactive')}</Badge>
           </div>
+          {/* The reach is the fact this page exists to state, so it no longer sits in the
+              11px meta type beside the audit line: the shape first, the sentence under it. */}
+          {shape && <div className="mt-3">{shape}</div>}
           <div
-            className={`mt-2 flex items-center gap-1.5 text-[11px] ${reach.full ? 'text-warning' : 'text-muted-foreground/80'}`}
+            className={`mt-1.5 flex items-center gap-1.5 text-sm ${reach.full ? 'text-warning' : 'text-muted-foreground'}`}
           >
-            {reach.full && <AlertTriangle className="size-3.5 shrink-0" />}
+            {reach.full && <AlertTriangle className="size-4 shrink-0" />}
             {reach.text}
           </div>
+          {!reach.full && escalationKeys && escalationKeys.length > 0 && (
+            // Amber carries the icon only: `--warning` as text on the light ground is 3.08:1
+            // (see the code-palette note in index.css), below AA for body type.
+            <div className="mt-1 flex items-start gap-1.5 text-sm">
+              <AlertTriangle className="text-warning mt-0.5 size-4 shrink-0" />
+              <span>
+                {t('pages.roles.escalationWarning')}{' '}
+                {escalationKeys.map((k, i) => (
+                  <span key={k}>
+                    {i > 0 && ', '}
+                    <code className="font-mono text-xs">{k}</code>
+                  </span>
+                ))}
+              </span>
+            </div>
+          )}
           <AuditMeta variant="header" audit={audit ?? {}} className="text-muted-foreground mt-2 text-[11px] leading-tight" />
         </div>
 

@@ -34,6 +34,7 @@ const LicensePurchaseForm = lazy(() => import("./pages/licenses/LicensePurchaseF
 const LicenseCatalog = lazy(() => import("./pages/LicenseCatalog"));
 const LicenseFeatureGroupEdit = lazy(() => import("./pages/LicenseFeatureGroupEdit"));
 const TenantMigrationManagement = lazy(() => import("./pages/TenantMigrationManagement"));
+const TenantSeedManagement = lazy(() => import("./pages/TenantSeedManagement"));
 const PlatformMigrationManagement = lazy(() => import("./pages/PlatformMigrationManagement"));
 const TenantImportWizard = lazy(() => import("./pages/TenantImportWizard"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
@@ -268,8 +269,16 @@ function AppContent() {
             <Route
               path="/tenant-migrations"
               element={
-                <PrivateRoute requiredPermission="cluster.read" feature="tenant_migrations">
+                <PrivateRoute requiredPermission="tenant_migration.read" feature="tenant_migrations">
                   <TenantMigrationManagement />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/tenant-seeds"
+              element={
+                <PrivateRoute requiredPermission="tenant_seed.read" feature="tenant_seeds">
+                  <TenantSeedManagement />
                 </PrivateRoute>
               }
             />

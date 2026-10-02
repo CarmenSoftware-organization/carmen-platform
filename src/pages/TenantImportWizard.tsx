@@ -8,7 +8,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { BuSwitcher } from '../components/BuSwitcher';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
-import businessUnitService from '../services/businessUnitService';
+import { fetchAllBusinessUnits } from '../utils/fetchAllBusinessUnits';
 import preconfigImportService from '../services/preconfigImportService';
 import { parseApiError } from '../utils/errorParser';
 import type {
@@ -84,12 +84,12 @@ export default function TenantImportWizard() {
       // seeded in this environment) must not take the BU list down with it — the user
       // can still pick a BU even while the catalog fetch fails.
       const [listResult, catalogResult] = await Promise.allSettled([
-        businessUnitService.getAll({ perpage: 200 }),
+        fetchAllBusinessUnits({ label: 'TenantImportWizard.bus' }),
         preconfigImportService.getSteps(),
       ]);
 
       if (listResult.status === 'fulfilled') {
-        setBusinessUnits(listResult.value.data ?? []);
+        setBusinessUnits(listResult.value);
       } else {
         toast.error(parseApiError(listResult.reason).message);
       }

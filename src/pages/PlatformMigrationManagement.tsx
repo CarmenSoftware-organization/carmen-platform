@@ -20,7 +20,7 @@ import {
 } from '../components/ui/select';
 import platformMigrationService from '../services/platformMigrationService';
 import platformSeedService from '../services/platformSeedService';
-import businessUnitService from '../services/businessUnitService';
+import { fetchAllBusinessUnits } from '../utils/fetchAllBusinessUnits';
 import { BuSwitcher } from '../components/BuSwitcher';
 import { OpRow } from './platformMigration/OpRow';
 import { RunConsole } from './platformMigration/RunConsole';
@@ -174,7 +174,7 @@ export const PlatformMigrationManagement: React.FC = () => {
       if (!buLoadedRef.current && ops.some((o) => buParamOf(o))) {
         buLoadedRef.current = true;
         try {
-          setBusinessUnits((await businessUnitService.getAll({ perpage: 200 })).data ?? []);
+          setBusinessUnits(await fetchAllBusinessUnits({ label: 'PlatformMigration.bus' }));
         } catch (err) {
           // ไม่ทำให้ทั้งหน้าพัง — op อื่นยังกดได้ ส่วนตัวที่ต้องเลือก BU จะบอกเองตอนกดว่าไม่มีให้เลือก
           buLoadedRef.current = false;

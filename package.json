@@ -126,7 +126,8 @@
     "yaml": "^2.3.4",
     "flatted": "^3.3.2",
     "@codemirror/state": "$@codemirror/state",
-    "@codemirror/view": "$@codemirror/view"
+    "@codemirror/view": "$@codemirror/view",
+    "js-yaml": "^4.3.2"
   },
   "resolutions": {
     "brace-expansion": "^2.1.4",
@@ -136,6 +137,7 @@
     "yaml": "^2.3.4",
     "flatted": "^3.3.2",
     "@codemirror/state": "$@codemirror/state",
-    "@codemirror/view": "$@codemirror/view"
+    "@codemirror/view": "$@codemirror/view",
+    "js-yaml": "^4.3.2"
   }
 }

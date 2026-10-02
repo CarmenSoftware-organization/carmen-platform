@@ -38,6 +38,7 @@ import type {
   LicenseFeatureGroup, BuLicenseStatus, ClusterLicenseStatus,
 } from '../../types';
 import type { TKey } from '../../i18n/types';
+import { fetchAllPages, type PagedResponse } from '../../utils/fetchAllPages';
 
 type LicenseRow = SeatLicenseRow | BuQuotaLicenseRow | InterfaceLicenseRow;
 
@@ -655,16 +656,18 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   }, [config, ownerId]);
 
   // ตัวเลือกกลุ่มสิทธิ์ — ล้มเหลว = ไม่มีตัวเลือกให้เลือก ไม่ใช่หน้าล้ม (เหมือนตัวหารด้านบน)
-  // ขอ perpage 200 ครั้งเดียวไม่ทำ paginate: catalog กลุ่มมีขนาดจำกัดโดยธรรมชาติ (สิบต้น ๆ บน DEV)
+  // ดึงผ่าน fetchAllPages (เพดานหน้าละ 100) — catalog กลุ่มมีขนาดจำกัดโดยธรรมชาติ (สิบต้น ๆ บน DEV)
   useEffect(() => {
     if (config.selector !== 'feature-group' || !isNew) return;
     let alive = true;
     setGroupOptionsState('loading');
-    licenseFeatureGroupService
-      .getAll({ page: 1, perpage: 200, sort: 'sort_order:asc' })
-      .then((res) => {
+    fetchAllPages<LicenseFeatureGroup>(
+      (page, perpage) =>
+        licenseFeatureGroupService.getAll({ page, perpage, sort: 'sort_order:asc' }) as Promise<PagedResponse<LicenseFeatureGroup>>,
+      { label: 'LicensePurchaseForm.groups' },
+    )
+      .then((rows) => {
         if (!alive) return;
-        const rows = Array.isArray(res?.data) ? res.data : [];
         // ขายได้เฉพาะกลุ่ม interface ที่ยังขายอยู่ — กลุ่ม standard ผูกใบนี้ไม่ได้ backend ตอบ 400
         // `kind` เป็น optional ฝั่ง type (gateway รุ่นก่อน A1 ไม่ส่งมา) อ่าน absent เป็น 'standard'
         setGroupOptions(rows.filter((g) => (g.kind ?? 'standard') === 'interface' && g.is_active));

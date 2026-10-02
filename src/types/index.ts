@@ -152,7 +152,6 @@ export interface BusinessUnit {
   short_time_format?: string;
   timezone?: string;
   // Number Formats
-  perpage_format?: string;
   amount_format?: string;
   quantity_format?: string;
   recipe_format?: string;
@@ -545,6 +544,13 @@ export interface PermissionCatalogItem {
   resource: string;
   action: string;
   description?: string;
+  /**
+   * What the whole resource is, repeated on each of its actions. From the backend's permission
+   * seed (`PLATFORM_PERMISSION_RESOURCE_SEED`), not `tb_permission` — absent from a backend
+   * that predates it, hence optional.
+   */
+  resource_description?: string | null;
+  resource_description_th?: string | null;
   // `tb_permission` is seed data today (created_by_id null throughout) so these are always
   // absent in practice — kept optional so the mapper in permissionService can pass audit
   // fields through instead of silently dropping them if the backend ever populates them.

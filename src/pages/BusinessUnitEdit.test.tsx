@@ -116,7 +116,7 @@ beforeEach(() => {
   auth.isSuperAdmin = false;
   auth.hasPermission = () => true;
   (Element.prototype as unknown as { scrollIntoView: () => void }).scrollIntoView = vi.fn();
-  asMock(clusterService.getAll).mockResolvedValue({ data: [{ id: 'c1', name: 'Acme' }] });
+  asMock(clusterService.getAll).mockResolvedValue({ data: [{ id: 'c1', name: 'Acme' }], paginate: { total: 1 } });
   asMock(businessUnitService.getAll).mockResolvedValue({ data: [] });
   asMock(businessUnitService.getById).mockResolvedValue({ data: fakeBu });
   asMock(databasePoolService.getAll).mockResolvedValue({ data: [] });

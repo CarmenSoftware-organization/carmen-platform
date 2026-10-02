@@ -2,11 +2,21 @@ import { cn } from '../lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
 /**
+ * คำนำหน้าที่ backend ใส่ให้รหัส BU ที่สร้างตั้งแต่ 2026-10-01 (`BU-7K3M9Q2X`) — ไม่ใช่ตัวอักษร
+ * ที่บอกตัวตนของหน่วยนั้น ถ้าปล่อยไว้ ทุก BU ใหม่จะได้โมโนแกรม "BU" ซ้ำกันหมดในตาราง / switcher /
+ * การ์ด branding จึงตัดออกก่อนหยิบตัวอักษร BU เก่าไม่มีคำนำหน้าและ cluster ไม่เคยมี → ไม่กระทบ
+ * The `BU-` prefix the backend stamps on business-unit codes created since 2026-10-01. It is not
+ * identity, so it is stripped before the initials are taken — otherwise every new BU would wear the
+ * same "BU" monogram. Older BU codes and cluster codes never carry it and are unaffected.
+ */
+const BU_CODE_PREFIX = /^BU-/i;
+
+/**
  * Two-character identity token. The code wins over the name because a code is already the short
  * form people scan a list for ("ACME"); a name still has to be abbreviated to get there.
  */
 export const brandInitials = (name?: string, code?: string): string => {
-  const fromCode = (code ?? '').replace(/[^A-Za-z0-9]/g, '');
+  const fromCode = (code ?? '').replace(BU_CODE_PREFIX, '').replace(/[^A-Za-z0-9]/g, '');
   if (fromCode) return fromCode.slice(0, 2).toUpperCase();
   const words = (name ?? '').trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return '?';

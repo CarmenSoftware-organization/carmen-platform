@@ -12,7 +12,7 @@ import {
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import businessUnitService from '../../services/businessUnitService';
+import { fetchAllBusinessUnits } from '../../utils/fetchAllBusinessUnits';
 import clusterAdminService from '../../services/clusterAdminService';
 import { parseApiError } from '../../utils/errorParser';
 import { isValidEmail } from '../../utils/validation';
@@ -78,15 +78,8 @@ const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
       try {
         // Same cluster_id filter BusinessUnitList uses: the backend rejects a business unit
         // outside the cluster with a 400, so this filter is what keeps the picker honest.
-        // perpage: 200 is a fixed cap, not real pagination — a cluster with more than 200
-        // business units would silently lose the rest from this picker. Unlikely in practice
-        // and out of scope here, but a known bound rather than a silent one.
-        const data = await businessUnitService.getAll({
-          perpage: 200,
-          advance: JSON.stringify({ where: { cluster_id: clusterId } }),
-        });
-        const items = data.data || data;
-        setBusinessUnits(Array.isArray(items) ? items : []);
+        const bus = await fetchAllBusinessUnits({ clusterId, label: 'InviteUserDialog.bus' });
+        setBusinessUnits(bus);
       } catch (err: unknown) {
         const { message } = parseApiError(err, t);
         toast.error(t('common.state.failedToLoadBusinessUnits'), { description: message });

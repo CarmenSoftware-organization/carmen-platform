@@ -19,6 +19,13 @@ import businessUnitService from '../services/businessUnitService';
 import tenantMigrationService from '../services/tenantMigrationService';
 import { useAuth } from '../context/AuthContext';
 
+// hasPermission stand-in: read is always granted (the route requires it); apply is the variable.
+const authAs = (canApply: boolean) =>
+  ({
+    hasPermission: (key: string) =>
+      key === 'tenant_migration.read' || (canApply && key === 'tenant_migration.apply'),
+  }) as never;
+
 const BUS = [
   { id: 'b1', code: 'BU01', name: 'Hotel One', is_active: true },
   { id: 'b2', code: 'BU02', name: 'Hotel Two', is_active: true },
@@ -29,8 +36,8 @@ const renderPage = () => render(<MemoryRouter><TenantMigrationManagement /></Mem
 describe('TenantMigrationManagement', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useAuth).mockReturnValue({ isSuperAdmin: true } as never);
-    vi.mocked(businessUnitService.getAll).mockResolvedValue({ data: BUS } as never);
+    vi.mocked(useAuth).mockReturnValue(authAs(true));
+    vi.mocked(businessUnitService.getAll).mockResolvedValue({ data: BUS, paginate: { total: BUS.length } } as never);
   });
 
   it('renders a row per BU with Unknown status and does NOT fetch status on load', async () => {
@@ -179,33 +186,33 @@ describe('TenantMigrationManagement', () => {
     expect(capturedSignal?.aborted).toBe(true);
   });
 
-  it('disables all action buttons for a non-super-admin', async () => {
-    vi.mocked(useAuth).mockReturnValue({ isSuperAdmin: false } as never);
+  it('keeps Check enabled but disables Deploy all without tenant_migration.apply', async () => {
+    vi.mocked(useAuth).mockReturnValue(authAs(false));
     renderPage();
     await screen.findByText('BU01');
-    expect(screen.getByRole('button', { name: /check all/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /check all/i })).toBeEnabled();
     expect(screen.getByRole('button', { name: /deploy all/i })).toBeDisabled();
     for (const btn of screen.getAllByRole('button', { name: /^check$/i })) {
-      expect(btn).toBeDisabled();
+      expect(btn).toBeEnabled();
     }
   });
 
-  // Fix 1 (defence-in-depth): applyOne/deployAll now early-return `if (!isSuperAdmin) return;`
+  // Fix 1 (defence-in-depth): applyOne/deployAll now early-return `if (!canApply) return;`
   // before ever calling the service. The disabled buttons already block a normal click (see
   // the test above), so to prove the *handler's own* guard — not just the disabled attribute
-  // — is what stops the mutating call, these tests open the ConfirmDialog while isSuperAdmin
-  // is still true (a real, reachable state), then flip isSuperAdmin to false and force a
-  // re-render *before* clicking Confirm. The ConfirmDialog's own Confirm button is never
-  // itself gated on isSuperAdmin, so this is the one path that reaches the handler without
+  // — is what stops the mutating call, these tests open the ConfirmDialog while
+  // tenant_migration.apply is still granted (a real, reachable state), then revoke it and
+  // force a re-render *before* clicking Confirm. The ConfirmDialog's own Confirm button is
+  // never itself gated on canApply, so this is the one path that reaches the handler without
   // going through a disabled DOM button — modelling a permission revoked mid-session (e.g. a
   // role change or token refresh) between opening the dialog and confirming it. This also
-  // requires applyOne/deployAll's useCallback dependency arrays to include `isSuperAdmin`
-  // (fixed alongside the guard) — otherwise the callback would close over the stale `true`
-  // from when the dialog was opened and the guard would never see the revoked state.
-  describe('handler-level super-admin guard (defence-in-depth)', () => {
-    it('applyOne does NOT call deployStream if isSuperAdmin is revoked after the confirm dialog opens', async () => {
+  // requires applyOne/deployAll's useCallback dependency arrays to include `canApply` (fixed
+  // alongside the guard) — otherwise the callback would close over the stale `true` from when
+  // the dialog was opened and the guard would never see the revoked state.
+  describe('handler-level tenant_migration.apply guard (defence-in-depth)', () => {
+    it('applyOne does NOT call deployStream if tenant_migration.apply is revoked after the confirm dialog opens', async () => {
       const user = userEvent.setup();
-      vi.mocked(useAuth).mockReturnValue({ isSuperAdmin: true } as never);
+      vi.mocked(useAuth).mockReturnValue(authAs(true));
       vi.mocked(tenantMigrationService.getStatus).mockResolvedValue(
         { bu_id: 'b1', bu_code: 'BU01', up_to_date: false, has_pending: true, pending: ['m1', 'm2'], raw: '' } as never,
       );
@@ -218,7 +225,7 @@ describe('TenantMigrationManagement', () => {
       await user.click(await screen.findByRole('button', { name: /^apply$/i }));
       await screen.findByRole('dialog');
 
-      vi.mocked(useAuth).mockReturnValue({ isSuperAdmin: false } as never);
+      vi.mocked(useAuth).mockReturnValue(authAs(false));
       rerender(<MemoryRouter><TenantMigrationManagement /></MemoryRouter>);
 
       await user.click(screen.getByRole('button', { name: /apply migrations/i }));
@@ -226,7 +233,7 @@ describe('TenantMigrationManagement', () => {
       expect(tenantMigrationService.deployStream).not.toHaveBeenCalled();
     });
 
-    it('applyOne DOES call deployStream when isSuperAdmin stays true throughout (positive control)', async () => {
+    it('applyOne DOES call deployStream when tenant_migration.apply stays granted throughout (positive control)', async () => {
       const user = userEvent.setup();
       vi.mocked(tenantMigrationService.getStatus).mockResolvedValue(
         { bu_id: 'b1', bu_code: 'BU01', up_to_date: false, has_pending: true, pending: ['m1'], raw: '' } as never,
@@ -245,9 +252,9 @@ describe('TenantMigrationManagement', () => {
       expect(tenantMigrationService.deployStream).toHaveBeenCalledWith('b1', expect.any(Function), expect.any(AbortSignal));
     });
 
-    it('deployAll does NOT call deployAllStream if isSuperAdmin is revoked after the confirm dialog opens', async () => {
+    it('deployAll does NOT call deployAllStream if tenant_migration.apply is revoked after the confirm dialog opens', async () => {
       const user = userEvent.setup();
-      vi.mocked(useAuth).mockReturnValue({ isSuperAdmin: true } as never);
+      vi.mocked(useAuth).mockReturnValue(authAs(true));
       const { rerender } = renderPage();
       await screen.findByText('BU01');
 
@@ -255,7 +262,7 @@ describe('TenantMigrationManagement', () => {
       const dialog = await screen.findByRole('dialog');
       expect(within(dialog).getByRole('button', { name: /^deploy all$/i })).toBeInTheDocument();
 
-      vi.mocked(useAuth).mockReturnValue({ isSuperAdmin: false } as never);
+      vi.mocked(useAuth).mockReturnValue(authAs(false));
       rerender(<MemoryRouter><TenantMigrationManagement /></MemoryRouter>);
 
       await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^deploy all$/i }));
@@ -263,7 +270,7 @@ describe('TenantMigrationManagement', () => {
       expect(tenantMigrationService.deployAllStream).not.toHaveBeenCalled();
     });
 
-    it('deployAll DOES call deployAllStream when isSuperAdmin stays true throughout (positive control)', async () => {
+    it('deployAll DOES call deployAllStream when tenant_migration.apply stays granted throughout (positive control)', async () => {
       const user = userEvent.setup();
       vi.mocked(tenantMigrationService.deployAllStream).mockResolvedValue(
         { total: 2, succeeded: 2, failed: 0, results: [] } as never,
@@ -284,8 +291,8 @@ describe('TenantMigrationManagement', () => {
 describe('TenantMigrationManagement — table fit-content & sticky', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useAuth).mockReturnValue({ isSuperAdmin: true } as never);
-    vi.mocked(businessUnitService.getAll).mockResolvedValue({ data: BUS } as never);
+    vi.mocked(useAuth).mockReturnValue(authAs(true));
+    vi.mocked(businessUnitService.getAll).mockResolvedValue({ data: BUS, paginate: { total: BUS.length } } as never);
   });
 
   it('uses content-based (table-auto) layout and freezes three left columns', async () => {

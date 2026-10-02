@@ -16,6 +16,7 @@ import { TableSkeleton } from '../../components/TableSkeleton';
 import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import businessUnitService from '../../services/businessUnitService';
+import { fetchAllBusinessUnits } from '../../utils/fetchAllBusinessUnits';
 import clusterService from '../../services/clusterService';
 import { generateCSV, downloadCSV } from '../../utils/csvExport';
 import { parseApiError } from '../../utils/errorParser';
@@ -74,16 +75,12 @@ const BusinessUnitList: React.FC = () => {
       try {
         const [clusterRes, buRes] = await Promise.all([
           clusterService.getById(clusterId),
-          businessUnitService.getAll({
-            perpage: -1,
-            advance: JSON.stringify({ where: { cluster_id: clusterId } }),
-          }),
+          fetchAllBusinessUnits({ clusterId, label: 'ClusterAdmin.BusinessUnitList.rank' }),
         ]);
         if (cancelled) return;
         const cluster = clusterRes?.data || clusterRes;
         setBuCap(cluster?.bu_cap ?? 0);
-        const list = buRes?.data || buRes;
-        setRankSource(Array.isArray(list) ? list : []);
+        setRankSource(buRes);
       } catch {
         // Fail open — quota display is a courtesy, not a gate. The real 403 still comes from
         // the backend either way.

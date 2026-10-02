@@ -5,7 +5,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import clusterService from '../../services/clusterService';
-import businessUnitService from '../../services/businessUnitService';
+import { fetchAllBusinessUnits } from '../../utils/fetchAllBusinessUnits';
 import clusterLicenseService from '../../services/clusterLicenseService';
 import { devLog, isNotFoundError } from '../../utils/errorParser';
 import { activeLicense } from '../../utils/clusterLicense';
@@ -85,14 +85,10 @@ export default function ClusterAdminLicenses() {
     let cancelled = false;
     void (async () => {
       try {
-        // เส้นทางเดียวกับ ClusterEdit.tsx — envelope `{ data }` ต้อง unwrap เอง
-        const data = await businessUnitService.getAll({ perpage: -1 });
-        const items = data.data || data;
-        const all: BusinessUnit[] = Array.isArray(items) ? items : [];
+        const all = await fetchAllBusinessUnits({ clusterId, label: 'ClusterAdminLicenses.bus' });
         if (cancelled) return;
         setBus(
-          all
-            .filter((bu) => bu.cluster_id === clusterId)
+          [...all]
             .sort((a, b) => (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase())),
         );
       } catch (err) {

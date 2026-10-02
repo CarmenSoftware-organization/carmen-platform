@@ -3,6 +3,7 @@ import subscriptionService from '../../services/subscriptionService';
 import { useAuth } from '../../context/AuthContext';
 import { devLog } from '../../utils/errorParser';
 import type { Subscription } from '../../types';
+import { fetchAllPages, type PagedResponse } from '../../utils/fetchAllPages';
 
 export interface BusinessUnitSubscriptions {
   items: Subscription[];
@@ -50,18 +51,21 @@ export function useBusinessUnitSubscriptions(
     setLoading(true);
     setFailed(false);
     const paginate = {
-      perpage: -1,
       sort: 'end_date:desc',
       advance: JSON.stringify({
         where: { tb_subscription_bu: { some: { business_unit_id: buId, deleted_at: null } } },
       }),
     };
-    (clusterId
-      ? subscriptionService.listForCluster(clusterId, paginate)
-      : subscriptionService.getAll(paginate))
-      .then((res) => {
+    const list = (page: number, perpage: number) => {
+      const p = { ...paginate, page, perpage };
+      return (clusterId
+        ? subscriptionService.listForCluster(clusterId, p)
+        : subscriptionService.getAll(p)) as Promise<PagedResponse<Subscription>>;
+    };
+    fetchAllPages<Subscription>(list, { label: 'useBusinessUnitSubscriptions', context: { buId } })
+      .then((rows) => {
         if (mine !== reqId.current) return;
-        setItems(res?.data ?? []);
+        setItems(rows);
       })
       .catch((err) => {
         if (mine !== reqId.current) return;

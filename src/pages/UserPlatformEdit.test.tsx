@@ -62,8 +62,8 @@ beforeEach(() => {
   asMock(userService.getById).mockResolvedValue({ data: fakeUser });
   asMock(userRoleService.list).mockResolvedValue([assignment]);
   asMock(userPlatformService.getAll).mockResolvedValue({ data: [], paginate: { total: 0 } });
-  asMock(roleService.getAll).mockResolvedValue({ data: [{ id: 'r1', name: 'Platform Admin' }] });
-  asMock(clusterService.getAll).mockResolvedValue({ data: [{ id: 'c1', name: 'Acme Cluster' }] });
+  asMock(roleService.getAll).mockResolvedValue({ data: [{ id: 'r1', name: 'Platform Admin' }], paginate: { total: 1 } });
+  asMock(clusterService.getAll).mockResolvedValue({ data: [{ id: 'c1', name: 'Acme Cluster' }], paginate: { total: 1 } });
 });
 
 const renderPage = () =>

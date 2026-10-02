@@ -26,6 +26,8 @@ import { normalizeAudit } from '../utils/audit';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { PermissionGrid } from './roleEdit/PermissionGrid';
+import { AccessShapeStrip } from './roleEdit/AccessShapeStrip';
+import { ESCALATION_KEYS } from '../utils/permissionRisk';
 import { actionRank } from '../utils/permissionOrder';
 import { resourceRank } from '../components/nav/platformNav';
 import { ReadOnlyField } from '../components/ReadOnlyField';
@@ -311,6 +313,7 @@ const RoleEdit: React.FC = () => {
             .sort((a, b) => actionRank(a.action) - actionRank(b.action));
           return {
             resource,
+            resourceDescription: { en: items[0]?.resource_description, th: items[0]?.resource_description_th },
             actions,
             total: items.length,
             grantedCount: actions.filter((a) => a.granted).length,
@@ -386,6 +389,24 @@ const RoleEdit: React.FC = () => {
     else if (verbs.size > 1 && verbs.size <= 3) parts.push(Array.from(verbs).sort().join(' · '));
     return parts.join(' · ');
   }, [formData.permissions.length, grantView, t]);
+
+  // In ESCALATION_KEYS order rather than grant order, so the warning reads the same way
+  // whichever order the keys were toggled on in.
+  const escalationKeys = useMemo(
+    () => ESCALATION_KEYS.filter((k) => formData.permissions.includes(k)),
+    [formData.permissions],
+  );
+
+  const originalSet = useMemo(() => new Set(originalPermissions), [originalPermissions]);
+
+  // What Save will send, as the save bar states it. A new role has no baseline to diff against
+  // — everything is an add — so it shows no delta.
+  const permissionDelta = useMemo(() => {
+    if (isNew) return null;
+    const added = formData.permissions.filter((k) => !originalSet.has(k)).length;
+    const removed = originalPermissions.filter((k) => !formData.permissions.includes(k)).length;
+    return added || removed ? { added, removed } : null;
+  }, [isNew, formData.permissions, originalPermissions, originalSet]);
 
   if (loading) {
     return (
@@ -469,6 +490,15 @@ const RoleEdit: React.FC = () => {
           reachText={!isNew && !editing ? grantSummary : undefined}
           description={!editing ? formData.description : undefined}
           audit={roleAudit}
+          escalationKeys={escalationKeys}
+          shape={
+            grantView.complete ? (
+              <AccessShapeStrip
+                rows={grantView.rows}
+                ariaLabel={t('pages.roles.accessShapeAria', { summary: grantSummary })}
+              />
+            ) : undefined
+          }
           actions={
             !isNew && !editing && (
               <Can permission="platform_role.update">
@@ -516,7 +546,7 @@ const RoleEdit: React.FC = () => {
                       // Without the catalog the page still knows every key the role holds, so
                       // it renders those and nothing else. It must not grey anything: it
                       // cannot tell a withheld action from one it never learned about.
-                      <PermissionGrid rows={grantView.rows} />
+                      <PermissionGrid rows={grantView.rows} complete={false} />
                     )
                   ) : catalogLoading ? (
                     <div className="text-muted-foreground flex items-center justify-center py-8 text-sm" role="status">
@@ -533,6 +563,7 @@ const RoleEdit: React.FC = () => {
                         rows={grantView.rows}
                         onToggle={editing ? togglePermission : undefined}
                         onToggleResource={editing ? toggleResource : undefined}
+                        original={editing && !isNew ? originalSet : undefined}
                       />
                       {/* The legend earns its place only where a dashed chip actually appears
                           — and only for a reader: while editing, a dashed verb is a button you
@@ -636,6 +667,11 @@ const RoleEdit: React.FC = () => {
                 <>
                   <span className="h-2 w-2 rounded-full bg-warning animate-pulse" />
                   <span>{t('common.state.unsavedChanges')}</span>
+                  {permissionDelta && (
+                    <span className="text-muted-foreground tabular-nums">
+                      · {t('pages.roles.permissionDelta', permissionDelta)}
+                    </span>
+                  )}
                 </>
               ) : (
                 <span className="text-muted-foreground">{t('common.state.noChanges')}</span>

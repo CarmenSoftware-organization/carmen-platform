@@ -15,7 +15,7 @@ import {
 } from '../../components/ui/select';
 import { useAuth } from '../../context/AuthContext';
 import sqlQueryService from '../../services/sqlQueryService';
-import businessUnitService from '../../services/businessUnitService';
+import { fetchAllBusinessUnits } from '../../utils/fetchAllBusinessUnits';
 import { validateSqlSafety, classifyStatements } from '../../utils/sqlValidator';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 import type { BusinessUnit, DbObjectsResponse, SqlExecuteResult } from '../../types';
@@ -105,10 +105,9 @@ export default function SqlWorkbench() {
   // Load the BU list once.
   useEffect(() => {
     let cancelled = false;
-    businessUnitService
-      .getAll({ perpage: -1 })
-      .then((res) => {
-        if (!cancelled) setBusinessUnits(res.data ?? []);
+    fetchAllBusinessUnits({ label: 'SqlWorkbench.bus' })
+      .then((rows) => {
+        if (!cancelled) setBusinessUnits(rows);
       })
       .catch(() => {
         if (!cancelled) toast.error(t('pages.sqlWorkbench.loadBuFailed'));

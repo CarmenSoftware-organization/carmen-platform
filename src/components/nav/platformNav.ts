@@ -1,8 +1,10 @@
 import {
   LayoutDashboard, Network, Building2, Users, FileText, Newspaper, Megaphone, AppWindow,
   ShieldCheck, ShieldAlert, UserCog, DatabaseZap, Database, DatabaseBackup, LayoutGrid, Mail, FileSpreadsheet,
-  BarChart3, MousePointerClick, Settings, Server, KeyRound, ToggleLeft, Tags, Clock
+  BarChart3, MousePointerClick, Settings, Server, KeyRound, ToggleLeft, Tags, Clock, Sprout
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import type { TKey } from '../../i18n/types';
 import type { NavItem } from '../Sidebar';
 import type { FeatureState } from '../../constants/featureFlags';
 
@@ -11,7 +13,8 @@ const ALL_PLATFORM_NAV_ITEMS: NavItem[] = [
   // Organization
   { path: '/clusters', labelKey: 'nav.clusters', icon: Network, permission: 'cluster.read', groupKey: 'navGroup.organization', feature: 'clusters' },
   { path: '/business-units', labelKey: 'nav.businessUnits', icon: Building2, permission: 'cluster.read', groupKey: 'navGroup.organization', feature: 'business_units' },
-  { path: '/tenant-migrations', labelKey: 'nav.tenantMigrations', icon: DatabaseZap, permission: 'cluster.read', groupKey: 'navGroup.organization', feature: 'tenant_migrations' },
+  { path: '/tenant-migrations', labelKey: 'nav.tenantMigrations', icon: DatabaseZap, permission: 'tenant_migration.read', groupKey: 'navGroup.organization', feature: 'tenant_migrations' },
+  { path: '/tenant-seeds', labelKey: 'nav.tenantSeeds', icon: Sprout, permission: 'tenant_seed.read', groupKey: 'navGroup.organization', feature: 'tenant_seeds' },
   { path: '/tenant-imports', labelKey: 'nav.dataImport', icon: FileSpreadsheet, permission: 'data_import.manage', groupKey: 'navGroup.organization', feature: 'tenant_imports' },
   { path: '/users', labelKey: 'nav.users', icon: Users, permission: 'user.read', groupKey: 'navGroup.organization', feature: 'users' },
   // License management — ต้องอยู่ติดกัน: Sidebar จัดกลุ่มจากแถวที่ groupKey ซ้ำกันติด ๆ
@@ -58,8 +61,8 @@ const ALL_PLATFORM_NAV_ITEMS: NavItem[] = [
 /**
  * The order the sidebar puts resources in, derived from the nav itself so the two can
  * never drift: a role's permission list reads top-to-bottom in the same order as the menu
- * the reader just came from. Several nav items share one resource (Clusters, Business
- * Units and Tenant Migrations are all `cluster.read`) — first appearance wins.
+ * the reader just came from. Several nav items share one resource (Clusters and Business
+ * Units are both `cluster.read`) — first appearance wins.
  */
 const NAV_RESOURCE_ORDER: string[] = (() => {
   const order: string[] = [];
@@ -79,6 +82,23 @@ const NAV_RESOURCE_ORDER: string[] = (() => {
 export const resourceRank = (resource: string): number => {
   const i = NAV_RESOURCE_ORDER.indexOf(resource);
   return i === -1 ? NAV_RESOURCE_ORDER.length : i;
+};
+
+/** What the sidebar calls a permission resource: its section, its label, its icon. */
+export interface ResourceNavMeta {
+  groupKey?: TKey;
+  labelKey: TKey;
+  icon: LucideIcon;
+}
+
+/**
+ * The menu entry that stands for a permission resource — first appearance wins, exactly as
+ * in `resourceRank`, so a role's grant can be read in the sidebar's own words and sections
+ * without a second mapping to keep in sync. `undefined` for a resource with no menu entry.
+ */
+export const resourceNavMeta = (resource: string): ResourceNavMeta | undefined => {
+  const item = ALL_PLATFORM_NAV_ITEMS.find((i) => i.permission?.split('.')[0] === resource);
+  return item ? { groupKey: item.groupKey, labelKey: item.labelKey, icon: item.icon } : undefined;
 };
 
 /** The platform-administration navigation, filtered to what this user may reach. */

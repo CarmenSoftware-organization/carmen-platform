@@ -9,7 +9,8 @@ import { GrantAccessDialog } from "./userPlatformManagement/GrantAccessDialog";
 import userPlatformService from "../services/userPlatformService";
 import userRoleService from "../services/userRoleService";
 import roleService from "../services/roleService";
-import clusterService from "../services/clusterService";
+import { fetchAllPages, type PagedResponse } from "../utils/fetchAllPages";
+import { fetchAllClusters } from "../hooks/useAllClusters";
 import { parseApiError } from '../utils/errorParser';
 
 import { Button } from "../components/ui/button";
@@ -146,22 +147,16 @@ const UserPlatformManagement: React.FC = () => {
   useEffect(() => {
     (async () => {
       try {
-        const r = await roleService.getAll({ perpage: 200, sort: 'name:asc' });
-        const items = r.data || r;
-        setRoleOptions(
-          (Array.isArray(items) ? items : []).map((x: { id: string; name: string }) => ({
-            id: x.id, name: x.name,
-          })),
+        const roles = await fetchAllPages<{ id: string; name: string }>(
+          (page, perpage) =>
+            roleService.getAll({ page, perpage, sort: 'name:asc' }) as Promise<PagedResponse<{ id: string; name: string }>>,
+          { label: 'UserPlatformManagement.roles' },
         );
+        setRoleOptions(roles.map((x) => ({ id: x.id, name: x.name })));
       } catch { /* filter buttons fall back to raw ids */ }
       try {
-        const c = await clusterService.getAll({ perpage: 200, sort: 'name:asc' });
-        const items = c.data || c;
-        setClusterOptions(
-          (Array.isArray(items) ? items : []).map((x: { id: string; name: string }) => ({
-            id: x.id, name: x.name,
-          })),
-        );
+        const clusters = await fetchAllClusters();
+        setClusterOptions(clusters.map((x) => ({ id: x.id, name: x.name })));
       } catch { /* same */ }
     })();
   }, []);

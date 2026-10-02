@@ -18,6 +18,7 @@ export const th: Translations = {
     businessUnits: 'หน่วยธุรกิจ',
     licenses: 'ไลเซนส์',
     tenantMigrations: 'Tenant Migrations',
+    tenantSeeds: 'Tenant Seed Data',
     dataImport: 'นำเข้าข้อมูล',
     users: 'ผู้ใช้งาน',
     reportTemplates: 'เทมเพลตรายงาน',
@@ -50,6 +51,7 @@ export const th: Translations = {
     platform: 'Platform',
     database: 'ฐานข้อมูล',
     clusterAdmin: 'การดูแลคลัสเตอร์',
+    other: 'อื่น ๆ',
   },
   sidebar: {
     collapse: 'ย่อเมนู',
@@ -82,6 +84,7 @@ export const th: Translations = {
     clusters: 'Clusters',
     businessUnits: 'หน่วยธุรกิจ',
     tenantMigrations: 'Tenant Migrations',
+    tenantSeeds: 'Tenant Seed Data',
     dataImport: 'นำเข้าข้อมูล',
     users: 'ผู้ใช้งาน',
     reportTemplates: 'เทมเพลตรายงาน',
@@ -331,6 +334,8 @@ export const th: Translations = {
       // Promoted from pages.clusterAdmin.fifo — identical to English in both languages
       // (FIFO is not translated); copied verbatim. See en.ts for the promotion rationale.
       fifo: 'FIFO',
+      // See en.ts: third calculation_method value.
+      averagePerLocation: 'เฉลี่ยแยกตาม Location',
     },
     label: {
       cluster: 'Cluster',
@@ -432,10 +437,9 @@ export const th: Translations = {
       // ซอร์สที่แยกเป็นข้อความ aria-label คนละสตริง
       searchBusinessUnitsAria: 'ค้นหาหน่วยธุรกิจ',
       noBusinessUnitsFound: 'ไม่พบหน่วยธุรกิจ',
-      // TenantSeedCard.tsx / TenantMigrationCard.tsx / InterfaceEntitlementCard.tsx ทั้งสาม
-      // เช็ค isSuperAdmin ด้วยข้อความ disabledReason นี้เป๊ะเหมือนกันทุกตัวอักษร จึงใช้คีย์
-      // เดียวร่วมกันแทนที่จะสร้างซ้ำสามที่
-      superAdminRequired: 'ต้องเป็นผู้ดูแลระบบสูงสุดเท่านั้น',
+      // ข้อความ disabledReason ร่วมสำหรับ action ที่กั้นด้วย permission key ของแพลตฟอร์ม
+      // (TenantMigrationCard/TenantSeedCard และหน้า tenant management ทั้งสอง)
+      permissionRequired: 'ต้องมีสิทธิ์ {{permission}}',
       // ข้อความเงื่อนไขร่วมของ TenantSeedCard.tsx / TenantMigrationCard.tsx (เหมือนกันเป๊ะ
       // ทั้งสองไฟล์)
       configureDbPoolFirst: 'กรุณาตั้งค่า database pool และ schema ก่อน',
@@ -2030,13 +2034,11 @@ export const th: Translations = {
       // --- Task 4: NumberFormatsSection.tsx ---
       numberFormatsTitle: 'รูปแบบตัวเลข',
       numberFormatsDescription: 'ตั้งค่ารูปแบบการแสดงตัวเลข',
-      perPageFormatLabel: 'รูปแบบต่อหน้า',
       amountFormatLabel: 'รูปแบบจำนวนเงิน',
       quantityFormatLabel: 'รูปแบบจำนวน',
       recipeFormatLabel: 'รูปแบบสูตร',
       // ตัวอย่างผลลัพธ์สดข้าง JSON แต่ละช่อง (2026-08-31) — ดูเหตุผลที่ en.ts
       formatPreviewSample: '{{sample}} จะแสดงเป็น',
-      formatPreviewPerPage: 'จำนวนแถวต่อหน้า:',
       formatPreviewEmpty: 'ยังไม่ตั้งค่า — ระบบจะใช้ค่าเริ่มต้นของ tenant',
       formatPreviewInvalidJson: 'ไม่ใช่ JSON ที่ถูกต้อง — ค่านี้จะไม่ถูกนำไปใช้',
       formatPreviewInvalidOptions: 'เป็น JSON ที่ถูกต้อง แต่ไม่ใช่รูปแบบที่ใช้ได้ — ค่านี้จะไม่ถูกนำไปใช้',
@@ -2385,13 +2387,12 @@ export const th: Translations = {
     },
     tenantMigration: {
       startingDeploy: 'กำลังเริ่ม deploy…',
-      disabledOrSuperAdmin: 'migration ถูกปิดไว้ หรือต้องใช้สิทธิ์ super admin',
+      disabledOrSuperAdmin: 'ปิดการใช้งาน migration อยู่ หรือคุณไม่มีสิทธิ์ tenant migration',
       alreadyRunning: 'มี migration ทำงานอยู่แล้ว กรุณาลองใหม่ในอีกสักครู่',
-      seedDisabledOrSuperAdmin: 'การ seed ถูกปิดไว้ หรือต้องใช้สิทธิ์ super admin',
+      seedDisabledOrSuperAdmin: 'ปิดการใช้งาน seed อยู่ หรือคุณไม่มีสิทธิ์ tenant seed',
       deployingAll: 'กำลัง deploy ทุก tenant…',
       title: 'Tenant migration',
       subtitle: 'ตรวจว่าฐานข้อมูล tenant ใดตามหลัง schema migration อยู่ แล้วสั่งอัปเดต',
-      superAdminRequired: 'ต้องเป็นผู้ดูแลระบบสูงสุด',
       alreadyUpToDate: 'เป็นเวอร์ชันล่าสุดอยู่แล้ว',
       upToDate: 'เป็นเวอร์ชันล่าสุด',
       deployCompleted: 'Deploy เสร็จแล้ว',
@@ -2443,6 +2444,65 @@ export const th: Translations = {
       actionRolledBack: 'ย้อนกลับแล้ว (rolled-back)',
       resolveButton: 'แก้สถานะ',
       resolveSuccess: 'แก้สถานะ {{name}} ของ {{code}} เรียบร้อย',
+    },
+    tenantSeed: {
+      // TenantSeedManagement — มุมมองทั้ง fleet ของ TenantSeedCard ราย BU
+      title: 'ข้อมูลตั้งต้นของ tenant',
+      subtitle: 'ตรวจว่า tenant ตัวไหนยังขาดข้อมูลตั้งต้น แล้วเติมส่วนที่ขาด',
+      loadBuFailed: 'โหลด business unit ไม่สำเร็จ: {{detail}}',
+      showingPartial: 'แสดง {{shown}} จาก {{total}} business unit — เพิ่มขนาดหน้าเพื่อดูทั้งหมด',
+      statusNotChecked: 'ยังไม่ตรวจ',
+      statusSeeded: 'ครบแล้ว',
+      statusMissing: 'ขาด {{count}} รายการ',
+      statusNoDb: 'ไม่มี DB',
+      statusError: 'ผิดพลาด',
+      noDbReason: 'business unit นี้ยังไม่ได้ตั้ง database pool หรือ schema',
+      seedingProgress: 'กำลัง seed {{done}}/{{total}}',
+      columnSets: 'ชุดที่ขาด',
+      columnLastChecked: 'ตรวจล่าสุด',
+      columnMissingCsv: 'จำนวนที่ขาด',
+      columnErrorCsv: 'ข้อผิดพลาด',
+      check: 'ตรวจ',
+      checkAll: 'ตรวจทั้งหมด',
+      checking: 'กำลังตรวจ...',
+      seed: 'Seed',
+      seedAll: 'Seed ทุกตัวที่ขาด',
+      seedMissing: 'Seed {{count}} ตัวที่ขาด',
+      nothingToSeed: 'tenant ที่ตรวจแล้วมีข้อมูลครบทุกตัว ไม่มีอะไรต้อง seed',
+      seedUncheckedHint: 'ยังไม่ได้ตรวจ — กด ตรวจทั้งหมด ก่อนเพื่อดูว่าจะไปแตะตัวไหนบ้าง',
+      batchProgress: 'BU {{index}}/{{total}} — {{code}}',
+      checkAllDone: 'ตรวจแล้ว {{count}} business unit',
+      checkAllPartial: 'ตรวจแล้ว {{ok}} · ล้มเหลว {{failed}}',
+      seededOne: 'สร้าง {{count}} รายการใน {{code}}',
+      nothingCreated: '{{code}} มีข้อมูลครบอยู่แล้ว',
+      seedAllDone: 'seed แล้ว {{count}} business unit',
+      seedAllPartial: 'seed สำเร็จ {{ok}} · ล้มเหลว {{failed}}',
+      seedTitle: 'seed ข้อมูลตั้งต้น?',
+      seedDescription: 'เลือก set ที่จะ seed ลง {{name}} ({{code}}) รายการที่มีอยู่แล้วจะถูกข้าม',
+      seedAllTitle: 'seed ทุก tenant ที่ขาด?',
+      seedAllDescription: 'เลือก set ที่จะ seed ลง {{count}} business unit ทีละตัว รายการที่มีอยู่แล้วจะถูกข้าม ถ้าออกจากหน้านี้ระหว่างทาง จะหยุดก่อนเริ่ม business unit ถัดไป',
+      selectAll: 'เลือกทั้งหมด',
+      selectNone: 'ล้าง',
+      setMissing: 'ขาด {{count}}',
+      setMissingInBus: 'ขาด {{count}} ใน {{buCount}} BU',
+      seedSelected: 'Seed {{count}} รายการ',
+      nothingSelected: 'เลือกอย่างน้อยหนึ่ง set',
+      showItemsAria: 'แสดงรายการที่ขาดของ {{label}}',
+      hideItemsAria: 'ซ่อนรายการที่ขาดของ {{label}}',
+      nothingSelectedToSeed: 'set ที่เลือกไม่ได้ขาดใน business unit ไหนเลย',
+      searchPlaceholder: 'ค้นหา business unit...',
+      emptyTitle: 'ยังไม่มี business unit',
+      emptyDescription: 'สร้าง business unit ก่อนจึงจะ seed ข้อมูล tenant ได้',
+      goToBusinessUnits: 'ไปที่ Business Units',
+      tenantsSeeded: 'tenant ที่ข้อมูลครบ',
+      legendSeeded: 'ครบแล้ว',
+      legendMissing: 'ขาด',
+      legendError: 'ผิดพลาด',
+      legendNoDb: 'ไม่มี DB',
+      missingRows: 'รายการที่ขาด',
+      notCheckedYet: 'ยังไม่ได้ตรวจ — กด ตรวจทั้งหมด เพื่อดูว่า tenant ไหนยังขาดข้อมูลตั้งต้น',
+      chartAria: 'ครบ {{seeded}} · ขาด {{missing}} · ผิดพลาด {{errored}}',
+      notCheckedAria: 'ยังไม่ได้ตรวจสถานะ seed',
     },
     platformConfig: {
       title: 'ตั้งค่า Platform',
@@ -2815,6 +2875,15 @@ export const th: Translations = {
       // แทน noAccessOther/-Plural ที่ถูกถอด — เชิงอรรถนั้นบอกจำนวน resource ที่เอื้อมไม่ถึง
       // ตอนนี้แถวเส้นประบอกเองว่าอันไหน ป้ายนี้จึงอธิบายแค่ว่าเส้นประแปลว่าอะไร
       withheldLegend: 'ปุ่มเส้นประคือสิทธิ์ที่มีใน catalog แต่บทบาทนี้ไม่ได้รับ',
+      escalationWarning: 'ให้สิทธิ์เพิ่มแก่ตัวเองได้:',
+      permissionDelta: '+{{added}} −{{removed}} สิทธิ์',
+      chipAdded: '(เพิ่มใหม่)',
+      chipRemoved: '(ถอดออก)',
+      accessShapeAria: 'รูปทรงสิทธิ์: {{summary}}',
+      resourceName: {
+        activityLog: 'ประวัติการแก้ไขเรคอร์ด',
+        license: 'การบังคับใช้ใบอนุญาต',
+      },
       noPermissionsGranted: 'ยังไม่ได้ให้สิทธิ์',
       nPermissions: '{{count}} สิทธิ์',
       nPermissionsPlural: '{{count}} สิทธิ์',

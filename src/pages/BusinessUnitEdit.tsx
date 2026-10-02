@@ -8,6 +8,7 @@ import { ActivityTrailSheet } from '../components/activityTrail/ActivityTrailShe
 import { AUDIT_RECORDING_STARTED_ON_PHASE_2 } from '../components/activityTrail/constants';
 import businessUnitService from '../services/businessUnitService';
 import clusterService from '../services/clusterService';
+import { fetchAllClusters } from '../hooks/useAllClusters';
 import currencyService from '../services/currencyService';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
@@ -23,7 +24,7 @@ import { useI18n } from '../hooks/useI18n';
 import { Skeleton } from '../components/ui/skeleton';
 import type { Cluster, BusinessUnitConfig, TenantCurrency, BusinessUnitLicense, InterfaceLicense } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { UNRESOLVED_CLUSTER_ID } from '../utils/permissions';
+import { UNRESOLVED_CLUSTER_ID, PLATFORM_SCOPED_RECORD } from '../utils/permissions';
 import TenantMigrationCard from '../components/TenantMigrationCard';
 import TenantSeedCard from '../components/TenantSeedCard';
 import { initialFormData, aliasBound } from './businessUnitEdit/types';
@@ -48,7 +49,7 @@ const BusinessUnitEdit: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isNew = !id;
-  const { isSuperAdmin, hasPermission } = useAuth();
+  const { hasPermission } = useAuth();
   const { t } = useI18n();
 
   const [formData, setFormData] = useState<BusinessUnitFormData>({
@@ -256,9 +257,7 @@ const BusinessUnitEdit: React.FC = () => {
 
   const fetchClusters = async () => {
     try {
-      const data = await clusterService.getAll({ perpage: -1 });
-      const items = data.data || data;
-      setClusters(Array.isArray(items) ? items : []);
+      setClusters(await fetchAllClusters());
     } catch (err) {
       devLog('Failed to load clusters:', err);
     }
@@ -320,7 +319,6 @@ const BusinessUnitEdit: React.FC = () => {
         long_time_format: bu.long_time_format || '',
         short_time_format: bu.short_time_format || '',
         timezone: bu.timezone || '',
-        perpage_format: toJsonString(bu.perpage_format, defaultFormat),
         amount_format: toJsonString(bu.amount_format, defaultFormat),
         quantity_format: toJsonString(bu.quantity_format, defaultFormat),
         recipe_format: toJsonString(bu.recipe_format, defaultFormat),
@@ -420,7 +418,7 @@ const BusinessUnitEdit: React.FC = () => {
     }
 
     // Parse number format fields from JSON strings to objects
-    for (const key of ['perpage_format', 'amount_format', 'quantity_format', 'recipe_format'] as const) {
+    for (const key of ['amount_format', 'quantity_format', 'recipe_format'] as const) {
       if (data[key]) {
         payload[key] = tryParseJson(data[key]);
       }
@@ -599,14 +597,16 @@ const BusinessUnitEdit: React.FC = () => {
     return cluster ? cluster.name : clusterId || '-';
   };
 
-  // Helper to get calculation method label. The domain only ever produces 'average'/'fifo'
-  // (see the <select> in businessUnitEdit/sections/CalculationSettingsSection.tsx) or ''
-  // (unset) — not a closed union in src/types/index.ts (calculation_method is a plain
-  // `string` there), so this stays a switch rather than a Record<Union, TKey>.
+  // Helper to get calculation method label. The domain only ever produces
+  // 'average'/'fifo'/'average_per_location' (see the <select> in
+  // businessUnitEdit/sections/CalculationSettingsSection.tsx) or '' (unset) — not a closed
+  // union in src/types/index.ts (calculation_method is a plain `string` there), so this
+  // stays a switch rather than a Record<Union, TKey>.
   const getCalculationMethodLabel = (method: string): string => {
     switch (method) {
       case 'average': return t('common.option.average');
       case 'fifo': return t('common.option.fifo');
+      case 'average_per_location': return t('common.option.averagePerLocation');
       default: return '-';
     }
   };
@@ -757,22 +757,26 @@ const BusinessUnitEdit: React.FC = () => {
           advancedExtraSlot={
             !isNew ? (
               <>
-                <TenantMigrationCard
-                  key={id}
-                  buId={id!}
-                  buCode={formData.code}
-                  buName={formData.name}
-                  hasDbConnection={!!(formData.database_pool_id && formData.db_schema)}
-                  isSuperAdmin={isSuperAdmin}
-                />
-                <TenantSeedCard
-                  key={`seed-${id}`}
-                  buId={id!}
-                  buCode={formData.code}
-                  buName={formData.name}
-                  hasDbConnection={!!(formData.database_pool_id && formData.db_schema)}
-                  isSuperAdmin={isSuperAdmin}
-                />
+                {hasPermission('tenant_migration.read', { clusterId: PLATFORM_SCOPED_RECORD }) && (
+                  <TenantMigrationCard
+                    key={id}
+                    buId={id!}
+                    buCode={formData.code}
+                    buName={formData.name}
+                    hasDbConnection={!!(formData.database_pool_id && formData.db_schema)}
+                    canApply={hasPermission('tenant_migration.apply', { clusterId: PLATFORM_SCOPED_RECORD })}
+                  />
+                )}
+                {hasPermission('tenant_seed.read', { clusterId: PLATFORM_SCOPED_RECORD }) && (
+                  <TenantSeedCard
+                    key={`seed-${id}`}
+                    buId={id!}
+                    buCode={formData.code}
+                    buName={formData.name}
+                    hasDbConnection={!!(formData.database_pool_id && formData.db_schema)}
+                    canApply={hasPermission('tenant_seed.apply', { clusterId: PLATFORM_SCOPED_RECORD })}
+                  />
+                )}
               </>
             ) : null
           }

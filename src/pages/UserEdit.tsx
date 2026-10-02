@@ -6,6 +6,7 @@ import Layout from "../components/Layout";
 import { PageHeader } from "../components/PageHeader";
 import userService from "../services/userService";
 import businessUnitService from "../services/businessUnitService";
+import { fetchAllBusinessUnits } from '../utils/fetchAllBusinessUnits';
 import Can from "../components/Can";
 import { ActivityTrailSheet } from '../components/activityTrail/ActivityTrailSheet';
 import { AUDIT_RECORDING_STARTED_ON_PHASE_2 } from '../components/activityTrail/constants';
@@ -261,13 +262,9 @@ const UserEdit: React.FC = () => {
     if (!clusterId) { setClusterBUs([]); return; }
     setLoadingBUs(true);
     try {
-      const data = await businessUnitService.getAll({
-        perpage: -1,
-        advance: JSON.stringify({ where: { cluster_id: clusterId } }),
-      });
-      setRawClusterBUsResponse(data);
-      const items = data.data || data;
-      setClusterBUs(Array.isArray(items) ? items : []);
+      const bus = await fetchAllBusinessUnits({ clusterId, label: 'UserEdit.clusterBus' });
+      setRawClusterBUsResponse({ data: bus, paginate: { total: bus.length } });
+      setClusterBUs(bus);
     } catch {
       setClusterBUs([]);
     } finally {

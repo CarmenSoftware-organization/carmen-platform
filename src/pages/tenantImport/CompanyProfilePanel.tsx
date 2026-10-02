@@ -31,11 +31,11 @@ const NOT_APPLIED_LABELS = ['BU Name'];
 // คอลัมน์เสมือนของสกุลเงินตั้งต้น ต้องไม่ถูกส่งไปยัง API ของหน่วยธุรกิจ
 const CURRENCY_CODE_KEY = 'default_currency_code';
 
-// enum_calculation_method's two members, mirroring the catalog's `allowedValues`. The backend
+// enum_calculation_method's three members, mirroring the catalog's `allowedValues`. The backend
 // already rejects anything else into `sheetErrors`; this exists because the write path for this
 // step is the client, so the client is the last place able to stop a bad value.
-// สมาชิกสองค่าของ enum ฝั่งเซิร์ฟเวอร์ตรวจแล้ว แต่ไคลเอนต์เป็นผู้เขียนข้อมูล จึงต้องตรวจซ้ำ
-const CALCULATION_METHODS = ['average', 'fifo'];
+// สมาชิกสามค่าของ enum ฝั่งเซิร์ฟเวอร์ตรวจแล้ว แต่ไคลเอนต์เป็นผู้เขียนข้อมูล จึงต้องตรวจซ้ำ
+const CALCULATION_METHODS = ['average', 'fifo', 'average_per_location'];
 
 /**
  * Why the virtual Default Currency row can or cannot be written. `undefined` on every

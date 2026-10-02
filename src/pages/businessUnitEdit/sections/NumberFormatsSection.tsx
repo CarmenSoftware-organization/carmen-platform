@@ -4,11 +4,7 @@ import { Label } from '../../../components/ui/label';
 import { CollapsibleSection, ReadOnlyText } from '../shared';
 import { useI18n } from '../../../hooks/useI18n';
 import type { SectionFieldProps } from '../types';
-import {
-  previewNumberFormat,
-  previewPerPage,
-  type FormatPreview,
-} from './numberFormatPreview';
+import { previewNumberFormat, type FormatPreview } from './numberFormatPreview';
 
 /**
  * One JSON blob field plus a live rendering of what it produces. The preview is the point
@@ -27,11 +23,10 @@ const FormatField: React.FC<{
 }> = ({ id, label, value, placeholder, editing, preview, onChange }) => {
   const { t } = useI18n();
   const invalid = preview.kind === 'invalid';
-  // A formatted sample says which number produced it; a bare setting (page size) does not.
   const caption =
-    preview.kind === 'ok' && preview.of !== undefined
+    preview.kind === 'ok'
       ? t('pages.businessUnits.formatPreviewSample', { sample: String(preview.of) })
-      : t('pages.businessUnits.formatPreviewPerPage');
+      : '';
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
@@ -80,15 +75,6 @@ const NumberFormatsSection: React.FC<SectionFieldProps> = ({ formData, editing, 
       forceOpen
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormatField
-          id="perpage_format"
-          label={t('pages.businessUnits.perPageFormatLabel')}
-          value={formData.perpage_format}
-          placeholder='{"default":10}'
-          editing={editing}
-          preview={previewPerPage(formData.perpage_format)}
-          onChange={onChange}
-        />
         {(
           [
             ['amount_format', t('pages.businessUnits.amountFormatLabel'), formData.amount_format],
