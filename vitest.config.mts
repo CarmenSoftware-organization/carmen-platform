@@ -1,12 +1,12 @@
 import { defineConfig } from 'vitest/config';
-import path from 'path';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
-  // vitest ไม่ได้อ่าน vite.config.ts เมื่อมีไฟล์นี้ — alias @/ จึงต้องประกาศซ้ำ
+  // vitest ไม่ได้อ่าน vite.config.mts เมื่อมีไฟล์นี้ — alias @/ จึงต้องประกาศซ้ำ
   // ไม่งั้น test ของ component ที่ shadcn CLI สร้าง (import '@/lib/utils') จะ resolve ไม่เจอ
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
   test: {
