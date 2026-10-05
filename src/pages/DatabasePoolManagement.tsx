@@ -26,6 +26,7 @@ import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import { poolDsn, isDerivedName } from '../utils/databasePool';
 import type { DatabasePool, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
+import { readStoredPerpage } from '../utils/pageRange';
 
 const getStoredJSON = <T,>(key: string, fallback: T): T => {
   try {
@@ -61,7 +62,7 @@ const DatabasePoolManagement: React.FC = () => {
 
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: storedPage,
-    perpage: Number(localStorage.getItem('perpage_database_pool')) || 10,
+    perpage: readStoredPerpage('perpage_database_pool', 10),
     search: storedSearch,
     sort: storedSort,
     advance: buildAdvance(storedFilters),

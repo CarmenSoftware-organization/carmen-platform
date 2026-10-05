@@ -34,6 +34,7 @@ import { relativeTime } from '../utils/relativeTime';
 import type { PaginateParams, PlatformUserRow, PlatformUserRegistrySummary } from "../types";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useI18n } from '../hooks/useI18n';
+import { readStoredPerpage } from '../utils/pageRange';
 
 const selectClassName =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring';
@@ -107,7 +108,7 @@ const UserPlatformManagement: React.FC = () => {
 
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: storedPage,
-    perpage: Number(localStorage.getItem('perpage_user_platform')) || 10,
+    perpage: readStoredPerpage('perpage_user_platform', 10),
     search: searchTerm,
     sort: storedSort,
     advance: buildAdvance(roleFilter, scopeFilter, statusFilter),

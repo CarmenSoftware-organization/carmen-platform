@@ -32,3 +32,17 @@ export function outOfRangePage(
   // pages of a set that shrank to 3 wants page 3, not to start over.
   return page > lastPage ? lastPage : null;
 }
+
+/** Largest page size the backend accepts — anything above (or `-1`) is a `400 INVALID_PERPAGE` since backend v4.0.0. */
+export const MAX_PERPAGE = 100;
+
+/**
+ * Read a list's persisted page size (`perpage_<entity>`), falling back when the stored
+ * value is missing or one the backend would reject. Since backend v4.0.0 `perpage` must
+ * be an integer 1–100; a value saved by an older build (or edited by hand) used to go
+ * straight onto the wire and fail the whole list with a 400 on every visit.
+ */
+export function readStoredPerpage(key: string, fallback: number): number {
+  const n = Number(localStorage.getItem(key));
+  return Number.isInteger(n) && n >= 1 && n <= MAX_PERPAGE ? n : fallback;
+}

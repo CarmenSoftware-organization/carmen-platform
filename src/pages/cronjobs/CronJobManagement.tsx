@@ -28,6 +28,7 @@ import { useAuth } from '../../context/AuthContext';
 import type { CronJob, CronJobType } from '../../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { TKey } from '../../i18n/types';
+import { readStoredPerpage } from '../../utils/pageRange';
 
 // No date library in this repo (see CLAUDE.md · DateTime) — copied from the shared shape
 // (ActivityEventManagement.tsx / AuditMeta.tsx, 21+ call sites) rather than hand-rolled here.
@@ -69,7 +70,7 @@ const CronJobManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [perpage, setPerpage] = useState(() => Number(localStorage.getItem('perpage_cronjob')) || 10);
+  const [perpage, setPerpage] = useState(() => readStoredPerpage('perpage_cronjob', 10));
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('name:asc');
   const [filter, setFilter] = useState<Record<string, string>>({});

@@ -26,6 +26,7 @@ import { BroadcastSummary } from './broadcastManagement/BroadcastSummary';
 import { BroadcastFilters } from './broadcastManagement/BroadcastFilters';
 import { createBroadcastColumns } from './broadcastManagement/broadcastColumns';
 import type { BroadcastListItem, BroadcastListParams, BroadcastSummary as SummaryType } from '../types';
+import { readStoredPerpage } from '../utils/pageRange';
 
 const getStoredJSON = <T,>(key: string, fallback: T): T => {
   try {
@@ -60,7 +61,7 @@ const BroadcastManagement: React.FC = () => {
 
   const [paginate, setPaginate] = useState<BroadcastListParams>({
     page: storedPage,
-    perpage: Number(localStorage.getItem("perpage_broadcasts")) || 20,
+    perpage: readStoredPerpage("perpage_broadcasts", 20),
     search: storedSearch || undefined,
     sort: storedSort,
     status: storedStatus.length > 0 ? storedStatus.join(',') : undefined,

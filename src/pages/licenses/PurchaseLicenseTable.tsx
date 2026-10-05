@@ -25,6 +25,7 @@ import type { LicenseKind, LicenseKindConfig } from './licenseKindConfig';
 import type { SeatLicenseRow, BuQuotaLicenseRow, InterfaceLicenseRow, PaginateParams } from '../../types';
 import type { TKey } from '../../i18n/types';
 import type { ColumnDef, Row } from '@tanstack/react-table';
+import { readStoredPerpage } from '../../utils/pageRange';
 
 type StatusFilterValue = 'active' | 'superseded' | 'scheduled' | 'expired' | 'cancelled';
 
@@ -298,7 +299,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
 
   const [paginate, setPaginate] = useState(() => ({
     page: Number(localStorage.getItem(pageKey)) || 1,
-    perpage: Number(localStorage.getItem(perpageKey)) || 20,
+    perpage: readStoredPerpage(perpageKey, 20),
     // ผ่าน withTiebreaker เสมอแม้ค่าที่อ่านมาจาก localStorage เพราะอาจเป็นค่าที่บันทึกไว้ก่อน
     // แก้บั๊กนี้ (ยังไม่มี `,id:asc` ต่อท้าย)
     sort: withTiebreaker(localStorage.getItem(sortKey) || ''),

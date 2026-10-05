@@ -30,7 +30,7 @@ import { BuSummary } from './businessUnitManagement/BuSummary';
 import { auditColumns } from '../components/auditColumns';
 import { AuditMeta } from '../components/AuditMeta';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
-import { outOfRangePage } from '../utils/pageRange';
+import { outOfRangePage, readStoredPerpage } from '../utils/pageRange';
 import { useI18n } from '../hooks/useI18n';
 import type { BuSummaryData } from '../types';
 import type { BusinessUnit, PaginateParams } from '../types';
@@ -87,7 +87,7 @@ const BusinessUnitManagement: React.FC = () => {
 
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: storedPage,
-    perpage: Number(localStorage.getItem("perpage_business_units")) || 10,
+    perpage: readStoredPerpage("perpage_business_units", 10),
     search: storedSearch,
     sort: storedSort,
     advance: buildAdvance(storedFilters, getStoredJSON<boolean>('filter_business_units_deleted', false)),

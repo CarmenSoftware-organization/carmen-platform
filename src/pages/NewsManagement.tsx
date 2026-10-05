@@ -38,6 +38,7 @@ import { useI18n } from '../hooks/useI18n';
 import type { TKey } from '../i18n/types';
 import type { News, NewsStatus, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
+import { readStoredPerpage } from '../utils/pageRange';
 
 const getStoredJSON = <T,>(key: string, fallback: T): T => {
   try {
@@ -135,7 +136,7 @@ const NewsManagement: React.FC = () => {
 
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: storedPage,
-    perpage: Number(localStorage.getItem('perpage_news')) || 10,
+    perpage: readStoredPerpage('perpage_news', 10),
     search: storedSearch,
     sort: storedSort,
     advance: buildAdvance(storedFilters, storedTags),

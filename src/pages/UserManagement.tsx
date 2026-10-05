@@ -44,6 +44,7 @@ import { AuditMeta } from '../components/AuditMeta';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { PaginateParams } from "../types";
 import type { ColumnDef } from "@tanstack/react-table";
+import { readStoredPerpage } from '../utils/pageRange';
 
 interface UserBU {
   id: string;
@@ -136,7 +137,7 @@ const UserManagement: React.FC = () => {
 
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: storedPage,
-    perpage: Number(localStorage.getItem("perpage_users")) || 10,
+    perpage: readStoredPerpage("perpage_users", 10),
     search: storedSearch,
     sort: storedSort,
     advance: buildInitialAdvance(),

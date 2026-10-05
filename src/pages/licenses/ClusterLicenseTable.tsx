@@ -22,6 +22,7 @@ import { auditColumns } from '../../components/auditColumns';
 import type { Cluster, PaginateParams } from '../../types';
 import type { TKey } from '../../i18n/types';
 import type { ColumnDef } from '@tanstack/react-table';
+import { readStoredPerpage } from '../../utils/pageRange';
 
 // คีย์ localStorage เฉพาะของมุมมองนี้ — แยกจาก `perpage_clusters`/`page_clusters`/`sort_clusters`
 // ของหน้า /clusters เพื่อไม่ให้ page/perpage/sort ของสองหน้าเหยียบกัน (คนละบริบทการใช้งาน)
@@ -121,7 +122,7 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({
 
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: storedPage,
-    perpage: Number(localStorage.getItem(PERPAGE_KEY)) || 10,
+    perpage: readStoredPerpage(PERPAGE_KEY, 10),
     sort: storedSort,
     search: storedSearch,
     // เห็นเฉพาะคลัสเตอร์ที่ยังไม่ถูกลบ — ตรงกับค่าเริ่มต้นของหน้า /clusters (showDeleted=false)

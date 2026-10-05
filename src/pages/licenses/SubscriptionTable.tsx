@@ -31,6 +31,7 @@ import { useExpiryThresholds } from '../../context/ExpiryThresholdContext';
 import type { Subscription, SubscriptionState, SubscriptionSummary as SummaryType, PaginateParams } from '../../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { TKey } from '../../i18n/types';
+import { readStoredPerpage } from '../../utils/pageRange';
 
 // สถานะที่แสดงผล (`state`) ชุดเดียวกับที่ badge ในตารางและการ์ด summary ใช้ — ไม่ใช่ `status` ดิบ
 // การกรองแปลงกลับเป็นเงื่อนไขบนคอลัมน์จริงใน `buildAdvance`
@@ -129,7 +130,7 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
 
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: storedPage,
-    perpage: Number(localStorage.getItem('perpage_subscription')) || 10,
+    perpage: readStoredPerpage('perpage_subscription', 10),
     sort: storedSort,
     advance: buildAdvance(
       {
