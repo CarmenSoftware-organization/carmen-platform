@@ -7,6 +7,8 @@ import changelogData from '../data/changelog.json';
 
 const changelog = changelogData as unknown as Changelog;
 export const CURRENT_VERSION = changelog.versions[0]?.version ?? '0.0.0';
+/** Short commit SHA stamped by vite.config.mts; empty when it could not be resolved. */
+export const BUILD_SHA = import.meta.env.REACT_APP_BUILD_SHA ?? '';
 
 interface VersionBadgeProps {
   collapsed?: boolean;

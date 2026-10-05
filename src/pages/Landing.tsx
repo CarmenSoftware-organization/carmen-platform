@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import VersionBadge from '../components/VersionBadge';
+import VersionBadge, { BUILD_SHA } from '../components/VersionBadge';
 import { useI18n } from '../hooks/useI18n';
 import type { TKey } from '../i18n/types';
 
@@ -189,6 +189,7 @@ const Landing: React.FC = () => {
             {import.meta.env.REACT_APP_BUILD_DATE && (
               <span className="ml-2 text-muted-foreground/70">
                 · {t('pages.landing.build')} {import.meta.env.REACT_APP_BUILD_DATE}
+                {BUILD_SHA && ` (${BUILD_SHA})`}
               </span>
             )}
           </p>

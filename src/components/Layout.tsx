@@ -15,7 +15,7 @@ import FooterClock from './FooterClock';
 import HeaderUserMenu from './HeaderUserMenu';
 import ThemeToggle from './ThemeToggle';
 import LanguageToggle from './LanguageToggle';
-import { CURRENT_VERSION } from './VersionBadge';
+import { BUILD_SHA, CURRENT_VERSION } from './VersionBadge';
 import { buildPlatformNav } from './nav/platformNav';
 import { useFeatureFlags } from '../context/FeatureFlagContext';
 import { Skeleton } from './ui/skeleton';
@@ -285,6 +285,9 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
             >
               {t('header.appVersion')} v{CURRENT_VERSION}
             </Link>
+            {BUILD_SHA && (
+              <span title={import.meta.env.REACT_APP_BUILD_DATE}>{BUILD_SHA}</span>
+            )}
             {backendVersion && (
               <>
                 <span aria-hidden>·</span>
