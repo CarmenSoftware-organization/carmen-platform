@@ -28,6 +28,7 @@ Everything below applies **everywhere** in the repo.
 - `dev:*` / `build:*` pick the env file by Vite **mode** (`localhost`/`dev`/`uat`/`prod`) — see **Environment** below.
 - `dev:prod` and `build:prod` are **placeholders that point at DEV**, not production.
 - `build` also stamps `REACT_APP_BUILD_DATE` and emits to `build/` (not `dist/`).
+- `build --force` does **not** work — `vite build` rejects `--force` (`Unknown option`; it is a dev-server/optimizer flag). For a from-scratch build use `build:force`, which runs `clean` (wipes `build/`, `node_modules/.vite`, `.vite-temp`, `.cache`) then `build`.
 - `build:bump` cuts a release locally and **never pushes** — see **Releases** below.
 - `test` is Vitest (jsdom); `test:scripts` is a *separate* `node --test` run over `scripts/lib/*.test.mjs` and is **not** covered by `test`.
 
