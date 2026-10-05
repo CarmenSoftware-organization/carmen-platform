@@ -1,49 +1,54 @@
 {
-  "unreleased": {
-    "Added": [
-      "Sign in with Google through Keycloak single sign-on, with a callback page and a light/dark theme the Keycloak login page follows",
-      "Logout confirmation dialog in the header and on the access-denied page",
-      "Build commit SHA shown beside the app version",
-      "Tenant Seeds page (/tenant-seeds): check and seed every business unit across the fleet, pick seed sets per row or for all, with a fleet-wide status summary",
-      "Stuck tenant migrations can be resolved from the web, in a table and on the Business Unit edit page, with the database pool shown beside each schema",
-      "Scheduled Jobs page: list, edit, and delete cron jobs across services, with a business-unit column, a pattern-based cron builder, and editable recipient notification times for report jobs",
-      "Interface licences (INF) as a third licence kind, with cards on the Business Unit page and an interface kind for licence feature groups",
-      "Business Unit Licenses tab: its own tab with contracts, a coverage timeline per card and per row, a New subscription button, and every row linking to its licence",
-      "Cluster admin licences page shows contract and interface licence cards",
-      "Licence feature catalog as a tree of any depth: the picker handles every level and the catalog warns before hiding a middle level",
-      "Sortable column headers on every table on /licenses, on edit-page tables, and on every backend-derived column",
-      "Role edit reads as an access review: permissions grouped by menu, an access-shape strip, escalation warnings, and a short description per resource from the backend catalog",
-      "Seed role permissions for several business units at once, and readable labels for seed/check operations on Platform Migrations",
-      "Average-per-location costing method for business units",
-      "Random schema-name button on the Business Unit Technical tab"
-    ],
-    "Changed": [
-      "Business unit codes are generated automatically; you no longer type one when creating a BU",
-      "Tenant migration and seed pages are gated by tenant read/apply permissions instead of super-admin only",
-      "Interface Entitlement card removed from Business Unit edit; manage interfaces through licence feature groups and contracts",
-      "Lookups and dropdowns load full lists page by page instead of requesting one oversized page",
-      "Users sort by username and business units by code by default, so page boundaries stay stable",
-      "Telemetry terms translated to Thai, with one consistent wording for event types everywhere",
-      "Clearer platform navigation labels"
-    ],
-    "Fixed": [
-      "Signing out now revokes the Keycloak session, so the next Google sign-in as a different user no longer fails",
-      "Sign-in and logout race with the silent SSO check on /login",
-      "Breadcrumbs no longer link to sections that have no page",
-      "Brand monogram skips the BU- prefix of a business unit code",
-      "Business Units list returns to a page with data when a remembered page number is out of range",
-      "Scheduled Jobs list was empty because the response was unwrapped one level too far",
-      "Tenant seed: the confirm dialog no longer locks the screen while several rows seed, and the page no longer hangs on the skeleton",
-      "Role edit hides group counts when the catalog fails to load instead of claiming full access",
-      "English messages use the correct plural form for the actual count (32 places)",
-      "\"Type\" is translated consistently across the app"
-    ],
-    "Security": [
-      "js-yaml raised to ^4.3.2 (Dependabot #105)",
-      "OAuth tokens kept out of telemetry on the sign-in callback"
-    ]
-  },
+  "unreleased": {},
   "versions": [
+    {
+      "version": "1.1.0",
+      "date": "2026-10-05",
+      "changes": {
+        "Added": [
+          "Sign in with Google through Keycloak single sign-on, with a callback page and a light/dark theme the Keycloak login page follows",
+          "Logout confirmation dialog in the header and on the access-denied page",
+          "Build commit SHA shown beside the app version",
+          "Tenant Seeds page (/tenant-seeds): check and seed every business unit across the fleet, pick seed sets per row or for all, with a fleet-wide status summary",
+          "Stuck tenant migrations can be resolved from the web, in a table and on the Business Unit edit page, with the database pool shown beside each schema",
+          "Scheduled Jobs page: list, edit, and delete cron jobs across services, with a business-unit column, a pattern-based cron builder, and editable recipient notification times for report jobs",
+          "Interface licences (INF) as a third licence kind, with cards on the Business Unit page and an interface kind for licence feature groups",
+          "Business Unit Licenses tab: its own tab with contracts, a coverage timeline per card and per row, a New subscription button, and every row linking to its licence",
+          "Cluster admin licences page shows contract and interface licence cards",
+          "Licence feature catalog as a tree of any depth: the picker handles every level and the catalog warns before hiding a middle level",
+          "Sortable column headers on every table on /licenses, on edit-page tables, and on every backend-derived column",
+          "Role edit reads as an access review: permissions grouped by menu, an access-shape strip, escalation warnings, and a short description per resource from the backend catalog",
+          "Seed role permissions for several business units at once, and readable labels for seed/check operations on Platform Migrations",
+          "Average-per-location costing method for business units",
+          "Random schema-name button on the Business Unit Technical tab"
+        ],
+        "Changed": [
+          "Business unit codes are generated automatically; you no longer type one when creating a BU",
+          "Tenant migration and seed pages are gated by tenant read/apply permissions instead of super-admin only",
+          "Interface Entitlement card removed from Business Unit edit; manage interfaces through licence feature groups and contracts",
+          "Lookups and dropdowns load full lists page by page instead of requesting one oversized page",
+          "Users sort by username and business units by code by default, so page boundaries stay stable",
+          "Telemetry terms translated to Thai, with one consistent wording for event types everywhere",
+          "Clearer platform navigation labels"
+        ],
+        "Fixed": [
+          "Signing out now revokes the Keycloak session, so the next Google sign-in as a different user no longer fails",
+          "Sign-in and logout race with the silent SSO check on /login",
+          "Breadcrumbs no longer link to sections that have no page",
+          "Brand monogram skips the BU- prefix of a business unit code",
+          "Business Units list returns to a page with data when a remembered page number is out of range",
+          "Scheduled Jobs list was empty because the response was unwrapped one level too far",
+          "Tenant seed: the confirm dialog no longer locks the screen while several rows seed, and the page no longer hangs on the skeleton",
+          "Role edit hides group counts when the catalog fails to load instead of claiming full access",
+          "English messages use the correct plural form for the actual count (32 places)",
+          "\"Type\" is translated consistently across the app"
+        ],
+        "Security": [
+          "js-yaml raised to ^4.3.2 (Dependabot #105)",
+          "OAuth tokens kept out of telemetry on the sign-in callback"
+        ]
+      }
+    },
     {
       "version": "1.0.0",
       "date": "2026-09-02",
