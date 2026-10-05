@@ -69,6 +69,8 @@
     "build:dev": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') vite build --mode dev",
     "build:uat": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') vite build --mode uat",
     "build:prod": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') vite build --mode prod",
+    "clean": "rm -rf build node_modules/.vite node_modules/.vite-temp node_modules/.cache",
+    "build:force": "bun run clean && bun run build",
     "preview": "vite preview --mode prod",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"./src/**/*.{ts,tsx}\"",
