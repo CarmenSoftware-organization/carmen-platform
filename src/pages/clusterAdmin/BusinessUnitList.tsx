@@ -26,6 +26,7 @@ import { normalizeAudit, auditCsvFields } from '../../utils/audit';
 import { useI18n } from '../../hooks/useI18n';
 import type { BusinessUnit, PaginateParams } from '../../types';
 import type { ColumnDef } from '@tanstack/react-table';
+import { readStoredPerpage } from '../../utils/pageRange';
 
 const getStoredJSON = <T,>(key: string, fallback: T): T => {
   try {
@@ -103,7 +104,7 @@ const BusinessUnitList: React.FC = () => {
 
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: storedPage,
-    perpage: Number(localStorage.getItem('perpage_ca_business_units')) || 10,
+    perpage: readStoredPerpage('perpage_ca_business_units', 10),
     search: storedSearch,
     sort: storedSort,
     advance: buildAdvance(),

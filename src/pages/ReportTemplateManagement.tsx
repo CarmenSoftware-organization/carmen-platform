@@ -30,6 +30,7 @@ import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { TKey } from '../i18n/types';
+import { readStoredPerpage } from '../utils/pageRange';
 
 /**
  * ค่า enum ของ API → คีย์ป้าย ผูกเป็นตารางตายตัวไม่ใช่ t(`...${v}`) เพราะชุดค่าปิดแล้ว
@@ -100,7 +101,7 @@ const ReportTemplateManagement: React.FC = () => {
 
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: storedPage,
-    perpage: Number(localStorage.getItem('perpage_report_templates')) || 10,
+    perpage: readStoredPerpage('perpage_report_templates', 10),
     search: storedSearch,
     sort: storedSort,
     advance: buildAdvance(storedFilters, storedSourceTypes, storedTemplateTypes),

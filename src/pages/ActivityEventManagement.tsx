@@ -29,6 +29,7 @@ import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { useI18n } from '../hooks/useI18n';
 import type { ActivityEvent } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
+import { readStoredPerpage } from '../utils/pageRange';
 
 const fmt = (v?: string) => {
   if (!v) return '-';
@@ -79,7 +80,7 @@ const ActivityEventManagement: React.FC = () => {
 
   const [paginate, setPaginate] = useState(() => ({
     page: 1,
-    perpage: Number(localStorage.getItem('perpage_activity_events')) || 25,
+    perpage: readStoredPerpage('perpage_activity_events', 25),
     sort: 'server_ts:desc',
   }));
   const [sortResetKey, setSortResetKey] = useState(0);

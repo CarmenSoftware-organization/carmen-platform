@@ -29,6 +29,7 @@ import { useI18n } from '../hooks/useI18n';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
+import { readStoredPerpage } from '../utils/pageRange';
 
 // List-row shape — extends Role with the server-provided permission_count
 interface RoleRow {
@@ -86,7 +87,7 @@ const RoleManagement: React.FC = () => {
 
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: storedPage,
-    perpage: Number(localStorage.getItem('perpage_roles')) || 10,
+    perpage: readStoredPerpage('perpage_roles', 10),
     search: storedSearch,
     sort: storedSort,
     advance: buildAdvance(storedFilters),

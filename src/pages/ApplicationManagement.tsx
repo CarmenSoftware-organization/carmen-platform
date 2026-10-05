@@ -34,6 +34,7 @@ import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { Application, PaginateParams } from '../types';
 import { DEVICE_OPTIONS } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
+import { readStoredPerpage } from '../utils/pageRange';
 
 const getStoredJSON = <T,>(key: string, fallback: T): T => {
   try {
@@ -83,7 +84,7 @@ const ApplicationManagement: React.FC = () => {
 
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: storedPage,
-    perpage: Number(localStorage.getItem('perpage_applications')) || 10,
+    perpage: readStoredPerpage('perpage_applications', 10),
     search: storedSearch,
     sort: storedSort,
     advance: buildAdvance(storedFilters, storedDevice),
