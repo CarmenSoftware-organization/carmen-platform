@@ -36,7 +36,7 @@ export default function OverwriteConfirmDialog({ open, onOpenChange, customizedC
             {t('pages.dashboardTemplates.overwriteTitle')}
           </DialogTitle>
           <DialogDescription>
-            {t('pages.dashboardTemplates.overwriteDescription', { count: customizedCount })}
+            {customizedCount > 0 ? t('pages.dashboardTemplates.overwriteDescription', { count: customizedCount }) : t('pages.dashboardTemplates.modeOverwrite')}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2 py-2">

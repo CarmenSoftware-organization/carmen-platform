@@ -58,6 +58,7 @@ export default function DeployPanel() {
   }, []);
 
   const checkRow = useCallback(async (bu: BusinessUnit) => {
+    if (cancelledRef.current) return;
     const key = CHECK_PREFIX + bu.code;
     const controller = new AbortController();
     controllersRef.current.get(key)?.abort();
@@ -168,7 +169,7 @@ export default function DeployPanel() {
   };
 
   const handleDeployClick = () => {
-    if (mode === 'overwrite' && customizedCount > 0) setConfirmOpen(true);
+    if (mode === 'overwrite') setConfirmOpen(true);
     else void runDeploy();
   };
 
