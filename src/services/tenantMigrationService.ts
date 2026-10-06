@@ -5,6 +5,7 @@ import type {
   TenantMigrationDeployResult,
   TenantMigrationResolveAction,
   TenantMigrationResolveResult,
+  TenantViewsApplyResult,
   ProgressEvent,
   DeploySummary,
 } from '../types';
@@ -43,6 +44,15 @@ const tenantMigrationService = {
       migration_name: migrationName,
       action,
     });
+    return res.data.data ?? res.data;
+  },
+
+  /**
+   * ลง dashboard views ฝั่ง micro-data ให้ BU เดียวโดยไม่แตะ Prisma (ทางซ่อม — ปุ่ม apply ปกติ
+   * ต่อขั้นนี้ท้าย Prisma ให้อยู่แล้ว) request/response ธรรมดา จึงใช้ axios ได้ตามปกติ
+   */
+  applyViews: async (buId: string): Promise<TenantViewsApplyResult> => {
+    const res = await api.post(`/api-system/tenant/migrations/${buId}/views/apply`);
     return res.data.data ?? res.data;
   },
 

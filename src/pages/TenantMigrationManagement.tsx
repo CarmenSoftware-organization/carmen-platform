@@ -16,7 +16,7 @@ import { EmptyState } from '../components/EmptyState';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { Tooltip } from '../components/ui/tooltip';
 import { TenantMigrationResolveDialog } from '../components/TenantMigrationResolveDialog';
-import { Download, Database, RefreshCw, Loader2, Play, Wrench } from 'lucide-react';
+import { Download, Database, RefreshCw, Loader2, Play, Wrench, LayoutDashboard } from 'lucide-react';
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import type { BusinessUnit, TenantMigrationStatus, ProgressEvent, BatchDeploySummary } from '../types';
@@ -37,6 +37,7 @@ export interface RowState {
   status?: TenantMigrationStatus;
   checking: boolean;
   deploying: boolean;
+  viewsApplying?: boolean;
   progress?: { applied: number; total: number; current: string | null };
   lastChecked?: string;
   errorMsg?: string;
@@ -73,6 +74,18 @@ export const rowStatusOf = (rs?: RowState): RowStatus => {
   if (rs.status.up_to_date) return 'up_to_date';
   if (rs.status.has_pending) return 'pending';
   return 'unknown';
+};
+
+// จำนวนไฟล์ micro-data ที่ต้องลง (pending + changed); null = ยังไม่รู้หรือ micro-data error
+export const viewsBehindOf = (rs?: RowState): number | null => {
+  const v = rs?.status?.views;
+  if (!v || 'error' in v) return null;
+  return v.pending.length + v.changed.length;
+};
+
+export const viewsErrorOf = (rs?: RowState): string | null => {
+  const v = rs?.status?.views;
+  return v && 'error' in v ? v.error : null;
 };
 
 // ลำดับสถานะสำหรับเรียงคอลัมน์: ปัญหาก่อน (error) → ค้าง → ไม่รู้ → ทันสมัย — asc คือ "ต้องดูก่อน"
@@ -166,6 +179,8 @@ const TenantMigrationManagement: React.FC = () => {
       controllers.clear();
     };
   }, []);
+  // กันกด Apply views ซ้ำต่อ BU ขณะคำขอเดิมยังไม่จบ (request ธรรมดา ไม่ใช่ stream จึงไม่ใช้ map ของ AbortController)
+  const viewsInFlightRef = useRef<Set<string>>(new Set());
 
   useGlobalShortcuts({ onSearch: () => searchInputRef.current?.focus() });
 
@@ -178,7 +193,7 @@ const TenantMigrationManagement: React.FC = () => {
   const anyBusy =
     checkingAll ||
     batchRunning ||
-    Object.values(rowState).some((r) => r.checking || r.deploying);
+    Object.values(rowState).some((r) => r.checking || r.deploying || r.viewsApplying);
 
   const checkOne = useCallback(async (bu: BusinessUnit) => {
     setRowState((prev) => ({ ...prev, [bu.id]: { ...prev[bu.id], checking: true, deploying: prev[bu.id]?.deploying ?? false } }));
@@ -282,6 +297,8 @@ const TenantMigrationManagement: React.FC = () => {
           setRowState((prev) => ({ ...prev, [bu.id]: { ...prev[bu.id], progress: { applied: 0, total: e.total, current: null } } }));
         } else if (e.type === 'applying') {
           setRowState((prev) => ({ ...prev, [bu.id]: { ...prev[bu.id], progress: { applied: e.index, total: e.total, current: e.name } } }));
+        } else if (e.type === 'views-complete' && !e.success) {
+          toast.error(t('pages.tenantMigration.viewsFailed', { code: e.bu_code, message: e.error ?? '' }));
         }
       };
       const result = await tenantMigrationService.deployStream(bu.id, onEvent, controller.signal);
@@ -341,6 +358,24 @@ const TenantMigrationManagement: React.FC = () => {
                   status: { bu_id: e.bu_id, bu_code: e.bu_code, has_pending: false, pending: [], up_to_date: true, raw: '' },
                 },
           }));
+        } else if (e.type === 'views-complete') {
+          const line = `${e.bu_code} views: ${e.success ? `applied ${e.applied.length}` : `failed — ${e.error ?? ''}`}`;
+          setBatch((b) => (b ? { ...b, log: [...b.log, line] } : b));
+          setRowState((prev) => {
+            const rs = prev[e.bu_id];
+            if (!rs?.status) return prev;
+            const views = e.success
+              ? {
+                  bu_code: e.bu_code,
+                  schema: rs.status.views && !('error' in rs.status.views) ? rs.status.views.schema : '',
+                  baseline_applied: true,
+                  pending: [],
+                  changed: [],
+                  applied: e.applied,
+                }
+              : { error: e.error ?? 'failed' };
+            return { ...prev, [e.bu_id]: { ...rs, status: { ...rs.status, views } } };
+          });
         } else if (e.type === 'log') {
           setBatch((b) => (b ? { ...b, log: [...b.log, e.message] } : b));
         }
@@ -348,8 +383,9 @@ const TenantMigrationManagement: React.FC = () => {
       const result = await tenantMigrationService.deployAllStream(onEvent, controller.signal);
       if (result && 'succeeded' in result) {
         const s = result as BatchDeploySummary;
-        const msg = `Deployed: ${s.succeeded} ok, ${s.failed} failed.`;
-        if (s.failed > 0) toast.warning(msg);
+        const viewsFailed = s.views_failed?.length ?? 0;
+        const msg = `Deployed: ${s.succeeded} ok, ${s.failed} failed${viewsFailed ? `, views failed on ${viewsFailed}` : ''}.`;
+        if (s.failed > 0 || viewsFailed > 0) toast.warning(msg);
         else toast.success(msg);
       } else {
         toast.success(t('pages.tenantMigration.deployCompleted'));
@@ -364,6 +400,28 @@ const TenantMigrationManagement: React.FC = () => {
       if (!controller.signal.aborted) setBatch(null);
     }
   }, [canApply, t]);
+
+  const applyViewsOne = useCallback(async (bu: BusinessUnit) => {
+    // Defence-in-depth เหมือน applyOne: ปุ่มถูก disable อยู่แล้วเมื่อไม่มีสิทธิ์
+    if (!canApply) return;
+    if (viewsInFlightRef.current.has(bu.id)) return;
+    viewsInFlightRef.current.add(bu.id);
+    setRowState((prev) => ({
+      ...prev,
+      [bu.id]: { ...prev[bu.id], checking: prev[bu.id]?.checking ?? false, deploying: prev[bu.id]?.deploying ?? false, viewsApplying: true },
+    }));
+    try {
+      const r = await tenantMigrationService.applyViews(bu.id);
+      if (r.applied.length === 0) toast.info(t('pages.tenantMigration.viewsUpToDate', { code: bu.code }));
+      else toast.success(t('pages.tenantMigration.viewsApplied', { code: bu.code, count: r.applied.length }));
+      await checkOne(bu);
+    } catch (err) {
+      handleMigrationError(err, t);
+    } finally {
+      viewsInFlightRef.current.delete(bu.id);
+      setRowState((prev) => ({ ...prev, [bu.id]: { ...prev[bu.id], viewsApplying: false } }));
+    }
+  }, [canApply, checkOne, t]);
 
   useEffect(() => {
     (async () => {
@@ -503,6 +561,25 @@ const TenantMigrationManagement: React.FC = () => {
         return (
           <div className="space-y-1">
             <Badge variant={variant}>{text}</Badge>
+            {(() => {
+              const behind = viewsBehindOf(rs);
+              const viewsErr = viewsErrorOf(rs);
+              if (viewsErr) {
+                return (
+                  <div className="break-all text-xs text-destructive">
+                    {t('pages.tenantMigration.viewsError', { message: viewsErr })}
+                  </div>
+                );
+              }
+              if (behind === null) return null;
+              return (
+                <Badge variant={behind > 0 ? 'secondary' : 'success'}>
+                  {behind > 0
+                    ? t('pages.tenantMigration.viewsBehind', { count: behind })
+                    : t('pages.tenantMigration.viewsInSync')}
+                </Badge>
+              );
+            })()}
             {rs?.deploying && rs.progress && (
               <div role="status" aria-live="polite" className="break-all font-mono text-xs text-muted-foreground">
                 Applying {rs.progress.applied}/{rs.progress.total}
@@ -544,7 +621,7 @@ const TenantMigrationManagement: React.FC = () => {
       cell: ({ row }) => {
         const bu = row.original;
         const rs = rowState[bu.id];
-        const busy = !!rs?.checking || !!rs?.deploying;
+        const busy = !!rs?.checking || !!rs?.deploying || !!rs?.viewsApplying;
         const readDisabled = busy || batchRunning;
         const writeDisabled = !!applyReason || busy || batchRunning;
         // ปุ่ม Resolve โผล่บนแถวที่สถานะเป็น error ทุกแถว ไม่ใช่เฉพาะแถวที่แกะชื่อ migration ได้:
@@ -571,6 +648,15 @@ const TenantMigrationManagement: React.FC = () => {
                 reason: applyReason,
                 variant: 'destructive',
               })}
+            {((viewsBehindOf(rs) ?? 0) > 0 || viewsErrorOf(rs) !== null) &&
+              iconAction({
+                label: t('pages.tenantMigration.applyViews'),
+                icon: rs?.viewsApplying ? <Loader2 className="h-4 w-4 animate-spin" /> : <LayoutDashboard className="h-4 w-4" />,
+                onClick: () => applyViewsOne(bu),
+                disabled: writeDisabled,
+                reason: applyReason,
+                variant: 'secondary',
+              })}
             {isError &&
               iconAction({
                 label: t('pages.tenantMigration.resolve'),
@@ -584,7 +670,7 @@ const TenantMigrationManagement: React.FC = () => {
         );
       },
     },
-  ], [rowState, applyReason, checkOne, batchRunning, t]);
+  ], [rowState, applyReason, checkOne, applyViewsOne, batchRunning, t]);
 
   return (
     <Layout>

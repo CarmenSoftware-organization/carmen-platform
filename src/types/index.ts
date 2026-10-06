@@ -248,6 +248,21 @@ export interface PlatformMigrationResolveResult {
 }
 
 // Tenant database migration (super-admin) — /api-system/tenant/migrations/:bu_id/*
+// สถานะ migration ฝั่ง micro-data (dashboard views) ของ BU เดียว — gateway เติมให้เฉพาะ status ราย BU
+export interface TenantViewsStatus {
+  bu_code: string;
+  schema: string;
+  baseline_applied: boolean;
+  pending: string[];
+  changed: string[];
+  applied: string[];
+}
+
+export interface TenantViewsApplyResult {
+  applied: string[];
+  skipped: number;
+}
+
 export interface TenantMigrationStatus {
   bu_id: string;
   bu_code: string;
@@ -255,6 +270,7 @@ export interface TenantMigrationStatus {
   pending: string[];
   up_to_date: boolean;
   raw: string;
+  views?: TenantViewsStatus | { error: string };
 }
 
 export type TenantMigrationResolveAction = 'applied' | 'rolled-back';
@@ -286,6 +302,7 @@ export interface SingleDeploySummary {
   success: boolean;
   already_up_to_date: boolean;
   applied_migrations: string[];
+  views_failed?: string[];
 }
 
 export interface BatchDeploySummary {
@@ -293,6 +310,7 @@ export interface BatchDeploySummary {
   succeeded: number;
   failed: number;
   results: Array<Record<string, unknown>>;
+  views_failed?: string[];
 }
 
 export type DeploySummary = SingleDeploySummary | BatchDeploySummary;
@@ -307,6 +325,15 @@ export type ProgressEvent =
       success: boolean;
       applied: string[];
       already_up_to_date: boolean;
+      error?: string;
+    }
+  | {
+      type: 'views-complete';
+      bu_id: string;
+      bu_code: string;
+      success: boolean;
+      applied: string[];
+      skipped: number;
       error?: string;
     }
   | { type: 'log'; message: string }
