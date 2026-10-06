@@ -59,6 +59,7 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
   // Content
   { key: 'report_templates', labelKey: 'nav.reportTemplates', groupKey: 'navGroup.content', defaultState: 'active' },
   { key: 'report_form_groups', labelKey: 'nav.formGroups', groupKey: 'navGroup.content', defaultState: 'active' },
+  { key: 'dashboard_templates', labelKey: 'nav.dashboardTemplates', groupKey: 'navGroup.content', defaultState: 'active' },
   { key: 'news', labelKey: 'nav.news', groupKey: 'navGroup.content', defaultState: 'active' },
   { key: 'broadcasts', labelKey: 'nav.broadcasts', groupKey: 'navGroup.content', defaultState: 'active' },
   // Analytics

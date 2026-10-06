@@ -26,6 +26,7 @@ const ALL_PLATFORM_NAV_ITEMS: NavItem[] = [
   // Content
   { path: '/report-templates', labelKey: 'nav.reportTemplates', icon: FileText, permission: 'report_template.read', groupKey: 'navGroup.content', feature: 'report_templates' },
   { path: '/report-form-groups', labelKey: 'nav.formGroups', icon: LayoutGrid, permission: 'report_template.read', groupKey: 'navGroup.content', feature: 'report_form_groups' },
+  { path: '/dashboard-templates', labelKey: 'nav.dashboardTemplates', icon: LayoutDashboard, permission: 'dashboard_template.read', groupKey: 'navGroup.content', feature: 'dashboard_templates' },
   // เส้นคั่น: เหนือเส้นคือแม่แบบรายงาน ใต้เส้นคือเนื้อหาที่ส่งถึงผู้ใช้
   { path: '/news', labelKey: 'nav.news', icon: Newspaper, permission: 'news.read', groupKey: 'navGroup.content', feature: 'news', dividerBefore: true },
   { path: '/broadcasts', labelKey: 'nav.broadcasts', icon: Megaphone, permission: 'broadcast.read', groupKey: 'navGroup.content', feature: 'broadcasts' },
