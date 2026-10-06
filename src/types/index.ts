@@ -1835,3 +1835,62 @@ export interface CronJobWriteInput {
   max_retries?: number;
   timeout_seconds?: number;
 }
+
+export type DashboardTemplateKind = 'system' | 'bu_default';
+
+export interface DashboardTemplate {
+  id: string;
+  kind: DashboardTemplateKind;
+  module: string | null;
+  dataset_id: string;
+  widget_type: string;
+  title?: string | null;
+  order_index: number;
+  params?: Record<string, string | number> | null;
+  display?: Record<string, unknown> | null;
+  allow_business_unit?: string[] | null;
+  deny_business_unit?: string[] | null;
+  is_active: boolean;
+  doc_version?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type DashboardTemplateInput = Omit<DashboardTemplate, 'id' | 'doc_version' | 'created_at' | 'updated_at'>;
+
+export interface DashboardDatasetParam {
+  name: string;
+  label: string;
+  type: string;
+  required: boolean;
+  default?: string | number;
+  options?: string[];
+}
+
+export interface DashboardDatasetInfo {
+  id: string;
+  name: string;
+  description?: string;
+  shape: string;
+  category: string;
+  unit?: string;
+  params: DashboardDatasetParam[];
+  supported_renders: string[];
+}
+
+export type DashboardDeployStatusValue = 'never' | 'customized' | 'outdated' | 'current';
+
+export interface DashboardDeployStatus {
+  version: number;
+  status: DashboardDeployStatusValue;
+  deployed_version: number | null;
+  deployed_at: string | null;
+  customized_at: string | null;
+}
+
+export type DashboardDeployMode = 'skip_customized' | 'overwrite';
+
+export interface DashboardDeployResult {
+  result: 'deployed' | 'skipped';
+  count?: number;
+}
