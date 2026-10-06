@@ -648,15 +648,20 @@ const TenantMigrationManagement: React.FC = () => {
                 reason: applyReason,
                 variant: 'destructive',
               })}
-            {((viewsBehindOf(rs) ?? 0) > 0 || viewsErrorOf(rs) !== null) &&
-              iconAction({
-                label: t('pages.tenantMigration.applyViews'),
-                icon: rs?.viewsApplying ? <Loader2 className="h-4 w-4 animate-spin" /> : <LayoutDashboard className="h-4 w-4" />,
-                onClick: () => applyViewsOne(bu),
-                disabled: writeDisabled,
-                reason: applyReason,
-                variant: 'secondary',
-              })}
+            {/* แสดงทุกแถวที่ตรวจแล้ว ไม่ใช่เฉพาะตอนตามหลัง — ถ้าซ่อนตอนตรงกัน ผู้ใช้หาฟีเจอร์นี้ไม่เจอเลย
+                (DEV ทุก BU ตรงกัน = ไม่มีปุ่มสักแถว); ตอนตรงกันให้ปิดไว้พร้อม tooltip บอกเหตุผล */}
+            {(viewsBehindOf(rs) !== null || viewsErrorOf(rs) !== null) &&
+              (() => {
+                const isViewsInSync = viewsBehindOf(rs) === 0 && viewsErrorOf(rs) === null;
+                return iconAction({
+                  label: t('pages.tenantMigration.applyViews'),
+                  icon: rs?.viewsApplying ? <Loader2 className="h-4 w-4 animate-spin" /> : <LayoutDashboard className="h-4 w-4" />,
+                  onClick: () => applyViewsOne(bu),
+                  disabled: writeDisabled || isViewsInSync,
+                  reason: applyReason ?? (isViewsInSync ? t('pages.tenantMigration.viewsInSync') : null),
+                  variant: isViewsInSync ? 'outline' : 'secondary',
+                });
+              })()}
             {isError &&
               iconAction({
                 label: t('pages.tenantMigration.resolve'),
