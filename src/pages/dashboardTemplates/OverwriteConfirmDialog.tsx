@@ -47,7 +47,6 @@ export default function OverwriteConfirmDialog({ open, onOpenChange, customizedC
             id="dt-overwrite-confirm"
             value={input}
             onChange={(e) => setInput(e.target.value.toUpperCase())}
-            placeholder={CONFIRM_CODE}
             autoComplete="off"
             autoCapitalize="characters"
             spellCheck={false}
