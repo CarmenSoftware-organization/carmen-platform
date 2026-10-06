@@ -193,7 +193,7 @@ const TenantMigrationManagement: React.FC = () => {
   const anyBusy =
     checkingAll ||
     batchRunning ||
-    Object.values(rowState).some((r) => r.checking || r.deploying);
+    Object.values(rowState).some((r) => r.checking || r.deploying || r.viewsApplying);
 
   const checkOne = useCallback(async (bu: BusinessUnit) => {
     setRowState((prev) => ({ ...prev, [bu.id]: { ...prev[bu.id], checking: true, deploying: prev[bu.id]?.deploying ?? false } }));
@@ -361,6 +361,21 @@ const TenantMigrationManagement: React.FC = () => {
         } else if (e.type === 'views-complete') {
           const line = `${e.bu_code} views: ${e.success ? `applied ${e.applied.length}` : `failed — ${e.error ?? ''}`}`;
           setBatch((b) => (b ? { ...b, log: [...b.log, line] } : b));
+          setRowState((prev) => {
+            const rs = prev[e.bu_id];
+            if (!rs?.status) return prev;
+            const views = e.success
+              ? {
+                  bu_code: e.bu_code,
+                  schema: rs.status.views && !('error' in rs.status.views) ? rs.status.views.schema : '',
+                  baseline_applied: true,
+                  pending: [],
+                  changed: [],
+                  applied: e.applied,
+                }
+              : { error: e.error ?? 'failed' };
+            return { ...prev, [e.bu_id]: { ...rs, status: { ...rs.status, views } } };
+          });
         } else if (e.type === 'log') {
           setBatch((b) => (b ? { ...b, log: [...b.log, e.message] } : b));
         }
