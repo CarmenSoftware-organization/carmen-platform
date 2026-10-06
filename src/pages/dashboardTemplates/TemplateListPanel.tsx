@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ArrowDown, ArrowUp, LayoutDashboard, Pencil, Plus, Trash2 } from 'lucide-react';
 import dashboardTemplateService from '../../services/dashboardTemplateService';
@@ -22,7 +22,7 @@ import TemplateEditDialog from './TemplateEditDialog';
 
 export default function TemplateListPanel({ kind }: { kind: DashboardTemplateKind }) {
   const { t } = useI18n();
-  const { datasets, byId, loading: datasetsLoading } = useDashboardDatasets();
+  const { datasets, byId, loading: datasetsLoading, failed: datasetsFailed } = useDashboardDatasets();
   const modules = kind === 'bu_default' ? [MAIN_MODULE, ...DASHBOARD_MODULES] : [...DASHBOARD_MODULES];
   const [module, setModule] = useState<string>(kind === 'bu_default' ? MAIN_MODULE : 'procurement');
   const [items, setItems] = useState<DashboardTemplate[]>([]);
@@ -32,16 +32,28 @@ export default function TemplateListPanel({ kind }: { kind: DashboardTemplateKin
   const [editing, setEditing] = useState<DashboardTemplate | 'new' | null>(null);
   const [version, setVersion] = useState<number | null>(null);
 
+  // เฉพาะคำขอล่าสุดเท่านั้นที่เขียน state — สลับ module เร็ว ๆ แล้วคำตอบเก่าที่ช้ากว่าห้ามทับ
+  const requestId = useRef(0);
+  const moduleRef = useRef(module);
+  moduleRef.current = module;
+
   const load = useCallback(async () => {
+    const id = ++requestId.current;
     setLoading(true);
     try {
       const rows = await dashboardTemplateService.list(kind, module);
+      if (id !== requestId.current) return;
       setItems([...rows].sort((a, b) => a.order_index - b.order_index));
-      if (kind === 'bu_default') setVersion(await dashboardTemplateService.version());
+      if (kind === 'bu_default') {
+        const v = await dashboardTemplateService.version();
+        if (id !== requestId.current) return;
+        setVersion(v);
+      }
     } catch (err) {
+      if (id !== requestId.current) return;
       toast.error(t('pages.dashboardTemplates.loadFailed', { detail: getErrorDetail(err, t) }));
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
   }, [kind, module, t]);
   useEffect(() => { void load(); }, [load]);
@@ -52,7 +64,8 @@ export default function TemplateListPanel({ kind }: { kind: DashboardTemplateKin
     setBusy(true);
     try {
       await dashboardTemplateService.reorder(kind, module, payload);
-      await load();
+      // ผู้ใช้อาจสลับ module ระหว่างรอ — อย่า refresh ด้วย module เก่าทับรายการใหม่
+      if (moduleRef.current === module) await load();
     } catch (err) {
       toast.error(t('pages.dashboardTemplates.reorderFailed', { detail: getErrorDetail(err, t) }));
     } finally {
@@ -133,7 +146,7 @@ export default function TemplateListPanel({ kind }: { kind: DashboardTemplateKin
                       <td className="px-3 py-2">{row.title || byId.get(row.dataset_id)?.name || row.dataset_id}</td>
                       <td className="px-3 py-2">
                         <span className="font-mono text-xs">{row.dataset_id}</span>
-                        {!datasetsLoading && !byId.has(row.dataset_id) && (
+                        {!datasetsLoading && !datasetsFailed && !byId.has(row.dataset_id) && (
                           <Badge variant="destructive" className="ml-2">{t('pages.dashboardTemplates.datasetMissing')}</Badge>
                         )}
                       </td>
@@ -147,21 +160,21 @@ export default function TemplateListPanel({ kind }: { kind: DashboardTemplateKin
                         <div className="flex justify-end gap-1">
                           <Can permission="dashboard_template.update" clusterId={PLATFORM_SCOPED_RECORD}>
                             <Button
-                              variant="ghost" size="icon" disabled={busy || i === 0}
+                              variant="ghost" size="icon" disabled={busy || loading || i === 0}
                               aria-label={t('pages.dashboardTemplates.moveUp')}
                               onClick={() => handleMove(i, -1)}
                             >
                               <ArrowUp className="h-4 w-4" />
                             </Button>
                             <Button
-                              variant="ghost" size="icon" disabled={busy || i === items.length - 1}
+                              variant="ghost" size="icon" disabled={busy || loading || i === items.length - 1}
                               aria-label={t('pages.dashboardTemplates.moveDown')}
                               onClick={() => handleMove(i, 1)}
                             >
                               <ArrowDown className="h-4 w-4" />
                             </Button>
                             <Button
-                              variant="ghost" size="icon"
+                              variant="ghost" size="icon" disabled={loading}
                               aria-label={t('common.action.edit')}
                               onClick={() => setEditing(row)}
                             >
@@ -170,7 +183,7 @@ export default function TemplateListPanel({ kind }: { kind: DashboardTemplateKin
                           </Can>
                           <Can permission="dashboard_template.delete" clusterId={PLATFORM_SCOPED_RECORD}>
                             <Button
-                              variant="ghost" size="icon"
+                              variant="ghost" size="icon" disabled={loading}
                               aria-label={t('common.action.delete')}
                               onClick={() => setDeleteId(row.id)}
                             >

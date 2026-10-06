@@ -9,15 +9,16 @@ export function useDashboardDatasets() {
   const { t } = useI18n();
   const [datasets, setDatasets] = useState<DashboardDatasetInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
     let cancelled = false;
     dashboardTemplateService
       .datasets()
       .then((d) => { if (!cancelled) setDatasets(d); })
-      .catch((err) => { if (!cancelled) toast.error(t('pages.dashboardTemplates.loadFailed', { detail: getErrorDetail(err, t) })); })
+      .catch((err) => { if (!cancelled) setFailed(true); if (!cancelled) toast.error(t('pages.dashboardTemplates.loadFailed', { detail: getErrorDetail(err, t) })); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [t]);
   const byId = useMemo(() => new Map(datasets.map((d) => [d.id, d])), [datasets]);
-  return { datasets, byId, loading };
+  return { datasets, byId, loading, failed };
 }
