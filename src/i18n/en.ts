@@ -4383,6 +4383,7 @@ export const en = {
       rowSkipped: 'Skipped (customised)',
       deployDone: 'Deploy finished: {{ok}} deployed, {{skipped}} skipped',
       deployPartial: 'Deploy finished with errors: {{ok}} deployed, {{skipped}} skipped, {{failed}} failed',
+      deployEmptySet: 'The BU default has no active widgets. Add at least one in the BU default tab before deploying.',
       deployConflict: 'The BU default changed while deploying. The run was stopped; refresh the status and deploy again.',
       stop: 'Stop',
     },

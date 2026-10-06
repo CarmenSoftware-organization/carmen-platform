@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Loader2, RefreshCw, Rocket, Square } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCw, Rocket, Square } from 'lucide-react';
 import dashboardTemplateService from '../../services/dashboardTemplateService';
 import { fetchAllBusinessUnits } from '../../utils/fetchAllBusinessUnits';
 import { mapWithConcurrency } from '../../utils/concurrent';
@@ -27,6 +27,8 @@ export default function DeployPanel() {
   const { hasPermission } = useAuth();
   const [bus, setBus] = useState<BusinessUnit[]>([]);
   const [version, setVersion] = useState(0);
+  // null = ยังไม่รู้ (โหลดอยู่/โหลดพลาด) — ปิดปุ่มเฉพาะเมื่อรู้แน่ว่าว่าง backend ยังตอบ 422 กันไว้อีกชั้น
+  const [activeCount, setActiveCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [rowState, setRowState] = useState<Record<string, DeployRowState>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -76,9 +78,13 @@ export default function DeployPanel() {
   }, [patchRow, t]);
 
   const refreshAll = useCallback(async (list: BusinessUnit[]) => {
-    const v = await dashboardTemplateService.version();
+    const [v, rows] = await Promise.all([
+      dashboardTemplateService.version(),
+      dashboardTemplateService.list('bu_default').catch(() => null),
+    ]);
     if (cancelledRef.current) return;
     setVersion(v);
+    setActiveCount(rows ? rows.filter((r) => r.is_active).length : null);
     // refresh ใหม่ล้างผลรอบก่อน (รวม error เดิม) — สถานะที่ได้ใหม่คือความจริงล่าสุด
     setRowState((prev) => Object.fromEntries(Object.entries(prev).map(([k, r]) => [k, { ...r, outcome: undefined }])));
     await mapWithConcurrency(list, 4, (bu) => checkRow(bu));
@@ -190,19 +196,26 @@ export default function DeployPanel() {
   if (!hasPermission('dashboard_template.deploy', { clusterId: PLATFORM_SCOPED_RECORD })) return null;
 
   const busyAny = running || bus.some((b) => rowState[b.code]?.checking);
+  const emptySet = activeCount === 0;
 
   return (
     <>
       <Card>
         <CardContent className="space-y-4 pt-6">
           <p className="text-sm text-muted-foreground">{t('pages.dashboardTemplates.deployHint', { version })}</p>
+          {emptySet && (
+            <p role="alert" className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              {t('pages.dashboardTemplates.deployEmptySet')}
+            </p>
+          )}
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="outline" size="sm" onClick={() => void refreshAll(bus)} disabled={running || loading}>
               <RefreshCw className={`mr-2 h-4 w-4 ${busyAny && !running ? 'animate-spin' : ''}`} />
               {t('pages.dashboardTemplates.refreshStatus')}
             </Button>
             <Can permission="dashboard_template.deploy" clusterId={PLATFORM_SCOPED_RECORD}>
-              <Button variant="outline" size="sm" onClick={selectOutdated} disabled={running}>
+              <Button variant="outline" size="sm" onClick={selectOutdated} disabled={running || emptySet}>
                 {t('pages.dashboardTemplates.selectOutdated')}
               </Button>
               <fieldset className="flex flex-wrap items-center gap-3 text-sm" disabled={running}>
@@ -223,7 +236,7 @@ export default function DeployPanel() {
                   {t('pages.dashboardTemplates.stop')}
                 </Button>
               ) : (
-                <Button size="sm" onClick={handleDeployClick} disabled={selected.size === 0}>
+                <Button size="sm" onClick={handleDeployClick} disabled={selected.size === 0 || emptySet}>
                   <Rocket className="mr-2 h-4 w-4" />
                   {t('pages.dashboardTemplates.deployButton', { count: selected.size })}
                 </Button>
