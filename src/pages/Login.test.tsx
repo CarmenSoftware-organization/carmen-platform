@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -24,6 +24,13 @@ vi.mock('../services/googleSignInService', () => ({
 import Login from './Login';
 
 const asMock = (fn: unknown) => fn as ReturnType<typeof vi.fn>;
+
+// ปุ่ม Google แสดงทันทีแต่ disabled จนกว่าคำตอบของ status จะมาถึง — รอให้กดได้ก่อนคลิก
+async function findEnabledGoogleButton() {
+  const button = await screen.findByRole('button', { name: /continue with google/i });
+  await waitFor(() => expect(button).toBeEnabled());
+  return button;
+}
 
 function renderLogin(entry = '/login') {
   return render(
@@ -212,7 +219,7 @@ describe('Login — Google sign-in', () => {
     const user = userEvent.setup();
     renderLogin();
 
-    await user.click(await screen.findByRole('button', { name: /continue with google/i }));
+    await user.click(await findEnabledGoogleButton());
 
     expect(assign).toHaveBeenCalledTimes(1);
     const url = new URL(assign.mock.calls[0][0] as string, 'http://x');
@@ -226,7 +233,7 @@ describe('Login — Google sign-in', () => {
     const user = userEvent.setup();
     renderLogin('/login?next=%2Fclusters');
 
-    await user.click(await screen.findByRole('button', { name: /continue with google/i }));
+    await user.click(await findEnabledGoogleButton());
 
     const url = new URL(assign.mock.calls[0][0] as string, 'http://x');
     expect(url.searchParams.get('next')).toBe('/clusters');
@@ -288,7 +295,7 @@ describe('Login — hardening of URL-supplied values', () => {
     const user = userEvent.setup();
     renderLogin('/login?next=%2F%09%2Fevil.example.com');
 
-    await user.click(await screen.findByRole('button', { name: /continue with google/i }));
+    await user.click(await findEnabledGoogleButton());
 
     const url = new URL(assign.mock.calls[0][0] as string, 'http://x');
     expect(url.searchParams.has('next')).toBe(false);
