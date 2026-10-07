@@ -4643,5 +4643,6 @@ export const en = {
     googleAccountConflict:
       'This email address conflicts with another account. Please contact your administrator.',
     googleTooManyAttempts: 'Too many sign-in attempts. Please wait a moment and try again.',
+    googleDisabled: 'Google sign-in is turned off. Please sign in with your email and password.',
   },
 };

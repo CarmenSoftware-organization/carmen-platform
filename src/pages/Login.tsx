@@ -10,6 +10,7 @@ import { validateField } from '../utils/validation';
 import { resolveNextPath } from '../utils/resolveNextPath';
 import { useI18n } from '../hooks/useI18n';
 import LanguageToggle from '../components/LanguageToggle';
+import { fetchGoogleSignInEnabled } from '../services/googleSignInService';
 
 const env = import.meta.env.REACT_APP_ENV as string | undefined;
 
@@ -30,6 +31,8 @@ function googleErrorKey(code: string) {
       return 'login.googleAccountConflict';
     case 'google_too_many_attempts':
       return 'login.googleTooManyAttempts';
+    case 'google_disabled':
+      return 'login.googleDisabled';
     case 'access_denied_platform':
       return 'login.accessDeniedPlatform';
     default:
@@ -97,6 +100,17 @@ const Login: React.FC = () => {
   // disabled state + the existing error banner is the honest fix.
   const [locked, setLocked] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // ปุ่ม Google แสดงเฉพาะเมื่อ gateway ตอบว่าเปิด — ระหว่างโหลดหรือถามไม่สำเร็จให้ซ่อน (fail closed)
+  const [googleEnabled, setGoogleEnabled] = useState(false);
+  useEffect(() => {
+    let active = true;
+    fetchGoogleSignInEnabled().then((enabled) => {
+      if (active) setGoogleEnabled(enabled);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -293,19 +307,23 @@ const Login: React.FC = () => {
             </Button>
           </form>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center" aria-hidden>
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">{t('login.orDivider')}</span>
-            </div>
-          </div>
+          {googleEnabled && (
+            <>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center" aria-hidden>
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">{t('login.orDivider')}</span>
+                </div>
+              </div>
 
-          <Button type="button" variant="outline" className="w-full" onClick={handleGoogle}>
-            <GoogleLogo />
-            {t('login.googleContinue')}
-          </Button>
+              <Button type="button" variant="outline" className="w-full" onClick={handleGoogle}>
+                <GoogleLogo />
+                {t('login.googleContinue')}
+              </Button>
+            </>
+          )}
 
           <div className="text-center">
             <Link

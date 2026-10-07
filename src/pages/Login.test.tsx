@@ -15,6 +15,12 @@ vi.mock('../context/AuthContext', () => ({
   useAuth: () => auth,
 }));
 
+// สวิตช์ Google จาก gateway — ค่าเริ่มต้นของเทสต์คือเปิด เพื่อให้เทสต์ปุ่มเดิมยังหาปุ่มเจอ
+const googleSignIn = vi.hoisted(() => ({ enabled: true }));
+vi.mock('../services/googleSignInService', () => ({
+  fetchGoogleSignInEnabled: () => Promise.resolve(googleSignIn.enabled),
+}));
+
 import Login from './Login';
 
 const asMock = (fn: unknown) => fn as ReturnType<typeof vi.fn>;
@@ -30,6 +36,7 @@ function renderLogin(entry = '/login') {
 beforeEach(() => {
   vi.clearAllMocks();
   auth.isAuthenticated = false;
+  googleSignIn.enabled = true;
 });
 
 describe('Login — rate-limit resubmit lock', () => {
@@ -205,7 +212,7 @@ describe('Login — Google sign-in', () => {
     const user = userEvent.setup();
     renderLogin();
 
-    await user.click(screen.getByRole('button', { name: /continue with google/i }));
+    await user.click(await screen.findByRole('button', { name: /continue with google/i }));
 
     expect(assign).toHaveBeenCalledTimes(1);
     const url = new URL(assign.mock.calls[0][0] as string, 'http://x');
@@ -219,7 +226,7 @@ describe('Login — Google sign-in', () => {
     const user = userEvent.setup();
     renderLogin('/login?next=%2Fclusters');
 
-    await user.click(screen.getByRole('button', { name: /continue with google/i }));
+    await user.click(await screen.findByRole('button', { name: /continue with google/i }));
 
     const url = new URL(assign.mock.calls[0][0] as string, 'http://x');
     expect(url.searchParams.get('next')).toBe('/clusters');
@@ -230,6 +237,7 @@ describe('Login — Google sign-in', () => {
     ['google_account_conflict', /conflicts with another account/i],
     ['google_too_many_attempts', /too many sign-in attempts/i],
     ['google_failed', /google sign-in failed/i],
+    ['google_disabled', /google sign-in is turned off/i],
     ['access_denied_platform', /not authorized to access this platform/i],
   ])('translates the error code %s into a banner', (code, text) => {
     renderLogin(`/login?error=${code}`);
@@ -280,7 +288,7 @@ describe('Login — hardening of URL-supplied values', () => {
     const user = userEvent.setup();
     renderLogin('/login?next=%2F%09%2Fevil.example.com');
 
-    await user.click(screen.getByRole('button', { name: /continue with google/i }));
+    await user.click(await screen.findByRole('button', { name: /continue with google/i }));
 
     const url = new URL(assign.mock.calls[0][0] as string, 'http://x');
     expect(url.searchParams.has('next')).toBe(false);
