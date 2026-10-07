@@ -3608,5 +3608,6 @@ export const th: Translations = {
     googleAccountConflict: 'อีเมลนี้ขัดแย้งกับบัญชีอื่น กรุณาติดต่อผู้ดูแลระบบ',
     googleTooManyAttempts: 'พยายามเข้าสู่ระบบบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่',
     googleDisabled: 'ปิดการเข้าสู่ระบบด้วย Google อยู่ กรุณาเข้าสู่ระบบด้วยอีเมลและรหัสผ่าน',
+    googleUnavailable: 'ยังไม่เปิดให้เข้าสู่ระบบด้วย Google',
   },
 };
