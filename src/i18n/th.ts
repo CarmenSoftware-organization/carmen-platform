@@ -2542,7 +2542,7 @@ export const th: Translations = {
       sectionSignIn: 'การเข้าสู่ระบบ',
       googleSignInTitle: 'เข้าสู่ระบบด้วย Google',
       googleSignInDesc:
-        'แสดงปุ่ม "ดำเนินการต่อด้วย Google" แยกต่อแอป ปิดแล้ว gateway จะบล็อก flow ของ Google ด้วย ปุ่มจะขึ้นจริงเมื่อ gateway ตั้งค่า Google OAuth ครบแล้วเท่านั้น',
+        'เปิด/ปิดปุ่ม "ดำเนินการต่อด้วย Google" แยกต่อแอป ปิดแล้วปุ่มจะแสดงแต่กดไม่ได้ และ gateway จะบล็อก flow ของ Google ด้วย ปุ่มจะกดได้จริงเมื่อ gateway ตั้งค่า Google OAuth ครบแล้วเท่านั้น',
       googleSignInPlatform: 'Carmen Platform',
       googleSignInPlatformHint: 'หน้า login ของแอปผู้ดูแลนี้',
       googleSignInApp: 'App',
