@@ -1,6 +1,6 @@
 # Carmen Platform
 
-**Version 0.1.1** · React + TypeScript admin dashboard for managing clusters, business units, users, and report templates. Backed by a separate NestJS/Prisma API.
+**Version 1.1.0** · React + TypeScript admin dashboard for managing clusters, business units, users, and report templates. Backed by a separate NestJS/Prisma API.
 
 ## What's in this version
 
@@ -30,20 +30,20 @@
 ```bash
 git clone <repo-url> carmen-platform
 cd carmen-platform
-cp .env.example .env          # edit REACT_APP_API_BASE_URL and REACT_APP_API_APP_ID
-bun install                   # or: npm install
-bun start                     # dev server at http://localhost:3304
+cp .env.example .env.localhost   # edit REACT_APP_API_BASE_URL — never a bare .env (it leaks into every mode)
+bun install                      # or: npm install
+bun start                        # dev server at http://localhost:3304
 ```
 
 ## Tech stack
 
 - React 19 + TypeScript 5 (strict), Vite 8, react-router-dom 6
-- Tailwind CSS 3.4 + shadcn/ui (Radix UI primitives + CVA), Inter font, class-based dark mode
+- Tailwind CSS 4 + shadcn/ui (Radix UI primitives + CVA), Inter font, class-based dark mode
 - TanStack Table v8 + `@tanstack/react-virtual`
 - CodeMirror 6 (XML syntax + folding + search)
 - Axios, Sonner, lucide-react
 - Vitest + React Testing Library (co-located unit/component tests)
-- Bun (primary) / npm, Node 20.x
+- Bun (primary) / npm, Node 24.x
 
 ## Docs
 
@@ -56,13 +56,14 @@ bun start                     # dev server at http://localhost:3304
 
 ## Deployment
 
-Static SPA hosted on GCP: a Cloud Storage bucket behind a global external
-HTTPS load balancer with Cloud CDN. `.github/workflows/deploy-gcs.yml` builds
-and uploads, authenticating keyless via Workload Identity Federation — but its
-only trigger is `workflow_dispatch`, so **nothing deploys automatically, not
-even a push to `main`**; someone runs it by hand. Infrastructure is Terraform
-in `infra/gcp/`. Vercel is also available in parallel (`vercel.json`). See
-[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#deployment-gcp).
+Static SPA, three separate targets:
+
+- **DEV** — a push to `main` deploys automatically (`deploy-dev.yml`) to `dev.blueledgers.com:9902`.
+- **Vercel (production)** — tracks the `vercel` branch, not `main`: `git push origin main:vercel`.
+- **GCP** — Cloud Storage bucket behind an HTTPS load balancer with Cloud CDN (Terraform in `infra/gcp/`);
+  `deploy-gcs.yml` is `workflow_dispatch` only.
+
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#ci-workflows).
 
 ---
 
