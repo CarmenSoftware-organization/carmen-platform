@@ -4,7 +4,7 @@ Setup, commands, API, auth, testing, GCP deployment, and CI. For product overvie
 
 ## Prerequisites
 
-- **Node.js 20.x** (enforced by `engines` and `.nvmrc`)
+- **Node.js 24.x** (enforced by `engines` and `.nvmrc`)
 - **Bun** (preferred) — `curl -fsSL https://bun.sh/install | bash`
 - **npm** works as a fallback (`.npmrc` sets `legacy-peer-deps=true`)
 
@@ -24,17 +24,24 @@ Dev server runs on `http://localhost:3304` (port set in `vite.config.ts`). `bun 
 
 Defined in the mode-scoped `.env.<mode>` file (e.g. `.env.dev`) at the project root:
 
+<!-- AUTO-GENERATED: from .env.example, vite.config.mts, src/vite-env.d.ts — regenerate with /update-docs -->
 | Variable | Required | Purpose | Example |
 |---|---|---|---|
-| `REACT_APP_API_BASE_URL` | Yes | Backend API origin | `https://dev.blueledgers.com:4001` |
-| `REACT_APP_API_APP_ID` | Yes | Sent as `x-app-id` header on all API requests | `bc1ade0a-a189-48c4-9445-807a3ea38253` |
-| `REACT_APP_ENV` | No | Environment label | `development`, `uat`, `production` |
-| `REACT_APP_BUILD_DATE` | Auto | Injected at build time by the `build` script | `2026-04-20 12:30:45` |
+| `REACT_APP_API_BASE_URL` | Yes | Backend API origin (axios uses it as an absolute `baseURL`). `vite.config.mts` throws if missing | `https://dev.blueledgers.com:4001` |
+| `REACT_APP_API_APP_ID` | Yes | Sent as `x-app-id` header on all API requests. `vite.config.mts` throws if missing. UAT uses its own id | `bc1ade0a-a189-48c4-9445-807a3ea38253` |
+| `REACT_APP_ENV` | No | Environment label (drives the header badge; omit for no badge) | `development`, `uat`, `production` |
+| `REACT_APP_PORT` | No | Dev server / preview port (fallback `3304`) | `3304` |
+| `REACT_APP_OTEL_ENABLED` | No | Turns on browser telemetry → `${REACT_APP_API_BASE_URL}/telemetry/v1`. **Build-time**: unset at build = the telemetry chunk is tree-shaken out; enabling later needs a rebuild | `true` |
+| `REACT_APP_OTEL_ENVIRONMENT` | No | Telemetry environment tag (default `dev`; `deploy-gcs.yml` sets `prod`) | `dev`, `prod` |
+| `REACT_APP_BUILD_DATE` | Auto | Injected by every `build*` script | `2026-04-20 12:30:45` |
+| `REACT_APP_BUILD_SHA` | Auto | Short commit SHA, injected by `vite.config.mts` (`VERCEL_GIT_COMMIT_SHA` → `GITHUB_SHA` → `git rev-parse`; empty if none) | `7f2bd1b` |
+<!-- /AUTO-GENERATED -->
 
 Changing `.env.<mode>` requires restarting the dev server.
 
 ## Commands
 
+<!-- AUTO-GENERATED: from package.json "scripts" — regenerate with /update-docs -->
 ```bash
 bun start                 # Vite dev server on :3304 (--mode localhost → .env.localhost)
 bun run dev               # same as bun start / dev:local (--mode localhost)
@@ -47,14 +54,22 @@ bun run build:local       # build with .env.localhost
 bun run build:dev         # build with .env.dev
 bun run build:uat         # build with .env.uat
 bun run build:prod        # build with .env.prod — placeholder: points at DEV
+bun run build:force       # clean + build — the from-scratch build (`build --force` is rejected by vite build)
+bun run clean             # rm build/, node_modules/.vite, .vite-temp, .cache
 bun run preview           # Serve the production build locally on :3304 (--mode prod → .env.prod)
+bun run typecheck         # tsc --noEmit
+bun run lint              # eslint "./src/**/*.{ts,tsx}"
 bun run test              # Vitest unit/component tests (jsdom) — one-shot
 bun run test:watch        # Vitest watch mode
 bun run test:cov          # Vitest with v8 coverage
-bun run test:scripts      # node --test for build scripts (scripts/lib/*.test.mjs)
+bun run test:scripts      # node --test for build scripts (scripts/lib/*.test.mjs) — NOT covered by `test`
+bun run changelog         # node scripts/generate-changelog.mjs
+bun run build:bump        # cut a release locally (scripts/release.mjs) — never pushes; see .claude/skills/cutting-a-release
+bun run generate:mock-preconfig  # node scripts/generate-preconfig-mock.mjs
 ```
+<!-- /AUTO-GENERATED -->
 
-No separate lint command. ESLint runs automatically via vite-plugin-eslint during `start` and `build`. Pass `CI=true` to treat warnings as errors.
+`vite-plugin-checker` also runs tsc and the same ESLint command during `start`/`build`; `typecheck` + `lint` run them standalone. Pass `CI=true` to treat warnings as errors (and to disable the browser overlay).
 
 The Vite **mode** selects the env file: `--mode localhost` → `.env.localhost`; `--mode dev` → `.env.dev`; `--mode uat` → `.env.uat`; `--mode prod` → `.env.prod`. Vite throws on a mode named `local` (it conflicts with the `.local` suffix), so the local-backend mode is `localhost`. Every script passes `--mode` explicitly — Vite's defaults match no mode file, so a bare `vite` finds no `.env.<mode>` and `vite.config.ts` throws — unless a bare `.env` exists, which Vite loads in **every** mode and would silently satisfy the guard. Never create a bare `.env` or `.env.local` (both load in every mode and leak across all four targets).
 
@@ -206,8 +221,8 @@ project owner — see `infra/gcp/README.md`):
   stored GCP credentials)
 
 **Pipeline** (`.github/workflows/deploy-gcs.yml`). Its **only** trigger is
-`workflow_dispatch` — nothing deploys automatically, not even a push to
-`main`; someone runs the workflow by hand:
+`workflow_dispatch` — someone runs it by hand. (A push to `main` *does* deploy,
+but to the DEV host via `deploy-dev.yml`, not to GCS — see [CI workflows](#ci-workflows).)
 1. `bun install --frozen-lockfile`
 2. Write `.env.prod` from repo Variables — `REACT_APP_*` is baked into the
    bundle at build time (there is no runtime `config.json`), and `.env.prod`
@@ -221,17 +236,25 @@ project owner — see `infra/gcp/README.md`):
    - invalidate the Cloud CDN cache for `/index.html` — only when a URL map was passed
 
 **GitHub Actions Variables** (Settings → Secrets and variables → Actions →
-Variables): `REACT_APP_API_BASE_URL`, `REACT_APP_API_APP_ID`, `GCS_BUCKET`,
-`CDN_URL_MAP`. `REACT_APP_ENV` is **not** read — the workflow hardcodes
+Variables — all read as `vars.*`, there are no secrets in this workflow):
+`REACT_APP_API_BASE_URL`, `REACT_APP_API_APP_ID`, `GCS_BUCKET`, `CDN_URL_MAP`,
+optional `REACT_APP_OTEL_ENABLED` (default `true`) / `REACT_APP_OTEL_ENVIRONMENT`
+(default `prod`), and `GCP_PROJECT_ID`, `GCP_WORKLOAD_IDENTITY_PROVIDER`,
+`GCP_DEPLOY_SA` — populate the last three from `terraform output` after the
+`infra/gcp` apply. `REACT_APP_ENV` is **not** read — the workflow hardcodes
 `production`.
 
-**GitHub Actions Secrets:** `GCP_PROJECT_ID`,
-`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT` — populate from
-`terraform output` after the `infra/gcp` apply.
+### CI workflows
 
-The other workflow, `.github/workflows/verify.yml`, runs `bun run build`
-(ESLint + tsc + Vite) on PRs to `main`/`DEV`/`UAT` and on pushes to every
-branch *except* those three. It does **not** run `bun run test`.
+| Workflow | Trigger | Does |
+|---|---|---|
+| `deploy-dev.yml` | push to `main` (automatic) + `workflow_dispatch` | builds `--mode dev`, ships over SSH to the DEV host (`dev.blueledgers.com:9902`). Secrets `DEV_SSH_HOST/USER/KEY/PORT`, variable `DEV_API_APP_ID` |
+| `deploy-gcs.yml` | `workflow_dispatch` only | the GCS + CDN pipeline above |
+| `verify.yml` | PRs to `main`/`DEV`/`UAT`; pushes to every branch except `main`/`DEV`/`UAT`/`vercel` | `bun run test` then `bun run build`; a second job repeats the build under `npm ci` to mirror Vercel |
+
+**Vercel** (`carmen-inventory-platform.vercel.app`, the production users see)
+tracks the **`vercel`** branch, not `main` — ship with `git push origin main:vercel`.
+Details: `.claude/skills/deploying/SKILL.md`.
 
 **Temporary host:** the managed SSL cert targets `<lb-ip-dashed>.sslip.io`
 (derived from the reserved static IP), so HTTPS works immediately without a

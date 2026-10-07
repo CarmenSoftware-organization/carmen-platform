@@ -64,14 +64,14 @@ Users outside this list are rejected at login with an "access denied" message. S
 
 - **Language & framework:** React 19, TypeScript 5 (strict mode), Vite 8
 - **Routing:** react-router-dom v6
-- **Styling:** Tailwind CSS 3.4 + CSS custom properties (HSL), Inter font, class-based light/dark theme; flat surfaces (`bg-card`/`bg-background` + 1px border) — glassmorphism was removed in the enterprise redesign
+- **Styling:** Tailwind CSS 4 + CSS custom properties (HSL), Inter font, class-based light/dark theme; flat surfaces (`bg-card`/`bg-background` + 1px border) — glassmorphism was removed in the enterprise redesign
 - **Components:** shadcn/ui primitives (Radix UI + CVA) — Fluent UI was fully removed in the enterprise redesign
 - **Tables:** TanStack Table v8 + React Virtual (`@tanstack/react-virtual`)
 - **Code editor:** CodeMirror 6 (XML syntax highlighting, folding, search) — used in `ReportTemplateEdit`
 - **HTTP:** Axios 1.16 with interceptors (`src/services/api.ts`)
 - **Toasts:** Sonner
 - **Icons:** lucide-react
-- **Package manager:** Bun (primary) or npm; Node 20.x
+- **Package manager:** Bun (primary) or npm; Node 24.x
 - **Tests:** Vitest + React Testing Library (unit/component, co-located `*.test.tsx`); E2E is a standalone Playwright suite in the sibling repo `../carmen-platform-e2e`
 
 ## Project structure
