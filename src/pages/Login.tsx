@@ -11,6 +11,7 @@ import { resolveNextPath } from '../utils/resolveNextPath';
 import { useI18n } from '../hooks/useI18n';
 import LanguageToggle from '../components/LanguageToggle';
 import { fetchGoogleSignInEnabled } from '../services/googleSignInService';
+import VersionStamp from '../components/VersionStamp';
 
 const env = import.meta.env.REACT_APP_ENV as string | undefined;
 
@@ -227,115 +228,120 @@ const Login: React.FC = () => {
       </aside>
 
       {/* Sign-in form */}
-      <main className="relative flex items-center justify-center p-6 sm:p-10">
+      <main className="relative flex flex-col p-6 sm:p-10">
         <div className="absolute right-4 top-4">
           <LanguageToggle />
         </div>
-        <div className="w-full max-w-sm space-y-8">
-          {/* Compact brand header — mobile only (panel is hidden below lg) */}
-          <div className="flex items-center gap-3 lg:hidden">
-            <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary text-lg font-bold text-primary-foreground shadow-xs">
-              C
-            </div>
-            <div className="leading-none">
-              <div className="text-base font-bold tracking-tight text-foreground">Carmen Platform</div>
-              <div className="mt-1 text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-                {t('login.operationsConsole')}
+        <div className="flex flex-1 items-center justify-center">
+          <div className="w-full max-w-sm space-y-8">
+            {/* Compact brand header — mobile only (panel is hidden below lg) */}
+            <div className="flex items-center gap-3 lg:hidden">
+              <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary text-lg font-bold text-primary-foreground shadow-xs">
+                C
+              </div>
+              <div className="leading-none">
+                <div className="text-base font-bold tracking-tight text-foreground">Carmen Platform</div>
+                <div className="mt-1 text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
+                  {t('login.operationsConsole')}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t('login.signInHeading')}</h1>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              {t('login.signInSubtitle')}
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="username">{t('login.usernameLabel')}</Label>
-              <Input
-                type="text"
-                id="username"
-                name="username"
-                autoComplete="username"
-                value={credentials.username}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                required
-                placeholder={t('login.usernamePlaceholder')}
-                className={fieldErrors.username ? 'border-destructive' : ''}
-              />
-              {fieldErrors.username && (
-                <p className="text-xs text-destructive">{fieldErrors.username}</p>
-              )}
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t('login.signInHeading')}</h1>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                {t('login.signInSubtitle')}
+              </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">{t('login.passwordLabel')}</Label>
-              <Input
-                type="password"
-                id="password"
-                name="password"
-                autoComplete="current-password"
-                value={credentials.password}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                required
-                placeholder={t('login.passwordPlaceholder')}
-                className={fieldErrors.password ? 'border-destructive' : ''}
-              />
-              {fieldErrors.password && (
-                <p className="text-xs text-destructive">{fieldErrors.password}</p>
-              )}
-            </div>
-
-            {error && (
-              <div
-                role="alert"
-                className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
-              >
-                {accessDenied && <div className="mb-1 font-bold">{t('login.accessDenied')}</div>}
-                {error}
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="username">{t('login.usernameLabel')}</Label>
+                <Input
+                  type="text"
+                  id="username"
+                  name="username"
+                  autoComplete="username"
+                  value={credentials.username}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  required
+                  placeholder={t('login.usernamePlaceholder')}
+                  className={fieldErrors.username ? 'border-destructive' : ''}
+                />
+                {fieldErrors.username && (
+                  <p className="text-xs text-destructive">{fieldErrors.username}</p>
+                )}
               </div>
-            )}
 
-            <Button type="submit" className="w-full" disabled={loading || locked}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {loading ? t('login.submitting') : locked ? t('login.locked') : t('login.submit')}
-            </Button>
-          </form>
+              <div className="space-y-2">
+                <Label htmlFor="password">{t('login.passwordLabel')}</Label>
+                <Input
+                  type="password"
+                  id="password"
+                  name="password"
+                  autoComplete="current-password"
+                  value={credentials.password}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  required
+                  placeholder={t('login.passwordPlaceholder')}
+                  className={fieldErrors.password ? 'border-destructive' : ''}
+                />
+                {fieldErrors.password && (
+                  <p className="text-xs text-destructive">{fieldErrors.password}</p>
+                )}
+              </div>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center" aria-hidden>
-              <span className="w-full border-t" />
+              {error && (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
+                >
+                  {accessDenied && <div className="mb-1 font-bold">{t('login.accessDenied')}</div>}
+                  {error}
+                </div>
+              )}
+
+              <Button type="submit" className="w-full" disabled={loading || locked}>
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {loading ? t('login.submitting') : locked ? t('login.locked') : t('login.submit')}
+              </Button>
+            </form>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center" aria-hidden>
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">{t('login.orDivider')}</span>
+              </div>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">{t('login.orDivider')}</span>
-            </div>
-          </div>
 
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={handleGoogle}
-            disabled={!googleEnabled}
-          >
-            <GoogleLogo />
-            {t('login.googleContinue')}
-          </Button>
-
-          <div className="text-center">
-            <Link
-              to="/"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleGoogle}
+              disabled={!googleEnabled}
             >
-              {t('login.backToHome')}
-            </Link>
+              <GoogleLogo />
+              {t('login.googleContinue')}
+            </Button>
+
+            <div className="text-center">
+              <Link
+                to="/"
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {t('login.backToHome')}
+              </Link>
+            </div>
           </div>
         </div>
+
+        {/* อยู่ในลำดับเอกสาร ไม่ใช่ absolute — บนจอเตี้ยแถวนี้ต้องดันลงไปใต้ฟอร์ม ไม่ใช่ทับปุ่ม */}
+        <VersionStamp className="mt-8 justify-center" />
       </main>
     </div>
   );

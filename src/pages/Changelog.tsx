@@ -6,6 +6,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { PageHeader } from '../components/PageHeader';
 import { EmptyState } from '../components/EmptyState';
+import VersionStamp from '../components/VersionStamp';
 import type { Changelog as ChangelogData, ChangelogCategory, ChangelogChanges } from '../types';
 import changelogData from '../data/changelog.json';
 import { useI18n } from '../hooks/useI18n';
@@ -168,6 +169,10 @@ const Changelog = () => {
             />
           )}
         </main>
+
+        <footer className="border-t border-border pt-4">
+          <VersionStamp linkChangelog={false} className="justify-center" />
+        </footer>
       </div>
     </div>
   );

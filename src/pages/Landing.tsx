@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import VersionBadge, { BUILD_SHA } from '../components/VersionBadge';
+import VersionStamp from '../components/VersionStamp';
 import { useI18n } from '../hooks/useI18n';
 import type { TKey } from '../i18n/types';
 
@@ -177,7 +177,7 @@ const Landing: React.FC = () => {
       <footer className="container mx-auto border-t border-border/60 px-4 py-8">
         <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
           <div className="flex items-center gap-3">
-            <VersionBadge />
+            <VersionStamp />
             {env && (
               <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                 {env}
@@ -189,7 +189,6 @@ const Landing: React.FC = () => {
             {import.meta.env.REACT_APP_BUILD_DATE && (
               <span className="ml-2 text-muted-foreground/70">
                 · {t('pages.landing.build')} {import.meta.env.REACT_APP_BUILD_DATE}
-                {BUILD_SHA && ` (${BUILD_SHA})`}
               </span>
             )}
           </p>

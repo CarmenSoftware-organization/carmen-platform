@@ -3576,7 +3576,7 @@ export const en = {
       sectionSignIn: 'Sign-in',
       googleSignInTitle: 'Google sign-in',
       googleSignInDesc:
-        'Shows the "Continue with Google" button per app. Off also blocks the Google flow at the gateway. The button only appears when the gateway has Google OAuth configured.',
+        'Turns the "Continue with Google" button on or off per app. When off, the button is shown disabled and the gateway also blocks the Google flow. The button is only clickable when the gateway has Google OAuth configured.',
       googleSignInPlatform: 'Carmen Platform',
       googleSignInPlatformHint: 'The login page of this admin app.',
       googleSignInApp: 'App',
