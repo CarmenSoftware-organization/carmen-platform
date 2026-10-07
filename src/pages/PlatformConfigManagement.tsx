@@ -15,6 +15,7 @@ import { NotificationEmailConfigCard } from './platformConfig/NotificationEmailC
 import { LicenseEnforcementCard } from './platformConfig/LicenseEnforcementCard';
 import { ExpiryThresholdsCard } from './platformConfig/ExpiryThresholdsCard';
 import { PlatformMigrationConfigCard } from './platformConfig/PlatformMigrationConfigCard';
+import { GoogleSignInConfigCard } from './platformConfig/GoogleSignInConfigCard';
 import platformConfigService from '../services/platformConfigService';
 import { useAuth } from '../context/AuthContext';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
@@ -38,7 +39,8 @@ type CardId =
   | 'notification_email'
   | 'license'
   | 'expiry_thresholds'
-  | 'platform_migration';
+  | 'platform_migration'
+  | 'google_sign_in';
 
 /**
  * หัวข้อกลุ่ม — ป้ายตัวพิมพ์ใหญ่เล็ก ๆ พร้อมเส้นลากยาว ชุดเดียวกับหัวกลุ่มใน sidebar
@@ -119,6 +121,7 @@ const PlatformConfigManagement: React.FC = () => {
   const license = configs.find((c) => c.key === 'license') ?? null;
   const expiryThresholds = configs.find((c) => c.key === 'expiry_thresholds') ?? null;
   const platformMigration = configs.find((c) => c.key === 'platform_migration') ?? null;
+  const googleSignIn = configs.find((c) => c.key === 'google_sign_in') ?? null;
 
   // ที่มาเดียวของ audit ต่อ config — การ์ดแต่ละใบไม่รู้จัก normalizeAudit เอง (อยู่นอกขอบเขต
   // ของ task นี้) ตัว key เดิมของแต่ละการ์ดก็อ่านผ่านค่าเหล่านี้ด้วย แทนฟิลด์แบนตรง ๆ
@@ -130,6 +133,7 @@ const PlatformConfigManagement: React.FC = () => {
   const licenseAudit = normalizeAudit(license);
   const expiryThresholdsAudit = normalizeAudit(expiryThresholds);
   const platformMigrationAudit = normalizeAudit(platformMigration);
+  const googleSignInAudit = normalizeAudit(googleSignIn);
   // ค่ากริยา+actor ล่าสุดต่อการ์ด สำหรับแถบท้ายการ์ด — คำนวณแยกจาก *Audit ด้านบน
   // ที่ยังต้องใช้เดิมสำหรับ remount key
   const invitationLatest = latestActor(invitation);
@@ -140,6 +144,7 @@ const PlatformConfigManagement: React.FC = () => {
   const licenseLatest = latestActor(license);
   const expiryThresholdsLatest = latestActor(expiryThresholds);
   const platformMigrationLatest = latestActor(platformMigration);
+  const googleSignInLatest = latestActor(googleSignIn);
 
   /** แถบ audit ท้ายการ์ด — รูปแบบเดียวกันทุกใบ และอยู่ *ใน* การ์ดที่มันอธิบาย */
   const auditFooter = (latest: ReturnType<typeof latestActor>) => (
@@ -332,6 +337,20 @@ const PlatformConfigManagement: React.FC = () => {
                   onCancelEdit={() => setEditingCard(null)}
                   onSaved={handleSaved}
                   footer={auditFooter(expiryThresholdsLatest)}
+                />
+              </div>
+
+              <div className="space-y-3">
+                <SectionHeading>{t('pages.platformConfig.sectionSignIn')}</SectionHeading>
+                <GoogleSignInConfigCard
+                  key={`google_sign_in-${googleSignInAudit.updated?.at ?? googleSignInAudit.created?.at ?? 'default'}`}
+                  config={googleSignIn}
+                  canManage={canManage}
+                  isEditing={editingCard === 'google_sign_in'}
+                  onRequestEdit={() => setEditingCard('google_sign_in')}
+                  onCancelEdit={() => setEditingCard(null)}
+                  onSaved={handleSaved}
+                  footer={auditFooter(googleSignInLatest)}
                 />
               </div>
 

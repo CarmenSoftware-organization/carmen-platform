@@ -1276,6 +1276,12 @@ export interface PlatformMigrationConfig {
   api_enabled: boolean;
 }
 
+/** สวิตช์ Google sign-in แยกต่อแอป (`google_sign_in`) — `app` = ทุก client ที่ไม่ใช่ Platform */
+export interface GoogleSignInConfig {
+  platform: boolean;
+  app: boolean;
+}
+
 /**
  * เกณฑ์ "ใกล้หมดอายุ" ของใบแต่ละชนิด หน่วยเป็นวัน — คีย์ `expiry_thresholds` ใน Platform Config
  * The per-kind "expiring soon" windows, in days.
