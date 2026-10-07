@@ -1,3 +1,11 @@
+# ช่องทางสำรองฉุกเฉินเท่านั้น (EMERGENCY FALLBACK ONLY)
+# การ deploy หลักใช้ Cloud Build: .cloudbuild/build.yaml + deploy.yaml (trigger อ่านจาก branch `prod`, deploy ต้อง Approve)
+# workflow นี้ใช้เฉพาะเมื่อ Cloud Build ใช้ไม่ได้ (เช่น free credit หมดแต่ GitHub Actions ยังเหลือ) — เข้า GCP ผ่าน
+# Workload Identity Federation (carmen-infra-gcp/iam.tf) ก่อนใช้ให้เทียบขั้นตอนกับ .cloudbuild/deploy.yaml ให้ตรงกัน และอ่าน
+# carmen-infra-gcp/docs/known-issues.md หัวข้อ "ช่องทางสำรอง: GitHub Actions + WIF"
+# Primary deploy path is Cloud Build (.cloudbuild/*.yaml). This workflow is an emergency fallback only — verify it against
+# .cloudbuild/deploy.yaml before relying on it.
+
 name: Deploy to GCP (Cloud Storage + CDN)
 
 on:
@@ -14,7 +22,6 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,14 +45,16 @@ jobs:
           REACT_APP_API_BASE_URL=${{ vars.REACT_APP_API_BASE_URL }}
           REACT_APP_API_APP_ID=${{ vars.REACT_APP_API_APP_ID }}
           REACT_APP_ENV=production
+          REACT_APP_OTEL_ENABLED=${{ vars.REACT_APP_OTEL_ENABLED || 'true' }}
+          REACT_APP_OTEL_ENVIRONMENT=${{ vars.REACT_APP_OTEL_ENVIRONMENT || 'prod' }}
           EOF
 
       - name: Authenticate to Google Cloud (Workload Identity Federation)
         uses: google-github-actions/auth@v2
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
