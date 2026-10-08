@@ -5,7 +5,9 @@ import { PageHeader } from '../components/PageHeader';
 import { ActivityTrailSheet } from '../components/activityTrail/ActivityTrailSheet';
 import { AUDIT_RECORDING_STARTED_ON_PHASE_2 } from '../components/activityTrail/constants';
 import { PLATFORM_SCOPED_RECORD } from '../utils/permissions';
-import reportTemplateService from '../services/reportTemplateService';
+import reportTemplateService, { type ReportTemplate } from '../services/reportTemplateService';
+import { toBackupTemplate, buildBackup, backupFileName, downloadJSON } from '../utils/reportTemplateBackup';
+import { ReportTemplateVersionsSheet } from './reportTemplates/ReportTemplateVersionsSheet';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -20,7 +22,7 @@ import { XmlEditor } from '../components/XmlEditor';
 import { DialogPreview } from '../components/DialogPreview';
 import { EmptyState } from '../components/EmptyState';
 import { FetchErrorState } from '../components/FetchErrorState';
-import { Save, Pencil, X, Loader2, SearchX } from 'lucide-react';
+import { Save, Pencil, X, Loader2, SearchX, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import Can from '../components/Can';
 import { validateField } from '../utils/validation';
@@ -33,6 +35,7 @@ import { ReadOnlyField } from '../components/ReadOnlyField';
 import { HIT_SLOP_44 } from '../lib/hitSlop';
 import { FORM_REPORT_GROUPS } from '../constants/reportGroups';
 import { useI18n } from '../hooks/useI18n';
+import { pickLocalized } from '../utils/localized';
 import type { TKey } from '../i18n/types';
 
 /** ป้ายฟิลด์บังคับ เก็บเป็นคีย์ไม่ใช่ข้อความ — const ระดับโมดูลเรียก hook ไม่ได้ */
@@ -74,7 +77,9 @@ interface SourceParamRow {
 
 interface ReportTemplateFormData {
   name: string;
+  name_th: string;
   description: string;
+  description_th: string;
   report_group: string;
   dialog: string;
   content: string;
@@ -92,7 +97,9 @@ interface ReportTemplateFormData {
 
 const initialFormData: ReportTemplateFormData = {
   name: '',
+  name_th: '',
   description: '',
+  description_th: '',
   report_group: '',
   dialog: '',
   content: '',
@@ -127,7 +134,7 @@ function seedInitialFormData(
 const ReportTemplateEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const isNew = !id;
   const location = useLocation();
 
@@ -236,8 +243,11 @@ const ReportTemplateEdit: React.FC = () => {
         return String(v);
       };
       const loaded: ReportTemplateFormData = {
-        name: template.name || '',
-        description: template.description || '',
+        // EN อ่านจากคอลัมน์เดิม (ค่าจริง): ผู้เขียนนอกระบบแก้แค่ name/description — อ่าน *_i18n.en ก่อนจะเห็นค่าเก่าและบันทึกทับกลับ
+        name: template.name || template.name_i18n?.en || '',
+        name_th: template.name_i18n?.th || '',
+        description: template.description ?? template.description_i18n?.en ?? '',
+        description_th: template.description_i18n?.th || '',
         report_group: template.report_group || '',
         dialog: template.dialog || '',
         content: template.content || '',
@@ -349,8 +359,18 @@ const ReportTemplateEdit: React.FC = () => {
       .map(p => ({ filter: p.filter.trim(), type: p.type.trim(), nullable: p.nullable }))
       .filter(p => p.filter.length > 0);
 
+    const { name_th, description_th, ...rest } = formData;
+    const nameEn = rest.name.trim();
+    const nameTh = name_th.trim();
+    const descEn = rest.description.trim();
+    const descTh = description_th.trim();
     const payload = {
-      ...formData,
+      ...rest,
+      // ส่งคอลัมน์เดิมคู่ด้วย: backend รุ่นเก่าอ่าน name/description / รุ่นใหม่ใช้ *_i18n เป็นหลัก
+      name: nameEn,
+      name_i18n: { en: nameEn, ...(nameTh ? { th: nameTh } : {}) },
+      description: descEn,
+      description_i18n: descEn || descTh ? { ...(descEn ? { en: descEn } : {}), ...(descTh ? { th: descTh } : {}) } : null,
       // formData.template_type is validated non-empty by the errs check above;
       // narrow it here since ReportTemplateFormData widens it to '' | 'form' | 'list'.
       template_type: formData.template_type as 'form' | 'list',
@@ -361,7 +381,8 @@ const ReportTemplateEdit: React.FC = () => {
       is_default: isForm ? formData.is_default : undefined,
       allow_business_unit: isForm ? '' : formData.allow_business_unit,
       deny_business_unit: isForm ? '' : formData.deny_business_unit,
-      source_name: formData.source_name.trim() || undefined,
+      // null ล้างค่าที่เก็บไว้ตอน update (undefined = ไม่แตะ ทำให้ลบชื่อ source ไม่ได้); create รับ null เท่ากับไม่มี
+      source_name: formData.source_name.trim() || null,
       source_params: { params: cleanParams },
     };
 
@@ -445,7 +466,7 @@ const ReportTemplateEdit: React.FC = () => {
             ) : isNew ? (
               t('pages.reportTemplates.newTitle')
             ) : (
-              formData.name || t('pages.reportTemplates.singularTitle')
+              pickLocalized({ en: formData.name, th: formData.name_th }, '', lang) || t('pages.reportTemplates.singularTitle')
             )
           }
           subtitle={
@@ -453,8 +474,11 @@ const ReportTemplateEdit: React.FC = () => {
               ? t('pages.reportTemplates.newSubtitle')
               : t('pages.reportTemplates.editSubtitle')
           }
+          afterTitle={!isNew && templateRecord != null && docVersion != null ? <Badge variant="secondary">v{docVersion}</Badge> : undefined}
           audit={!isNew && !loading ? normalizeAudit(templateRecord) : undefined}
-          actions={!isNew && !loading && (
+          // gate บน "โหลด record แล้ว" ไม่ใช่ !loading — refetch (หลังบันทึก/กู้คืนเวอร์ชัน) ตั้ง loading=true
+          // ถ้าผูกกับ loading แผ่นเวอร์ชันที่เปิดอยู่จะถูก unmount กลางการกู้คืน; ปุ่มที่ห้ามกดระหว่าง refetch ใช้ disabled แทน
+          actions={!isNew && templateRecord != null && (
             <>
               {/* report template ไม่สังกัด cluster — PLATFORM_SCOPED_RECORD ทำให้เหลือ
                   ทางเดียวคือสิทธิ์ระดับ platform ตรงกับที่ backend บังคับ */}
@@ -465,14 +489,41 @@ const ReportTemplateEdit: React.FC = () => {
                   recordingStartedOn={AUDIT_RECORDING_STARTED_ON_PHASE_2}
                 />
               </Can>
+              <Can permission="report_template.read">
+                {templateRecord && id ? (
+                  <ReportTemplateVersionsSheet
+                    templateId={id}
+                    current={templateRecord as ReportTemplate}
+                    docVersion={docVersion}
+                    editing={editing}
+                    onRestored={fetchTemplate}
+                  />
+                ) : null}
+              </Can>
+              <Can permission="report_template.read">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    // templateRecord = ค่าที่บันทึกแล้ว ไม่ใช่ formData ที่กำลังแก้ (Review Focus #5)
+                    const tpl = toBackupTemplate(templateRecord as ReportTemplate & Record<string, unknown>);
+                    downloadJSON(buildBackup([tpl]), backupFileName([tpl]));
+                    toast.success(t('pages.reportTemplates.backup.done', { count: 1 }));
+                  }}
+                  disabled={!templateRecord || loading}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  {t('pages.reportTemplates.backup.download')}
+                </Button>
+              </Can>
               {editing ? (
-              <Button variant="outline" size="sm" onClick={handleCancelEdit}>
+              <Button variant="outline" size="sm" onClick={handleCancelEdit} disabled={loading}>
                 <X className="mr-2 h-4 w-4" />
                 {t('common.cancel')}
               </Button>
             ) : (
               <Can permission="report_template.update">
-                <Button variant="outline" size="sm" onClick={handleEditToggle}>
+                <Button variant="outline" size="sm" onClick={handleEditToggle} disabled={loading}>
                   <Pencil className="mr-2 h-4 w-4" />
                   {t('common.action.edit')}
                 </Button>
@@ -562,8 +613,9 @@ const ReportTemplateEdit: React.FC = () => {
                         )}
                       </div>
 
+                      <div className="grid gap-4 lg:grid-cols-2">
                       <div className="space-y-2">
-                        <Label htmlFor="name">{t('common.field.name')} {editing && '*'}</Label>
+                        <Label htmlFor="name">{t('pages.reportTemplates.nameEnLabel')} {editing && '*'}</Label>
                         {editing ? (
                           <>
                             <Input
@@ -586,9 +638,27 @@ const ReportTemplateEdit: React.FC = () => {
                           <ReadOnlyField value={formData.name} />
                         )}
                       </div>
-
                       <div className="space-y-2">
-                        <Label htmlFor="description">{t('common.field.description')}</Label>
+                        <Label htmlFor="name_th">{t('pages.reportTemplates.nameThLabel')}</Label>
+                        {editing ? (
+                          <Input
+                            type="text"
+                            id="name_th"
+                            name="name_th"
+                            value={formData.name_th}
+                            onChange={handleChange}
+                            placeholder={t('pages.reportTemplates.nameThPlaceholder')}
+                            maxLength={255}
+                          />
+                        ) : (
+                          <ReadOnlyField value={formData.name_th} />
+                        )}
+                      </div>
+                      </div>
+
+                      <div className="grid gap-4 lg:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="description">{t('pages.reportTemplates.descriptionEnLabel')}</Label>
                         {editing ? (
                           <textarea
                             id="description"
@@ -605,6 +675,26 @@ const ReportTemplateEdit: React.FC = () => {
                             className="h-auto min-h-[4.5rem] items-start whitespace-pre-wrap py-2"
                           />
                         )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="description_th">{t('pages.reportTemplates.descriptionThLabel')}</Label>
+                        {editing ? (
+                          <textarea
+                            id="description_th"
+                            name="description_th"
+                            value={formData.description_th}
+                            onChange={handleChange}
+                            placeholder={t('pages.reportTemplates.descriptionThPlaceholder')}
+                            rows={3}
+                            className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                          />
+                        ) : (
+                          <ReadOnlyField
+                            value={formData.description_th}
+                            className="h-auto min-h-[4.5rem] items-start whitespace-pre-wrap py-2"
+                          />
+                        )}
+                      </div>
                       </div>
 
                       <div className="space-y-2">

@@ -36,6 +36,8 @@ vi.mock('../services/reportTemplateService', () => ({
     create: vi.fn(),
     update: vi.fn(),
     listDbObjects: vi.fn(),
+    // Versions sheet probes this on mount; resolve empty so the header button renders harmlessly.
+    listVersions: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -240,7 +242,7 @@ describe('ReportTemplateEdit — Template Type in Template Info', () => {
     renderAt('/report-templates/new');
 
     const type = await screen.findByLabelText(/Template Type/);
-    const name = screen.getByLabelText(/^Name/);
+    const name = screen.getByLabelText(/^Name \(EN\)/);
     // Template Type must come first in DOM order.
     expect(type.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
@@ -260,7 +262,7 @@ describe('ReportTemplateEdit — Template Type in Template Info', () => {
     // them empty would make jsdom's (and real browsers') constraint
     // validation block requestSubmit() before handleSubmit's JS-level checks
     // ever run. Fill them so this test isolates the new template_type check.
-    await user.type(await screen.findByLabelText(/^Name/), 'My Report');
+    await user.type(await screen.findByLabelText(/^Name \(EN\)/), 'My Report');
     await user.type(screen.getByLabelText(/Report Group/), 'inventory');
     await user.click(screen.getByRole('button', { name: /create template/i }));
 
@@ -275,7 +277,7 @@ describe('ReportTemplateEdit — Template Type in Template Info', () => {
     renderAt('/report-templates/new');
 
     await user.selectOptions(await screen.findByLabelText(/Template Type/), 'list');
-    await user.type(screen.getByLabelText(/^Name/), 'My Report');
+    await user.type(screen.getByLabelText(/^Name \(EN\)/), 'My Report');
     await user.type(screen.getByLabelText(/Report Group/), 'inventory');
     await user.click(screen.getByRole('button', { name: /create template/i }));
 
@@ -330,7 +332,7 @@ describe('ReportTemplateEdit — Report Group forks on Template Type', () => {
     renderAt('/report-templates/new');
 
     await user.selectOptions(await screen.findByLabelText(/Template Type/), 'form');
-    await user.type(screen.getByLabelText(/^Name/), 'Form Report');
+    await user.type(screen.getByLabelText(/^Name \(EN\)/), 'Form Report');
     await user.selectOptions(screen.getByLabelText(/Report Group/), 'PO');
     await user.click(screen.getByRole('button', { name: /create template/i }));
 
@@ -381,7 +383,7 @@ describe('ReportTemplateEdit — Standard hidden + forced in form mode', () => {
     await user.click(screen.getByLabelText('Standard'));
     // …then switch to form and save.
     await user.selectOptions(screen.getByLabelText(/Template Type/), 'form');
-    await user.type(screen.getByLabelText(/^Name/), 'Form Report');
+    await user.type(screen.getByLabelText(/^Name \(EN\)/), 'Form Report');
     await user.selectOptions(screen.getByLabelText(/Report Group/), 'PR');
     await user.click(screen.getByRole('button', { name: /create template/i }));
 
@@ -418,7 +420,7 @@ describe('ReportTemplateEdit — BU Scope read-only in form mode', () => {
     await user.type(screen.getByLabelText('Allow'), 'BU1{Enter}');
     // …then switch to form and save.
     await user.selectOptions(screen.getByLabelText(/Template Type/), 'form');
-    await user.type(screen.getByLabelText(/^Name/), 'Form Report');
+    await user.type(screen.getByLabelText(/^Name \(EN\)/), 'Form Report');
     await user.selectOptions(screen.getByLabelText(/Report Group/), 'PR');
     await user.click(screen.getByRole('button', { name: /create template/i }));
 
