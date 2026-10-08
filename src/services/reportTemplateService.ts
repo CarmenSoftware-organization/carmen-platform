@@ -1,6 +1,6 @@
 import api from './api';
 import { buildQuery } from '../utils/buildQuery';
-import type { PaginateParams, ApiListResponse } from '../types';
+import type { PaginateParams, ApiListResponse, LocalizedText } from '../types';
 
 export type ReportSourceType = "view" | "function" | "procedure";
 
@@ -20,6 +20,13 @@ export interface ReportTemplate {
   id: string;
   name: string;
   description?: string;
+  name_i18n?: LocalizedText | null;
+  description_i18n?: LocalizedText | null;
+  view_name?: string | null;
+  orientation?: 'portrait' | 'landscape';
+  signature_config?: { blocks: Array<{ key: string; label: string; required?: boolean }> };
+  // write-only label: makes the resulting version show as "import"
+  change_type?: 'import';
   report_group: string;
   template_type?: ReportTemplateType;
   dialog: string;
@@ -41,6 +48,28 @@ export interface ReportTemplate {
   updated_at?: string;
   updated_by_id?: string;
   doc_version?: number; // optimistic-lock token
+}
+
+export type ReportTemplateVersionChange = 'create' | 'update' | 'restore' | 'import';
+
+export interface ReportTemplateVersionSummary {
+  id: string;
+  version: number;
+  change_type: ReportTemplateVersionChange;
+  restored_from_version?: number | null;
+  created_at?: string;
+  created_by_id?: string | null;
+  created_by_name?: string;
+  audit?: unknown;
+}
+
+export type ReportTemplateSnapshot = Omit<
+  ReportTemplate,
+  'id' | 'doc_version' | 'created_at' | 'created_by_id' | 'updated_at' | 'updated_by_id' | 'change_type'
+>;
+
+export interface ReportTemplateVersion extends ReportTemplateVersionSummary {
+  snapshot: ReportTemplateSnapshot;
 }
 
 const defaultSearchFields = ['name', 'description', 'report_group'];
@@ -96,6 +125,28 @@ const reportTemplateService = {
       is_default: true,
       ...(target.doc_version != null ? { doc_version: target.doc_version } : {}),
     });
+  },
+
+  listVersions: async (id: string): Promise<ReportTemplateVersionSummary[]> => {
+    const response = await api.get(`/api-system/report-templates/${id}/versions`);
+    const body = response.data?.data ?? response.data;
+    return Array.isArray(body) ? body : [];
+  },
+
+  getVersion: async (id: string, version: number): Promise<ReportTemplateVersion> => {
+    const response = await api.get(`/api-system/report-templates/${id}/versions/${version}`);
+    return response.data?.data ?? response.data;
+  },
+
+  restoreVersion: async (
+    id: string,
+    version: number,
+    docVersion?: number,
+  ): Promise<{ id: string; doc_version: number }> => {
+    const response = await api.post(`/api-system/report-templates/${id}/versions/${version}/restore`, {
+      ...(docVersion != null ? { doc_version: docVersion } : {}),
+    });
+    return response.data?.data ?? response.data;
   },
 
   delete: async (id: string) => {

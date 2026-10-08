@@ -1933,3 +1933,9 @@ export interface DashboardDeployResult {
   result: 'deployed' | 'skipped';
   count?: number;
 }
+
+/** ข้อความสองภาษา — en/th ไม่บังคับทั้งคู่ (ฝั่ง name บังคับ en ที่ backend) */
+export interface LocalizedText {
+  en?: string;
+  th?: string;
+}
