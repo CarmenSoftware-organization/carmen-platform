@@ -1,0 +1,36 @@
+{
+  "cols": 1,
+  "cells": [
+    {
+      "kind": "single",
+      "colSpan": 1,
+      "names": [
+        "Period"
+      ]
+    },
+    {
+      "kind": "range",
+      "colSpan": 1,
+      "names": [
+        "LocationFrom",
+        "LocationTo"
+      ]
+    },
+    {
+      "kind": "range",
+      "colSpan": 1,
+      "names": [
+        "ProductFrom",
+        "ProductTo"
+      ]
+    },
+    {
+      "kind": "single",
+      "colSpan": 1,
+      "names": [
+        "GroupBy"
+      ]
+    }
+  ],
+  "warnings": []
+}

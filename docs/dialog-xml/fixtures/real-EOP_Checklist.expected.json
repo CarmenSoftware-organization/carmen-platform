@@ -1,0 +1,14 @@
+{
+  "cols": 1,
+  "cells": [
+    {
+      "kind": "range",
+      "colSpan": 1,
+      "names": [
+        "LocationFrom",
+        "LocationTo"
+      ]
+    }
+  ],
+  "warnings": []
+}

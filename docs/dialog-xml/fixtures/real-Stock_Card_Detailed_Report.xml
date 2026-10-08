@@ -1,0 +1,8 @@
+<Dialog>
+  <Label Text="Period"/><Lookup Name="Period" DataSource="@period_list"/>
+  <Label Text="Location From"/><Lookup Name="LocationFrom" DataSource="@location_list"/>
+  <Label Text="Location To"/><Lookup Name="LocationTo" DataSource="@location_list"/>
+  <Label Text="Product From"/><Lookup Name="ProductFrom" DataSource="@product_list"/>
+  <Label Text="Product To"/><Lookup Name="ProductTo" DataSource="@product_list"/>
+  <Label Text="Group By"/><Lookup Name="GroupBy" Items="Product~Location~Category" Values="Product~Location~Category"/>
+</Dialog>

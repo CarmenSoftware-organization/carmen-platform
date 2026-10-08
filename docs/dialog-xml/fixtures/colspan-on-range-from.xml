@@ -1,0 +1,5 @@
+<Dialog Cols="3">
+  <Label Text="Date From"/><Date Name="DateFrom" ColSpan="2"/>
+  <Label Text="Date To"/><Date Name="DateTo" ColSpan="3"/>
+  <Label Text="Status"/><Lookup Name="Status" Items="ALL~Open" Values="ALL~O"/>
+</Dialog>

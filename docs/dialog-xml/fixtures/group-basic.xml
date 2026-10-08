@@ -1,0 +1,7 @@
+<Dialog Cols="3">
+  <Group ColSpan="2">
+    <Label Text="Date From"/><Date Name="DateFrom" Value="@today"/>
+    <Label Text="Date To"/><Date Name="DateTo" Value="@today"/>
+  </Group>
+  <Label Text="Group By"/><Lookup Name="GroupBy" Items="Vendor~Location" Values="vendor~location"/>
+</Dialog>

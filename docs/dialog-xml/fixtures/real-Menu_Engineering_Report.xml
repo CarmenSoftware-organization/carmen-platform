@@ -1,0 +1,8 @@
+<Dialog>
+  <Label Text="Date From"/><Date Name="DateFrom"/>
+  <Label Text="Date To"/><Date Name="DateTo"/>
+  <Label Text="Location From"/><Lookup Name="LocationFrom" DataSource="@location_list"/>
+  <Label Text="Location To"/><Lookup Name="LocationTo" DataSource="@location_list"/>
+  <Label Text="Category From"/><Lookup Name="CategoryFrom" DataSource="@category_list"/>
+  <Label Text="Category To"/><Lookup Name="CategoryTo" DataSource="@category_list"/>
+</Dialog>

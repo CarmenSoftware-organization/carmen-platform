@@ -1,0 +1,6 @@
+<Dialog>
+  <Label Text="Date From"/><Date Name="DateFrom"/>
+  <Label Text="Date To"/><Date Name="DateTo"/>
+  <Label Text="Product From"/><Lookup Name="ProductFrom" DataSource="@product_list"/>
+  <Label Text="Product To"/><Lookup Name="ProductTo" DataSource="@product_list"/>
+</Dialog>

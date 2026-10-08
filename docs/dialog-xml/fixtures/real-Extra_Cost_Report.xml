@@ -1,0 +1,5 @@
+<Dialog>
+  <Label Text="Date From"/><Date Name="DateFrom"/>
+  <Label Text="Date To"/><Date Name="DateTo"/>
+  <Label Text="Status"/><Lookup Name="Status" Items="ALL~Draft~Approved~Void" Values="ALL~D~A~V"/>
+</Dialog>
