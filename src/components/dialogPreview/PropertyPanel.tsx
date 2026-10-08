@@ -1,5 +1,5 @@
 import React from 'react';
-import { Minus, Plus, X } from 'lucide-react';
+import { Minus, Plus, Trash2, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { cn } from '../../lib/utils';
@@ -18,6 +18,8 @@ export interface PropertyPanelProps {
   onApply: (next: string) => void;
   onUngroup: (groupKey: string) => void;
   onClose: () => void;
+  /** ลบ cell ที่แผงแก้อยู่ — editor จัดการ Undo และ focus */
+  onDelete: (key: string) => void;
   /** มีช่องที่โชว์ error อยู่ (true) / แก้หาย คืนค่า หรือเขียนแล้ว (false) — editor ใช้ห้ามสลับ cell ระหว่างนั้น */
   onBlockingChange?: (blocked: boolean) => void;
   className?: string;
@@ -210,7 +212,7 @@ function Others({ els }: { els: Element[] }) {
   );
 }
 
-export function PropertyPanel({ xml, parsed, focusKey, onApply, onUngroup, onClose, onBlockingChange, className, panelRef }: PropertyPanelProps) {
+export function PropertyPanel({ xml, parsed, focusKey, onApply, onUngroup, onClose, onDelete, onBlockingChange, className, panelRef }: PropertyPanelProps) {
   const { t } = useI18n();
   // XML ล่าสุด อัปเดตตอน render — cleanup ของช่องที่ unmount ทีหลังจะเห็นค่าใหม่แล้ว จึงรู้ว่าตัวเองถูกถอดเพราะ XML เปลี่ยนหรือไม่
   const xmlRef = React.useRef(xml);
@@ -356,9 +358,23 @@ export function PropertyPanel({ xml, parsed, focusKey, onApply, onUngroup, onClo
           <p className="truncate text-xs font-semibold" title={title}>
             {title}
           </p>
-          <Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0" aria-label={t('components.dialogPreview.panel.close')} onClick={onClose}>
-            <X className="h-3.5 w-3.5" />
-          </Button>
+          <div className="flex shrink-0 items-center gap-1">
+            {/* aria-label กันตัวเลือก focusCell ('button:not([aria-label])') ไม่ให้เลือกปุ่มนี้แทนช่องแรกของแผง */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-[11px] text-muted-foreground hover:text-destructive"
+              aria-label={t('components.dialogPreview.panel.deleteAria', { label: title })}
+              onClick={() => focusKey && onDelete(focusKey)}
+            >
+              <Trash2 className="mr-1 h-3.5 w-3.5" />
+              {t('components.dialogPreview.panel.delete')}
+            </Button>
+            <Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0" aria-label={t('components.dialogPreview.panel.close')} onClick={onClose}>
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
       )}
       {/* key = focusKey อย่างเดียว — ร่างที่พิมพ์ค้างไม่ข้ามไปอีก cell; โหมด Lookup รีเซ็ตด้วย key ของ ControlFields (listKey) ไม่ใช่ที่นี่ */}
