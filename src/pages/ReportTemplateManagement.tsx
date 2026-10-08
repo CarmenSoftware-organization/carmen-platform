@@ -398,7 +398,6 @@ const ReportTemplateManagement: React.FC = () => {
     const ids: string[] = [];
     try {
       for (let page = 1; ; page += 1) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const res: any = await reportTemplateService.getAll({ ...paginate, page, perpage: 100 });
         const inner = res.data?.data ?? res.data ?? res;
         const items: ReportTemplate[] = Array.isArray(inner) ? inner : (inner?.data ?? []);
