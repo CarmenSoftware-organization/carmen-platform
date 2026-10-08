@@ -1,4 +1,4 @@
-# Dialog XML: `Label` attribute on controls
+# Dialog XML: `Label` attribute on controls and groups
 
 **Date:** 2026-10-08
 **Repos:** `carmen-platform`, `carmen-inventory-frontend-react`, `micro-report`
@@ -18,6 +18,9 @@ control. Authors want a control to carry its own label:
 <!-- new -->
 <Date Name="DateFrom" Label="Date"/>
 ```
+
+`<Group>` gets a `Label` too: a heading above the group's fields, shown only
+when it has a value.
 
 This is the first of three follow-ups the user asked for (B: new control
 attributes). A (a property panel in the layout editor) and C (add/remove fields
@@ -43,6 +46,8 @@ in the editor) get their own specs afterwards.
   handled as its own branch in the pairing step. Rejected: rewriting the
   attribute into a virtual `<Label>` before pairing — it would pair ranges
   (breaks D) and absorb a preceding `<Label>` (breaks A).
+- **Group heading.** `<Group Label="…">` shows the text as a heading above the
+  group's fields. Absent, empty, or whitespace-only → no heading, no warning.
 - Existing templates (18 real ones, none use `Label=`) parse exactly as before.
 
 ## Format rules (added to `docs/dialog-xml/README.md`)
@@ -59,10 +64,16 @@ in the editor) get their own specs afterwards.
   The preview warns `emptyLabel`.
 - There is no `Visible` for an attribute label (hidden labels exist only for
   ranges, which D excludes).
-- **Rollout rule:** do not use `Label=` in a live template until the inventory
+- `<Group Label="…">`: heading text, trimmed. Empty after trimming = no heading.
+  `Label` is removed from the "reserved on `<Group>`" note; `Cols` stays reserved.
+  A group label is not a field label: it never pairs with anything, and a
+  `<Label>` element before a `<Group>` still gets `labelWithoutControl`.
+- **Rollout rule:** do not use `Label=` on a control in a live template until the inventory
   release that supports it is on inventory **production**. Older inventory
   builds silently drop the field (no `<Label>` in front). The preview shows a
-  notice whenever a self-labelled control exists.
+  notice whenever a self-labelled control exists. `Label` on `<Group>` adds no
+  risk of its own: older inventory ignores the attribute (the heading is just
+  missing) — the existing `<Group>` rollout rule still applies to the group.
 
 ## Changes per repo
 
@@ -79,6 +90,7 @@ in the editor) get their own specs afterwards.
     `labelWithoutControl`, advance one (the control is handled on the next turn);
   - range pairing (`isToLabel` / `isNamedPair` branch) only when both `next` and
     `to` have `selfLabel === null`.
+- The `group` cell gains `label: string` (trimmed attribute, `''` when none).
 - New warning `{ code: 'emptyLabel'; at: string }`.
 - `DialogParseResult` gains `hasLabelAttr: boolean` for the rollout notice.
 
@@ -101,6 +113,12 @@ in the editor) get their own specs afterwards.
 - `src/i18n/en.ts` + `th.ts`: `components.dialogPreview.warnings.emptyLabel`,
   `components.dialogPreview.labelAttrNeedsInventory`.
 - `FieldBlock` already renders `field.label`; no change expected.
+- `CellView.tsx` group cell: when `cell.label` is non-empty, render it as a
+  heading (`text-sm font-medium`) above the fields, and give the group box
+  `role="group"` + `aria-labelledby` pointing at it. Empty → markup as today.
+- `DialogLayoutEditor.tsx`: the group header and drag announcements use
+  `cell.label` when non-empty, otherwise `Group N` as today. The label is shown,
+  not edited — editing belongs to the property panel (spec A).
 
 ### carmen-inventory-frontend-react — run dialog `routes/report/list/parse-report-dialog.ts`
 
@@ -108,6 +126,11 @@ in the editor) get their own specs afterwards.
 - `groupFields` gets the same three rules as the preview, line for line
   (preview is a port of this function — keep them identical).
 - The empty-label fallback is the control's `name`.
+- `GroupCell` gains `label: string` (trimmed, `''` when none).
+
+`report-param-dialog.tsx`: a group with a non-empty `label` renders the heading
+above its field grid, wrapper gets `role="group"` + `aria-labelledby`. The
+wrapper keeps `COL_SPAN[cell.colSpan]`; the inner grid keeps `GRID_COLS`.
 - Shared fixtures are copied by hand into `routes/report/list/__fixtures__/dialog-xml/`.
 
 ### carmen-inventory-frontend-react — schedule form `routes/report/schedules/parse-schedule-dialog.ts`
@@ -115,6 +138,7 @@ in the editor) get their own specs afterwards.
 - Label: when the control has a `Label` attribute, use it (empty → `name`) and
   ignore `currentLabel`; otherwise `currentLabel` → `name` as today.
 - `currentLabel` is cleared after every control, as today.
+- Group labels are ignored (the schedule form flattens groups).
 
 ### micro-report — `service/template_filter_inject.go` (`parseDialogDefs`)
 
@@ -124,6 +148,7 @@ in the editor) get their own specs afterwards.
   `pendingLabel` is ignored; absent → `pendingLabel` → `ctrl.Name` as today.
 - The filter-subtitle From/To line merge stays name-based (display only):
   `Date from: x    to: y`.
+- Group labels are ignored (the header lists fields, not groups) — no change.
 
 ## Testing
 
@@ -139,6 +164,7 @@ Static checks in every repo: typecheck + lint (platform, inventory), `go vet`
 | `label-attr-no-range` | `DateFrom`/`DateTo` both self-labelled → 2 fields; classic From + self-labelled To → 2 cells, no range |
 | `label-attr-group` | self-labelled controls inside `<Group>`, with `ColSpan` |
 | `label-attr-empty` | `Label=""` → label = `Name`, `emptyLabel` warning |
+| `group-label` | `<Group Label="Period">` → `label: "Period"`; a group without `Label` and one with `Label="  "` → `label: ""`; no warnings |
 
 Both fixture runners (`dialogXml.test.ts`, inventory `parse-report-dialog.test.ts`)
 pick new files up automatically.
@@ -157,6 +183,8 @@ pick new files up automatically.
 ### Browser verification (local, never saved)
 
 - Preview draws self-labelled fields; the rollout notice shows.
+- A labelled group shows its heading in preview, editor header, and the
+  inventory run dialog; an unlabelled one shows none.
 - Drag, group, and ColSpan on self-labelled fields; then Cancel.
 - Inventory localhost run dialog shows every field for a pasted test XML (the
   user signs in if needed).
