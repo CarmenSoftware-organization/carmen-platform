@@ -54,6 +54,11 @@ const SCALAR_FIELDS: Array<{ key: string; read: (s: Partial<ReportTemplateSnapsh
   { key: 'orientation', read: (s) => s.orientation },
   { key: 'allow_business_unit', read: (s) => JSON.stringify(s.allow_business_unit ?? null) },
   { key: 'deny_business_unit', read: (s) => JSON.stringify(s.deny_business_unit ?? null) },
+  // snapshot ก่อนมีฟิลด์นี้ = undefined — restore คงค่าปัจจุบัน จึงไม่นับเป็นความต่าง (ดู filter ใน changes)
+  {
+    key: 'calculation_methods',
+    read: (s) => (s.calculation_methods === undefined ? undefined : [...s.calculation_methods].sort().join(', ')),
+  },
 ];
 
 const fmt = (v: unknown) => (v === '' || v == null ? '—' : String(v));
@@ -246,7 +251,7 @@ const VersionDetail: React.FC<{
   const changes = useMemo(
     () =>
       SCALAR_FIELDS.map((f) => ({ key: f.key, from: f.read(snapshot), to: f.read(current) })).filter(
-        (c) => fmt(c.from) !== fmt(c.to),
+        (c) => fmt(c.from) !== fmt(c.to) && !(c.key === 'calculation_methods' && c.from === undefined),
       ),
     [snapshot, current],
   );
