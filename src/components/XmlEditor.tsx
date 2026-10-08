@@ -38,8 +38,9 @@ export interface XmlEditorProps {
   value: string;
   onChange?: (value: string) => void;
   placeholder?: string;
-  minHeight?: number;
-  maxHeight?: number;
+  /** px หรือความยาว CSS ใดก็ได้ เช่น `calc(100vh - 20rem)` ให้พอดีจอ */
+  minHeight?: number | string;
+  maxHeight?: number | string;
   label?: string;
   filename?: string;
   onParseChange?: (status: XmlValidation) => void;
@@ -267,7 +268,10 @@ export const XmlEditor: React.FC<XmlEditorProps> = ({
       )}
       <div
         ref={hostRef}
-        className="rounded-md border border-input bg-background overflow-hidden"
+        // CodeMirror ปล่อย .cm-editor สูงตามเนื้อหา ใส่ max-height ที่ host อย่างเดียวจึงแค่ตัดทิ้ง —
+        // Content XML 95 บรรทัดสูง ~2,600px แต่เห็นแค่ 560px แรกและไม่มี scrollbar
+        // ส่งทั้งสองขอบเขตลงไปที่ .cm-editor แล้ว .cm-scroller จะเลื่อนเองได้
+        className="rounded-md border border-input bg-background overflow-hidden [&_.cm-editor]:max-h-[inherit] [&_.cm-editor]:min-h-[inherit]"
         style={{ minHeight, maxHeight }}
         data-placeholder={placeholder}
       />
