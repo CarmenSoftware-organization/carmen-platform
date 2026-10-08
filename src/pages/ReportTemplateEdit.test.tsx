@@ -36,6 +36,8 @@ vi.mock('../services/reportTemplateService', () => ({
     create: vi.fn(),
     update: vi.fn(),
     listDbObjects: vi.fn(),
+    // Versions sheet probes this on mount; resolve empty so the header button renders harmlessly.
+    listVersions: vi.fn().mockResolvedValue([]),
   },
 }));
 

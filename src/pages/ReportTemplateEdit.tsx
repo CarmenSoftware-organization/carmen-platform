@@ -7,6 +7,7 @@ import { AUDIT_RECORDING_STARTED_ON_PHASE_2 } from '../components/activityTrail/
 import { PLATFORM_SCOPED_RECORD } from '../utils/permissions';
 import reportTemplateService, { type ReportTemplate } from '../services/reportTemplateService';
 import { toBackupTemplate, buildBackup, backupFileName, downloadJSON } from '../utils/reportTemplateBackup';
+import { ReportTemplateVersionsSheet } from './reportTemplates/ReportTemplateVersionsSheet';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -471,6 +472,7 @@ const ReportTemplateEdit: React.FC = () => {
               ? t('pages.reportTemplates.newSubtitle')
               : t('pages.reportTemplates.editSubtitle')
           }
+          afterTitle={!isNew && !loading && docVersion != null ? <Badge variant="secondary">v{docVersion}</Badge> : undefined}
           audit={!isNew && !loading ? normalizeAudit(templateRecord) : undefined}
           actions={!isNew && !loading && (
             <>
@@ -482,6 +484,17 @@ const ReportTemplateEdit: React.FC = () => {
                   entityId={id}
                   recordingStartedOn={AUDIT_RECORDING_STARTED_ON_PHASE_2}
                 />
+              </Can>
+              <Can permission="report_template.read">
+                {templateRecord && id ? (
+                  <ReportTemplateVersionsSheet
+                    templateId={id}
+                    current={templateRecord as ReportTemplate}
+                    docVersion={docVersion}
+                    editing={editing}
+                    onRestored={fetchTemplate}
+                  />
+                ) : null}
               </Can>
               <Can permission="report_template.read">
                 <Button
