@@ -1147,7 +1147,7 @@ const ReportTemplateEdit: React.FC = () => {
             </div>
 
             {/* Right column — ปักไว้ใต้แถบบน (h-16) ให้โค้ดอยู่ในสายตาตลอดที่เลื่อนฟอร์มซ้าย */}
-            <div className="lg:sticky lg:top-20 lg:self-start">
+            <div className="min-w-0 lg:sticky lg:top-20 lg:self-start">
               <Card>
                 <CardHeader>
                   {/* แถบนี้เคยเขียน count badge กับจุดแดง error ขึ้นมาเอง ซึ่งเป็น markup
