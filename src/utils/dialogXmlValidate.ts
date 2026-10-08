@@ -2,7 +2,14 @@
 import { CONTROL_TAGS } from './dialogXml';
 import { isKnownDataSource } from './dialogDataSources';
 
-export type IssueCode = 'nameRequired' | 'namePattern' | 'nameDuplicate' | 'itemsEmptyRow' | 'itemsTilde';
+export type IssueCode =
+  | 'nameRequired'
+  | 'namePattern'
+  | 'nameDuplicate'
+  | 'itemsNone'
+  | 'itemsEmptyRow'
+  | 'itemsTilde'
+  | 'dataSourceRequired';
 
 const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
@@ -19,6 +26,8 @@ export function validateName(name: string, self: Element): IssueCode | null {
 
 /** Items/Values คั่นด้วย ~ — ช่องว่างหรือ ~ ในค่าทำให้สองฝั่งเลื่อนไม่ตรงกัน */
 export function validateRows(rows: { item: string; value: string }[]): IssueCode | null {
+  // ลบจนหมดแถว = Lookup ไม่มีตัวเลือก — ต้องบอก ไม่ใช่เงียบแล้วทิ้งร่าง
+  if (rows.length === 0) return 'itemsNone';
   if (rows.some((r) => !r.item.trim() || !r.value.trim())) return 'itemsEmptyRow';
   if (rows.some((r) => r.item.includes('~') || r.value.includes('~'))) return 'itemsTilde';
   return null;
@@ -31,3 +40,6 @@ export function rangeWillSplit(fromName: string, toName: string, toLabel: Elemen
 }
 
 export const dataSourceUnknown = (v: string): boolean => v.trim() !== '' && !isKnownDataSource(v);
+
+/** Lookup โหมดแหล่งข้อมูลต้องมีแหล่งข้อมูล — ล้างช่องแล้วเขียนจะเหลือ Lookup ที่ไม่มีที่มาของตัวเลือก */
+export const validateDataSource = (v: string): IssueCode | null => (v.trim() ? null : 'dataSourceRequired');

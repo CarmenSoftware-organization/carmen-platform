@@ -854,10 +854,13 @@ export const en = {
         errNameRequired: 'Name is required',
         errNamePattern: 'Use letters, digits and _ only, not starting with a digit',
         errNameDuplicate: 'Another control already uses this name',
+        errItemsNone: 'Add at least one row',
         errItemsEmptyRow: 'Every row needs both a shown text and a value',
         errItemsTilde: '~ is the list separator and cannot be used in a value',
+        errDataSourceRequired: 'Data source is required — or switch to Fixed list',
         warnRangeSplit: 'These names no longer pair as XFrom / XTo — the range will become two fields',
         warnUnknownDataSource: 'Not a known data source — inventory will pass it through as-is',
+        fixErrorFirst: 'Fix the error in the properties panel first, or press Esc to restore the previous value',
       },
     },
     // Shared between DialogPreview.tsx and XmlEditor.tsx — both render this exact fallback

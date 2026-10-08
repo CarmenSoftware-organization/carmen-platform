@@ -631,10 +631,13 @@ export const th: Translations = {
         errNameRequired: 'ต้องระบุ Name',
         errNamePattern: 'ใช้ได้เฉพาะตัวอักษรอังกฤษ ตัวเลข และ _ และห้ามขึ้นต้นด้วยตัวเลข',
         errNameDuplicate: 'มี control อื่นใช้ชื่อนี้แล้ว',
+        errItemsNone: 'ต้องมีอย่างน้อยหนึ่งแถว',
         errItemsEmptyRow: 'ทุกแถวต้องมีทั้งข้อความที่แสดงและค่าที่ส่ง',
         errItemsTilde: '~ เป็นตัวคั่นรายการ ใช้ในค่าไม่ได้',
+        errDataSourceRequired: 'ต้องระบุแหล่งข้อมูล หรือสลับไปใช้รายการกำหนดเอง',
         warnRangeSplit: 'ชื่อไม่จับคู่แบบ XFrom / XTo แล้ว ช่วงนี้จะแยกเป็นสอง field',
         warnUnknownDataSource: 'ไม่ใช่แหล่งข้อมูลที่รู้จัก inventory จะส่งค่านี้ไปตามที่เขียน',
+        fixErrorFirst: 'แก้ข้อผิดพลาดในแผงคุณสมบัติก่อน หรือกด Esc เพื่อคืนค่าเดิม',
       },
     },
     // ใช้ร่วมกันระหว่าง DialogPreview.tsx กับ XmlEditor.tsx — ทั้งสองไฟล์แสดงข้อความนี้เหมือน

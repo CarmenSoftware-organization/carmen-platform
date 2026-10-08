@@ -44,6 +44,7 @@ export function SortableCell({ id, label, className, hoverGroup = 'cell', focuse
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
       ref={setNodeRef}
+      data-cell-key={id}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
       tabIndex={onFocusCell || onFocusCellByKey ? 0 : undefined}

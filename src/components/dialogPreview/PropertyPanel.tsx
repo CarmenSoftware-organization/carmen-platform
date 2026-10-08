@@ -8,8 +8,8 @@ import type { TFunction, TKey } from '../../i18n/types';
 import type { DialogCell, DialogField, DialogParseResult } from '../../utils/dialogXml';
 import { setColSpan, setControlAttrs, setGroupLabel, setLabelText, type Side } from '../../utils/dialogXmlEdit';
 import { DATA_SOURCES } from '../../utils/dialogDataSources';
-import { dataSourceUnknown, rangeWillSplit, validateName, validateRows, type IssueCode } from '../../utils/dialogXmlValidate';
-import { CommitInput, RowsEditor, type Row } from './panelInputs';
+import { dataSourceUnknown, rangeWillSplit, validateDataSource, validateName, validateRows, type IssueCode } from '../../utils/dialogXmlValidate';
+import { CommitInput, PanelContext, RowsEditor, type PanelContextValue, type Row } from './panelInputs';
 
 export interface PropertyPanelProps {
   xml: string;
@@ -18,8 +18,10 @@ export interface PropertyPanelProps {
   onApply: (next: string) => void;
   onUngroup: (groupKey: string) => void;
   onClose: () => void;
+  /** มีช่องที่โชว์ error อยู่ (true) / แก้หาย คืนค่า หรือเขียนแล้ว (false) — editor ใช้ห้ามสลับ cell ระหว่างนั้น */
+  onBlockingChange?: (blocked: boolean) => void;
   className?: string;
-  panelRef?: React.Ref<HTMLElement>;
+  panelRef?: React.RefObject<HTMLElement | null>;
 }
 
 type Focused =
@@ -58,8 +60,10 @@ const ISSUE_KEY: Record<IssueCode, TKey> = {
   nameRequired: 'components.dialogPreview.panel.errNameRequired',
   namePattern: 'components.dialogPreview.panel.errNamePattern',
   nameDuplicate: 'components.dialogPreview.panel.errNameDuplicate',
+  itemsNone: 'components.dialogPreview.panel.errItemsNone',
   itemsEmptyRow: 'components.dialogPreview.panel.errItemsEmptyRow',
   itemsTilde: 'components.dialogPreview.panel.errItemsTilde',
+  dataSourceRequired: 'components.dialogPreview.panel.errDataSourceRequired',
 };
 const issueText = (t: TFunction, code: IssueCode | null) => (code ? t(ISSUE_KEY[code]) : null);
 
@@ -97,6 +101,8 @@ function ControlFields({ xml, k, side, el, nameWarn, onApply }: ControlFieldsPro
   const { t } = useI18n();
   const id = `${k}-${side ?? 'f'}`;
   const write = (patch: Record<string, string | null>) => onApply(setControlAttrs(xml, k, side, patch));
+  const panel = React.useContext(PanelContext);
+  const writeRows = (rows: Row[]) => write({ Items: rows.map((r) => r.item).join('~'), Values: rows.map((r) => r.value).join('~'), DataSource: null });
   const isLookup = el.tagName === 'Lookup';
   const items = split(el.getAttribute('Items'));
   const values = split(el.getAttribute('Values'));
@@ -127,16 +133,22 @@ function ControlFields({ xml, k, side, el, nameWarn, onApply }: ControlFieldsPro
               label={t('components.dialogPreview.panel.dataSource')}
               value={el.getAttribute('DataSource') ?? ''}
               list={DATALIST_ID}
+              validate={(v) => issueText(t, validateDataSource(v))}
               warn={(v) => (dataSourceUnknown(v) ? t('components.dialogPreview.panel.warnUnknownDataSource') : null)}
-              onCommit={(v) => write(v.trim() ? { DataSource: v.trim(), Items: null, Values: null } : { DataSource: null })}
+              onCommit={(v) => write({ DataSource: v.trim(), Items: null, Values: null })}
             />
           ) : (
             <RowsEditor
               id={`${id}-rows`}
+              label={t('components.dialogPreview.panel.modeList')}
               items={items}
               values={values}
               validate={(rows) => issueText(t, validateRows(rows))}
-              onCommit={(rows: Row[]) => write({ Items: rows.map((r) => r.item).join('~'), Values: rows.map((r) => r.value).join('~'), DataSource: null })}
+              onCommit={writeRows}
+              // สลับ cell ระหว่างร่างค้าง — เขียนได้เฉพาะเมื่อ XML ยังเป็นฉบับที่ร่างนี้เห็น (unmount เพราะ XML เปลี่ยน = key อาจเลื่อนแล้ว)
+              onLeave={(rows) => {
+                if (panel?.xmlRef.current === xml) writeRows(rows);
+              }}
             />
           )}
           <label className="flex items-center gap-2 text-xs">
@@ -198,8 +210,48 @@ function Others({ els }: { els: Element[] }) {
   );
 }
 
-export function PropertyPanel({ xml, parsed, focusKey, onApply, onUngroup, onClose, className, panelRef }: PropertyPanelProps) {
+export function PropertyPanel({ xml, parsed, focusKey, onApply, onUngroup, onClose, onBlockingChange, className, panelRef }: PropertyPanelProps) {
   const { t } = useI18n();
+  // XML ล่าสุด อัปเดตตอน render — cleanup ของช่องที่ unmount ทีหลังจะเห็นค่าใหม่แล้ว จึงรู้ว่าตัวเองถูกถอดเพราะ XML เปลี่ยนหรือไม่
+  const xmlRef = React.useRef(xml);
+  xmlRef.current = xml;
+  const blockingRef = React.useRef(onBlockingChange);
+  blockingRef.current = onBlockingChange;
+  const blockedIds = React.useRef(new Set<string>());
+  const report = React.useCallback((id: string, blocked: boolean) => {
+    const set = blockedIds.current;
+    const before = set.size > 0;
+    if (blocked) set.add(id);
+    else set.delete(id);
+    if (before !== set.size > 0) blockingRef.current?.(set.size > 0);
+  }, []);
+  const ctx = React.useMemo<PanelContextValue>(() => ({ report, xmlRef }), [report]);
+
+  // ช่องที่ถือ focus ถูก remount (เช่น Enter ในช่องแหล่งข้อมูลทำให้โหมด Lookup รีเซ็ต) — focus ตกไปที่ body แล้ว Esc ถัดไป
+  // จะไปยกเลิกทั้งหน้า จึงคืน focus ให้ช่องเดิม (id เดิม) หรือช่องแรกของแผง
+  const ownRef = React.useRef<HTMLElement | null>(null);
+  const hadFocus = React.useRef(false);
+  const lastFocusedId = React.useRef('');
+  const setRefs = React.useCallback(
+    (el: HTMLElement | null) => {
+      ownRef.current = el;
+      if (panelRef) panelRef.current = el;
+    },
+    [panelRef],
+  );
+  React.useEffect(() => {
+    const el = ownRef.current;
+    if (!hadFocus.current || !el) return;
+    const active = document.activeElement;
+    if (active && active !== document.body) {
+      if (!el.contains(active)) hadFocus.current = false;
+      return;
+    }
+    const again = lastFocusedId.current ? document.getElementById(lastFocusedId.current) : null;
+    const target = again && el.contains(again) ? again : el.querySelector<HTMLElement>('input,select');
+    if (target) target.focus();
+    else hadFocus.current = false;
+  });
   const f = findFocused(parsed.cells, focusKey);
   const cols = parsed.cols;
 
@@ -243,7 +295,7 @@ export function PropertyPanel({ xml, parsed, focusKey, onApply, onUngroup, onClo
         <section className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <h4 className="text-xs font-semibold">{t('components.dialogPreview.panel.to')}</h4>
-            {r.from.element.tagName === 'Lookup' && (
+            {r.from.element.tagName === 'Lookup' && r.to.element.tagName === 'Lookup' && (
               <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" onClick={copySource}>
                 {t('components.dialogPreview.panel.sameAsFrom')}
               </Button>
@@ -272,7 +324,19 @@ export function PropertyPanel({ xml, parsed, focusKey, onApply, onUngroup, onClo
   return (
     // Esc ในแผง = ไม่ให้ลอยถึง window (KeyboardShortcuts ผูก Esc กับ Cancel ของหน้า) ครอบทุก control รวม select/checkbox/ปุ่ม
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
-    <aside onKeyDown={(e) => e.key === 'Escape' && e.stopPropagation()} ref={panelRef} aria-label={t('components.dialogPreview.panel.aria')} className={cn('space-y-3 rounded-md border bg-card p-3', className)}>
+    <aside
+      onKeyDown={(e) => e.key === 'Escape' && e.stopPropagation()}
+      onFocus={(e) => {
+        hadFocus.current = true;
+        lastFocusedId.current = e.target.id;
+      }}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) hadFocus.current = false;
+      }}
+      ref={setRefs}
+      aria-label={t('components.dialogPreview.panel.aria')}
+      className={cn('space-y-3 rounded-md border bg-card p-3', className)}
+    >
       <datalist id={DATALIST_ID}>
         {DATA_SOURCES.map((d) => (
           <option key={d.value} value={d.value} label={d.description} />
@@ -289,9 +353,11 @@ export function PropertyPanel({ xml, parsed, focusKey, onApply, onUngroup, onClo
         </div>
       )}
       {/* key = focusKey อย่างเดียว — ร่างที่พิมพ์ค้างไม่ข้ามไปอีก cell; โหมด Lookup รีเซ็ตด้วย key ของ ControlFields (listKey) ไม่ใช่ที่นี่ */}
-      <div key={`${focusKey ?? ''}`} className="space-y-3">
-        {body}
-      </div>
+      <PanelContext.Provider value={ctx}>
+        <div key={`${focusKey ?? ''}`} className="space-y-3">
+          {body}
+        </div>
+      </PanelContext.Provider>
     </aside>
   );
 }

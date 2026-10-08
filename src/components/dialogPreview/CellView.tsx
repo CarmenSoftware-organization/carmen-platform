@@ -25,6 +25,13 @@ export const CANVAS_W: Record<number, string> = {
   3: 'max-w-[992px]',
   4: 'max-w-[992px]',
 };
+/** ตัวเลขเดียวกับ CANVAS_W เป็น px — ใช้คำนวณว่าแผง property วางข้างผืนผ้าใบได้ไหม (แก้คู่กันเสมอ) */
+export const CANVAS_PX: Record<number, number> = {
+  1: 480,
+  2: 736,
+  3: 992,
+  4: 992,
+};
 
 function cleanDataSource(src: string | null | undefined): string {
   if (!src) return '';
