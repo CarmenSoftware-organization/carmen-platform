@@ -791,7 +791,9 @@ export const en = {
       warnEmptyGroup: '{{at}} is empty and was skipped',
       warnLabelWithoutControl: 'Label "{{at}}" has no Date or Lookup after it, so the inventory dialog will not show it',
       warnControlWithoutLabel: '{{at}} has no visible label before it, so the inventory dialog will not show it',
+      warnEmptyLabel: '{{at}} has an empty Label, so its Name is shown instead',
       groupNeedsInventory: '<Group> needs the inventory release that supports it. On older inventory builds, grouped fields disappear.',
+      labelAttrNeedsInventory: 'Label on <Date>/<Lookup> needs the inventory release that supports it. On older inventory builds, those fields disappear.',
       editor: {
         colsLabel: 'Columns',
         // {{label}} is the field's label text from the XML

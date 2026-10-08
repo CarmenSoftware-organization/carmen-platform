@@ -63,6 +63,8 @@ export const DialogPreview: React.FC<DialogPreviewProps> = ({ xml, onChange, onD
   const notices = parsed.warnings.map((w) => warningText(w, t));
   // ลบบรรทัดนี้เมื่อ inventory รุ่นที่รองรับ <Group> ขึ้น production แล้ว (docs/dialog-xml/README.md)
   if (parsed.cells.some((c) => c.kind === 'group')) notices.push(t('components.dialogPreview.groupNeedsInventory'));
+  // ลบบรรทัดนี้เมื่อ inventory รุ่นที่รองรับ Label บน control ขึ้น production แล้ว (docs/dialog-xml/README.md)
+  if (parsed.hasLabelAttr) notices.push(t('components.dialogPreview.labelAttrNeedsInventory'));
 
   return (
     <div className="space-y-4">

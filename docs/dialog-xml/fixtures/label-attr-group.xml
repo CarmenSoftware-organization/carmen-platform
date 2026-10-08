@@ -1,0 +1,7 @@
+<Dialog Cols="3">
+  <Group ColSpan="2">
+    <Date Name="DateFrom" Label="Date from"/>
+    <Date Name="DateTo" Label="to"/>
+  </Group>
+  <Lookup Name="Status" Label="Status" Items="ALL~Open" Values="ALL~O"/>
+</Dialog>

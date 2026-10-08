@@ -71,9 +71,9 @@ describe('parseDialogXml', () => {
     );
     const [range, single] = r.cells;
     if (range.kind !== 'range' || single.kind !== 'field') throw new Error('unexpected cells');
-    expect(range.from.labelElement.getAttribute('Text')).toBe('Date From');
-    expect(range.to.labelElement.getAttribute('Visible')).toBe('false');
-    expect(single.labelElement.getAttribute('Text')).toBe('S');
+    expect(range.from.labelElement?.getAttribute('Text')).toBe('Date From');
+    expect(range.to.labelElement?.getAttribute('Visible')).toBe('false');
+    expect(single.labelElement?.getAttribute('Text')).toBe('S');
   });
 
   it('exposes the <Group> element and its fields’ label nodes', () => {
@@ -81,7 +81,31 @@ describe('parseDialogXml', () => {
     const g = r.cells[0];
     if (g.kind !== 'group') throw new Error('expected group');
     expect(g.element.tagName).toBe('Group');
-    expect(g.fields[0].labelElement.getAttribute('Text')).toBe('A');
+    expect(g.fields[0].labelElement?.getAttribute('Text')).toBe('A');
+  });
+
+  it('a self-labelled control has no label node and is flagged for the rollout notice', () => {
+    const r = parseDialogXml('<Dialog><Date Name="A" Label="As at"/></Dialog>');
+    const c = r.cells[0];
+    if (c.kind !== 'field') throw new Error('expected field');
+    expect(c.label).toBe('As at');
+    expect(c.labelElement).toBeNull();
+    expect(r.hasLabelAttr).toBe(true);
+  });
+
+  it('a Label on <Group> alone does not raise the rollout notice', () => {
+    const r = parseDialogXml('<Dialog><Group Label="P"><Label Text="A"/><Date Name="A"/></Group></Dialog>');
+    const g = r.cells[0];
+    if (g.kind !== 'group') throw new Error('expected group');
+    expect(g.label).toBe('P');
+    expect(r.hasLabelAttr).toBe(false);
+  });
+
+  it('a hidden To label before a self-labelled To control makes no range', () => {
+    const r = parseDialogXml(
+      '<Dialog><Label Text="P"/><Date Name="PFrom"/><Label Text="to" Visible="false"/><Date Name="PTo" Label="End"/></Dialog>',
+    );
+    expect(r.cells.map((c) => (c.kind === 'field' ? c.label : c.kind))).toEqual(['P', 'End']);
   });
 
   it('parseDialogDocument returns cells that point into the given document', () => {

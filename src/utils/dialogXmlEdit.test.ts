@@ -239,3 +239,27 @@ describe('dropTarget', () => {
     expect(Object.values(m.groups)[0]).toHaveLength(2);
   });
 });
+
+describe('Label attribute', () => {
+  it('moves a self-labelled field as its control alone, and back to the original bytes', () => {
+    const xml = read('label-attr-basic');
+    const moved = moveCell(xml, keysOf(xml)[0], { end: 'dialog' });
+    expect(shape(moved)).toEqual(['Location', 'Status', 'AsAt']);
+    const keys = keysOf(moved);
+    expect(moveCell(moved, keys[2], { before: keys[0] })).toBe(xml);
+  });
+
+  it('groups and ungroups self-labelled fields back to the original bytes', () => {
+    const xml = read('label-attr-basic');
+    const keys = keysOf(xml);
+    const grouped = groupCells(xml, [keys[0], keys[1]]);
+    expect(shape(grouped)).toEqual(['group:AsAt,Location', 'Status']);
+    expect(ungroup(grouped, keysOf(grouped)[0])).toBe(xml);
+  });
+
+  it('does not join an orphan <Label> onto the self-labelled control after it', () => {
+    const xml = '<Dialog>\n  <Label Text="B"/><Date Name="B"/>\n  <Label Text="Orphan"/>\n  <Date Name="A" Label="A"/>\n</Dialog>';
+    const moved = moveCell(xml, keysOf(xml)[0], { end: 'dialog' });
+    expect(moved).toBe('<Dialog>\n  <Label Text="Orphan"/>\n  <Date Name="A" Label="A"/>\n  <Label Text="B"/><Date Name="B"/>\n</Dialog>');
+  });
+});

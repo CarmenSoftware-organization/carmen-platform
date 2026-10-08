@@ -1,0 +1,12 @@
+<Dialog Cols="2">
+  <Group Label="Period">
+    <Label Text="Date From"/><Date Name="DateFrom"/>
+    <Label Text="Date To"/><Date Name="DateTo"/>
+  </Group>
+  <Group Label="  ">
+    <Label Text="Status"/><Lookup Name="Status" Items="ALL" Values="ALL"/>
+  </Group>
+  <Group>
+    <Label Text="Location"/><Lookup Name="Location" DataSource="Location"/>
+  </Group>
+</Dialog>

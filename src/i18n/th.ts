@@ -570,7 +570,9 @@ export const th: Translations = {
       warnEmptyGroup: '{{at}} ว่างเปล่า จึงถูกข้ามไป',
       warnLabelWithoutControl: 'ป้าย "{{at}}" ไม่มี Date หรือ Lookup ตามหลัง หน้า dialog ของ inventory จะไม่แสดง',
       warnControlWithoutLabel: '{{at}} ไม่มีป้ายที่มองเห็นได้นำหน้า หน้า dialog ของ inventory จะไม่แสดง',
+      warnEmptyLabel: '{{at}} มี Label ว่าง จึงแสดง Name แทน',
       groupNeedsInventory: '<Group> ต้องใช้ inventory เวอร์ชันที่รองรับ ถ้าเป็นเวอร์ชันเก่า field ในกลุ่มจะหายไป',
+      labelAttrNeedsInventory: 'Label บน <Date>/<Lookup> ต้องใช้ inventory เวอร์ชันที่รองรับ ถ้าเป็นเวอร์ชันเก่า field นั้นจะหายไป',
       editor: {
         colsLabel: 'คอลัมน์',
         spanDecrease: 'ทำให้ {{label}} แคบลง',

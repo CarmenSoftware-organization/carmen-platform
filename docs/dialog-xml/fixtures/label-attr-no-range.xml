@@ -1,0 +1,6 @@
+<Dialog Cols="2">
+  <Date Name="DateFrom" Label="Date from"/>
+  <Date Name="DateTo" Label="to"/>
+  <Label Text="Period"/><Date Name="PeriodFrom"/>
+  <Label Text="to"/><Date Name="PeriodTo" Label="Period end"/>
+</Dialog>

@@ -83,6 +83,7 @@ export function FieldBlock({ field, t, className }: { field: DialogField; t: TFu
 }
 
 export function CellBlock({ cell, t }: { cell: DialogCell; t: TFunction }) {
+  const headingId = React.useId();
   const span = COL_SPAN[cell.layout.colSpan];
   if (cell.kind === 'range') {
     return (
@@ -105,15 +106,20 @@ export function CellBlock({ cell, t }: { cell: DialogCell; t: TFunction }) {
   if (cell.kind === 'group') {
     return (
       <div
-        className={cn(
-          'grid grid-cols-1 gap-4 rounded-md border border-dashed p-3',
-          GRID_COLS[Math.min(cell.fields.length, MAX_COLS)],
-          span,
-        )}
+        role={cell.label ? 'group' : undefined}
+        aria-labelledby={cell.label ? headingId : undefined}
+        className={cn('space-y-3 rounded-md border border-dashed p-3', span)}
       >
-        {cell.fields.map((f) => (
-          <FieldBlock key={f.key} field={f} t={t} />
-        ))}
+        {cell.label && (
+          <p id={headingId} className="text-sm font-medium">
+            {cell.label}
+          </p>
+        )}
+        <div className={cn('grid grid-cols-1 gap-4', GRID_COLS[Math.min(cell.fields.length, MAX_COLS)])}>
+          {cell.fields.map((f) => (
+            <FieldBlock key={f.key} field={f} t={t} />
+          ))}
+        </div>
       </div>
     );
   }
