@@ -29,6 +29,7 @@ import {
 } from '../../utils/dialogXmlEdit';
 import { CANVAS_W, COL_SPAN, CellBlock, FieldBlock, GRID_COLS } from './CellView';
 import { CellToolbar } from './CellToolbar';
+import { PropertyPanel } from './PropertyPanel';
 import { EndZone, GroupItems, SortableCell } from './SortableCell';
 
 export interface DialogLayoutEditorProps {
@@ -82,18 +83,27 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
         : t('components.dialogPreview.editor.announceEndNone', { label: nameOf(active.id) }),
     onDragCancel: ({ active }) => t('components.dialogPreview.editor.announceCancel', { label: nameOf(active.id) }),
   };
-  // Cols/ColSpan แก้แค่ attribute — key ไม่เลื่อน จึงพาการเลือกตามไปยัง XML ใหม่ได้
-  const applyKeepingSelection = (next: string) => {
-    if (next === xml) return;
-    setSelection({ xml: next, keys: selected });
-    onChange(next);
-  };
-
   // ผูกการเลือกไว้กับ string ที่เลือก — XML เปลี่ยนจากที่ไหนก็ตาม key อาจเลื่อน จึงถือว่าไม่ได้เลือกอะไร
   const [selection, setSelection] = React.useState<{ xml: string; keys: string[] }>({ xml, keys: [] });
   const selected = selection.xml === xml ? selection.keys : [];
   const toggle = (key: string) =>
     setSelection({ xml, keys: selected.includes(key) ? selected.filter((k) => k !== key) : [...selected, key] });
+  // cell ที่แผง property แก้อยู่ — ผูกกับ XML แบบเดียวกับการเลือก: แก้ attribute ไม่ทำให้ key เลื่อน จึงพาไปด้วย
+  const [focus, setFocus] = React.useState<{ xml: string; key: string | null }>({ xml, key: null });
+  const focusKey = focus.xml === xml ? focus.key : null;
+  const panelRef = React.useRef<HTMLElement>(null);
+  // ทางคีย์บอร์ด: เลือกแล้วย้าย focus เข้าแผง (ทางเมาส์ใช้ setFocus เฉย ๆ)
+  const focusCell = (key: string) => {
+    setFocus({ xml, key });
+    requestAnimationFrame(() => panelRef.current?.querySelector<HTMLElement>('input,select,button:not([aria-label])')?.focus());
+  };
+  // Cols/ColSpan และการแก้ใน PropertyPanel แก้แค่ attribute — key ไม่เลื่อน จึงพาการเลือกและ focus ตามไปยัง XML ใหม่ได้
+  const applyKeepingSelection = (next: string) => {
+    if (next === xml) return;
+    setSelection({ xml: next, keys: selected });
+    setFocus({ xml: next, key: focusKey });
+    onChange(next);
+  };
   const selectedHasRange = parsed.cells.some((c) => c.kind === 'range' && selected.includes(c.key));
 
   const sensors = useSensors(
@@ -170,6 +180,8 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
           {selectedHasRange && <span className="text-muted-foreground">{t('components.dialogPreview.editor.rangeSplits')}</span>}
         </div>
       )}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <div className="min-w-0 flex-1">
       <DndContext
         sensors={sensors}
         collisionDetection={collision}
@@ -216,13 +228,31 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
               );
               if (cell.kind !== 'group') {
                 return (
-                  <SortableCell key={cell.key} id={cell.key} label={label} className={COL_SPAN[cell.layout.colSpan]} toolbar={toolbar}>
+                  <SortableCell
+                    key={cell.key}
+                    id={cell.key}
+                    label={label}
+                    className={COL_SPAN[cell.layout.colSpan]}
+                    focused={focusKey === cell.key}
+                    onFocusCell={() => setFocus({ xml, key: cell.key })}
+                    onFocusCellByKey={() => focusCell(cell.key)}
+                    toolbar={toolbar}
+                  >
                     <CellBlock cell={{ ...cell, layout: { colSpan: 1 } }} t={t} />
                   </SortableCell>
                 );
               }
               return (
-                <SortableCell key={cell.key} id={cell.key} label={label} className={COL_SPAN[cell.layout.colSpan]} toolbar={toolbar}>
+                <SortableCell
+                    key={cell.key}
+                    id={cell.key}
+                    label={label}
+                    className={COL_SPAN[cell.layout.colSpan]}
+                    focused={focusKey === cell.key}
+                    onFocusCell={() => setFocus({ xml, key: cell.key })}
+                    onFocusCellByKey={() => focusCell(cell.key)}
+                    toolbar={toolbar}
+                  >
                   <div className="rounded-md border border-dashed p-3 pt-8">
                     <div className="absolute left-3 right-28 top-1 flex min-w-0 items-center gap-2">
                       <span className="truncate text-[11px] font-medium text-muted-foreground" title={label}>
@@ -246,6 +276,9 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
                             id={f.key}
                             label={f.label}
                             hoverGroup="field"
+                            focused={focusKey === f.key}
+                            onFocusCell={() => setFocus({ xml, key: f.key })}
+                            onFocusCellByKey={() => focusCell(f.key)}
                             toolbar={(handle) => (
                               <div className="absolute right-1 top-1 z-10 opacity-0 transition-opacity group-hover/field:opacity-100 group-focus-within/field:opacity-100">
                                 {handle}
@@ -266,6 +299,18 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
           </div>
         </SortableContext>
       </DndContext>
+        </div>
+        <PropertyPanel
+          xml={xml}
+          parsed={parsed}
+          focusKey={focusKey}
+          onApply={applyKeepingSelection}
+          onUngroup={(k) => apply(ungroup(xml, k))}
+          onClose={() => setFocus({ xml, key: null })}
+          panelRef={panelRef}
+          className="lg:sticky lg:top-4 lg:w-72 lg:shrink-0"
+        />
+      </div>
     </div>
   );
 }
