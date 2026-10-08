@@ -7,7 +7,7 @@ import { EmptyState } from './EmptyState';
 import { useI18n } from '../hooks/useI18n';
 import { cn } from '../lib/utils';
 import type { TFunction } from '../i18n/types';
-import { parseDialogXml, type DialogCell, type DialogField, type DialogWarning } from '../utils/dialogXml';
+import { MAX_COLS, parseDialogXml, type DialogCell, type DialogField, type DialogWarning } from '../utils/dialogXml';
 
 export interface DialogPreviewProps {
   xml: string;
@@ -116,7 +116,21 @@ function CellBlock({ cell, t }: { cell: DialogCell; t: TFunction }) {
       </div>
     );
   }
-  if (cell.kind === 'group') return null; // Task 8
+  if (cell.kind === 'group') {
+    return (
+      <div
+        className={cn(
+          'grid grid-cols-1 gap-4 rounded-md border border-dashed p-3',
+          GRID_COLS[Math.min(cell.fields.length, MAX_COLS)],
+          span,
+        )}
+      >
+        {cell.fields.map((f) => (
+          <FieldBlock key={f.key} field={f} t={t} />
+        ))}
+      </div>
+    );
+  }
   return <FieldBlock field={cell} t={t} className={span} />;
 }
 
@@ -183,6 +197,8 @@ export const DialogPreview: React.FC<DialogPreviewProps> = ({ xml }) => {
       </Badge>
     ));
   const notices = parsed.warnings.map((w) => warningText(w, t));
+  // ลบบรรทัดนี้เมื่อ inventory รุ่นที่รองรับ <Group> ขึ้น production แล้ว (docs/dialog-xml/README.md)
+  if (parsed.cells.some((c) => c.kind === 'group')) notices.push(t('components.dialogPreview.groupNeedsInventory'));
 
   return (
     <div className="space-y-4">

@@ -44,4 +44,23 @@ describe('parseDialogXml', () => {
     const r = parseDialogXml('<Dialog Cols="2"><Label Text="P"/><Lookup Name="ProductFrom" ColSpan="5"/></Dialog>');
     expect(r.warnings).toEqual([{ code: 'colSpanClamped', raw: '5', used: 2, at: 'ProductFrom' }]);
   });
+
+  it('does not pair From/To inside a group', () => {
+    const r = parseDialogXml(`<Dialog Cols="2"><Group ColSpan="2">
+      <Label Text="Date From"/><Date Name="DateFrom"/>
+      <Label Text="Date To"/><Date Name="DateTo"/>
+    </Group></Dialog>`);
+    expect(r.cells).toHaveLength(1);
+    const g = r.cells[0];
+    expect(g.kind).toBe('group');
+    if (g.kind === 'group') expect(g.fields.map((f) => f.label)).toEqual(['Date From', 'Date To']);
+    expect(r.counts).toEqual({ Date: 2 });
+  });
+
+  it('keeps an orphan label before a group as its own cell', () => {
+    const r = parseDialogXml(
+      '<Dialog Cols="2"><Label Text="Dangling"/><Group><Label Text="A"/><Date Name="A"/></Group></Dialog>',
+    );
+    expect(r.cells.map((c) => c.kind)).toEqual(['field', 'group']);
+  });
 });

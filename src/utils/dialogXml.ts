@@ -158,6 +158,15 @@ function tally(cells: DialogCell[]): Record<string, number> {
   return counts;
 }
 
+/** Group ซ้อนไม่รองรับ — ยกลูกขึ้นมาแทนที่ (field ไม่หาย) และเตือนผู้เขียน */
+function groupChildren(group: Element, at: string, warnings: DialogWarning[]): Element[] {
+  return Array.from(group.children).flatMap((c) => {
+    if (c.tagName !== 'Group') return [c];
+    warnings.push({ code: 'nestedGroupFlattened', at });
+    return groupChildren(c, at, warnings);
+  });
+}
+
 export function parseDialogXml(xml: string): DialogParseResult {
   if (!xml.trim()) return failure('empty');
   let doc: Document;
@@ -183,8 +192,24 @@ export function parseDialogXml(xml: string): DialogParseResult {
     run = [];
   };
   Array.from(root.children).forEach((el, index) => {
-    if (run.length === 0) runStart = index;
-    run.push(el);
+    if (el.tagName !== 'Group') {
+      if (run.length === 0) runStart = index;
+      run.push(el);
+      return;
+    }
+    flush();
+    const at = `<Group>#${index + 1}`;
+    const drafts = toDrafts(groupChildren(el, at, warnings), cols, warnings, `${index}-`);
+    if (drafts.length === 0) {
+      warnings.push({ code: 'emptyGroup', at });
+      return;
+    }
+    cells.push({
+      kind: 'group',
+      key: `g${index}`,
+      layout: { colSpan: readSpan(el, cols, at, warnings) },
+      fields: drafts.map(strip),
+    });
   });
   flush();
 
