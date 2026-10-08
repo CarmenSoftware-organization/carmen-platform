@@ -18,12 +18,12 @@ export const COL_SPAN: Record<number, string> = {
   3: 'sm:col-span-3',
   4: 'sm:col-span-4',
 };
-// กว้างเท่า modal จริงของ inventory (DialogContent sm:max-w-lg และ MODAL_W) — ให้เห็นความแคบจริงของช่อง
+// กว้างเท่าพื้นที่เนื้อหาจริงใน modal ของ inventory (sm:max-w-lg / 3xl / 5xl ลบ p-4 สองข้าง) — ให้เห็นความแคบจริงของช่อง
 export const CANVAS_W: Record<number, string> = {
-  1: 'max-w-lg',
-  2: 'max-w-3xl',
-  3: 'max-w-5xl',
-  4: 'max-w-5xl',
+  1: 'max-w-[480px]',
+  2: 'max-w-[736px]',
+  3: 'max-w-[992px]',
+  4: 'max-w-[992px]',
 };
 
 function cleanDataSource(src: string | null | undefined): string {

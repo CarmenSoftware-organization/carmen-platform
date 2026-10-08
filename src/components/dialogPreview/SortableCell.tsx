@@ -10,12 +10,14 @@ interface SortableShellProps {
   id: string;
   label: string;
   className?: string;
+  /** field ใน Group ใช้ชื่อ hover group ของตัวเอง — ชี้กล่อง Group แล้วที่จับของทุก field ข้างในจะได้ไม่โผล่พร้อมกัน */
+  hoverGroup?: 'cell' | 'field';
   toolbar: (handle: React.ReactNode) => React.ReactNode;
   children: React.ReactNode;
 }
 
 /** ห่อ cell ด้วย useSortable — ลากได้จากปุ่มจับเท่านั้น (setActivatorNodeRef) */
-export function SortableCell({ id, label, className, toolbar, children }: SortableShellProps) {
+export function SortableCell({ id, label, className, hoverGroup = 'cell', toolbar, children }: SortableShellProps) {
   const { t } = useI18n();
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id });
   const handle = (
@@ -34,7 +36,7 @@ export function SortableCell({ id, label, className, toolbar, children }: Sortab
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={cn('group/cell relative', isDragging && 'z-20 opacity-60', className)}
+      className={cn(hoverGroup === 'field' ? 'group/field' : 'group/cell', 'relative', isDragging && 'z-20 opacity-60', className)}
     >
       {toolbar(handle)}
       {children}

@@ -808,6 +808,15 @@ export const en = {
         dropAtEnd: 'Drop here to move to the end',
         hiddenToLabel: 'This range uses a hidden "to" label and cannot go into a group.',
         narrowScreen: 'Open this tab on a wider screen to arrange the layout.',
+        groupIntoGroup: 'A group cannot go inside another group.',
+        // {{label}} / {{target}} are field labels from the XML (or a group's number)
+        announceStart: 'Picked up {{label}}.',
+        announceOver: '{{label}} is over {{target}}.',
+        announceOverNone: '{{label}} is not over a drop area.',
+        announceEnd: 'Dropped {{label}} at {{target}}.',
+        announceEndNone: 'Dropped {{label}}.',
+        announceCancel: 'Moving {{label}} was cancelled.',
+        instructions: 'To move a cell, press Space or Enter, use the arrow keys to move it, then press Space or Enter to drop it. Press Escape to cancel.',
       },
     },
     // Shared between DialogPreview.tsx and XmlEditor.tsx — both render this exact fallback
