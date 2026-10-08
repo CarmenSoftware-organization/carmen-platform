@@ -49,8 +49,9 @@ export function SortableCell({ id, label, className, hoverGroup = 'cell', focuse
       tabIndex={onFocusCell || onFocusCellByKey ? 0 : undefined}
       aria-current={focused || undefined}
       onClick={(e) => {
-        // คลิกปุ่ม/ช่องใน toolbar ไม่ใช่การเลือก cell — และ field ใน Group ไม่ให้กล่อง Group แย่งไป
-        if (!onFocusCell || (e.target as HTMLElement).closest('button,input,select,a,label')) return;
+        // คลิก toolbar/ปุ่ม/ช่องที่ใช้งานได้ไม่ใช่การเลือก cell — label และช่อง disabled ในพรีวิวนับเป็นการเลือก
+        // field ใน Group stopPropagation ด้านล่าง กล่อง Group จึงไม่แย่งไป
+        if (!onFocusCell || (e.target as HTMLElement).closest('[data-cell-toolbar],button,a,input:not(:disabled),select:not(:disabled)')) return;
         e.stopPropagation();
         onFocusCell();
       }}
@@ -68,8 +69,11 @@ export function SortableCell({ id, label, className, hoverGroup = 'cell', focuse
         className,
       )}
     >
-      {toolbar(handle)}
-      {children}
+      <div data-cell-toolbar className="contents">
+        {toolbar(handle)}
+      </div>
+      {/* ช่อง disabled ในพรีวิวไม่ส่งคลิกขึ้นมาที่ cell เสมอไป — pointer-events-none ให้คลิกตกที่ cell */}
+      <div className="contents [&_input:disabled]:pointer-events-none [&_select:disabled]:pointer-events-none">{children}</div>
     </div>
   );
 }
