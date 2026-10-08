@@ -79,8 +79,11 @@ function load(xml: string): Loaded | null {
 const save = (l: Loaded): string => l.prefix + new XMLSerializer().serializeToString(l.root) + l.suffix;
 
 export function hasHiddenToLabel(cell: DialogCell): boolean {
-  return cell.kind === 'range' && cell.to.labelElement.getAttribute('Visible') === 'false';
+  return cell.kind === 'range' && cell.to.labelElement?.getAttribute('Visible') === 'false';
 }
+
+// field ที่มี Label ในตัวไม่มี <Label> element — ย้ายแค่ control
+const present = (nodes: (Element | null)[]): Element[] => nodes.filter((n): n is Element => n !== null);
 
 function locate(l: Loaded, key: string): Located | null {
   for (const c of l.cells) {
@@ -89,17 +92,17 @@ function locate(l: Loaded, key: string): Located | null {
       if (c.kind === 'range') {
         return {
           kind: 'range',
-          nodes: [c.from.labelElement, c.from.element, c.to.labelElement, c.to.element],
+          nodes: present([c.from.labelElement, c.from.element, c.to.labelElement, c.to.element]),
           spanTarget: c.from.element,
           inGroup: null,
           hiddenTo: hasHiddenToLabel(c),
         };
       }
-      return { kind: 'field', nodes: [c.labelElement, c.element], spanTarget: c.element, inGroup: null, hiddenTo: false };
+      return { kind: 'field', nodes: present([c.labelElement, c.element]), spanTarget: c.element, inGroup: null, hiddenTo: false };
     }
     if (c.kind === 'group') {
       const f = c.fields.find((x) => x.key === key);
-      if (f) return { kind: 'field', nodes: [f.labelElement, f.element], spanTarget: f.element, inGroup: c.element, hiddenTo: false };
+      if (f) return { kind: 'field', nodes: present([f.labelElement, f.element]), spanTarget: f.element, inGroup: c.element, hiddenTo: false };
     }
   }
   return null;
@@ -126,7 +129,8 @@ function relayout(container: Element, eol: string): void {
     const next = kids[i + 1];
     container.appendChild(doc.createTextNode(eol + '  '.repeat(depth)));
     container.appendChild(n);
-    if (isEl(n, 'Label') && isEl(next) && next.tagName !== 'Label' && next.tagName !== 'Group') {
+    // control ที่มี Label ในตัวไม่ใช่คู่ของ <Label> ข้างหน้า — ถ้ารวมบรรทัด XML จะดูเหมือนจับคู่ทั้งที่ไม่ได้จับ
+    if (isEl(n, 'Label') && isEl(next) && next.tagName !== 'Label' && next.tagName !== 'Group' && !next.hasAttribute('Label')) {
       container.appendChild(next);
       i++;
     }
