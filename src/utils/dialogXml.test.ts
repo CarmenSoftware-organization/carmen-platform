@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseDialogXml } from './dialogXml';
+import { parseDialogDocument, parseDialogXml } from './dialogXml';
 
 describe('parseDialogXml', () => {
   it('reports empty input as an error code, not a crash', () => {
@@ -63,5 +63,33 @@ describe('parseDialogXml', () => {
     );
     expect(r.cells.map((c) => c.kind)).toEqual(['group']);
     expect(r.warnings.map((w) => w.code)).toEqual(['labelWithoutControl']);
+  });
+
+  it('exposes the label node of every field and both ends of a range', () => {
+    const r = parseDialogXml(
+      '<Dialog><Label Text="Date From"/><Date Name="DateFrom"/><Label Text="to" Visible="false"/><Date Name="DateTo"/><Label Text="S"/><Lookup Name="S"/></Dialog>',
+    );
+    const [range, single] = r.cells;
+    if (range.kind !== 'range' || single.kind !== 'field') throw new Error('unexpected cells');
+    expect(range.from.labelElement.getAttribute('Text')).toBe('Date From');
+    expect(range.to.labelElement.getAttribute('Visible')).toBe('false');
+    expect(single.labelElement.getAttribute('Text')).toBe('S');
+  });
+
+  it('exposes the <Group> element and its fields’ label nodes', () => {
+    const r = parseDialogXml('<Dialog><Group ColSpan="1"><Label Text="A"/><Date Name="A"/></Group></Dialog>');
+    const g = r.cells[0];
+    if (g.kind !== 'group') throw new Error('expected group');
+    expect(g.element.tagName).toBe('Group');
+    expect(g.fields[0].labelElement.getAttribute('Text')).toBe('A');
+  });
+
+  it('parseDialogDocument returns cells that point into the given document', () => {
+    const doc = new DOMParser().parseFromString('<Dialog><Label Text="A"/><Date Name="A"/></Dialog>', 'application/xml');
+    const r = parseDialogDocument(doc);
+    const c = r.cells[0];
+    if (c.kind !== 'field') throw new Error('expected field');
+    expect(c.element.ownerDocument).toBe(doc);
+    expect(r.ok).toBe(true);
   });
 });
