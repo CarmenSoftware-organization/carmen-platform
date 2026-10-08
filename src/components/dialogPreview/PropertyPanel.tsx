@@ -48,6 +48,9 @@ const KNOWN: Record<string, ReadonlySet<string>> = {
   Lookup: new Set(['Name', 'Value', 'ColSpan', 'Label', 'DataSource', 'Items', 'Values', 'Multi']),
 };
 
+/** Lookup โหมดรายการ/แหล่งข้อมูล — ใช้เป็น key เพื่อให้ mode รีเซ็ตเมื่อ XML เปลี่ยนจากข้างนอก (Same as From, แก้ในแท็บ XML) */
+const listKey = (el: Element) => (el.hasAttribute('Items') || el.hasAttribute('Values') ? 'list' : 'src');
+
 const split = (raw: string | null) => (raw ? raw.split('~') : []);
 const DATALIST_ID = 'dialog-data-sources';
 
@@ -208,7 +211,7 @@ export function PropertyPanel({ xml, parsed, focusKey, onApply, onUngroup, onClo
     body = (
       <>
         <CommitInput id={`${f.cell.key}-label`} label={t('components.dialogPreview.panel.label')} value={f.cell.labelElement ? (f.cell.labelElement.getAttribute('Text') ?? '') : (el.getAttribute('Label') ?? '')} onCommit={(v) => onApply(setLabelText(xml, f.cell.key, undefined, v))} />
-        <ControlFields key={`${f.cell.key}-f`} xml={xml} k={f.cell.key} side={undefined} el={el} onApply={onApply} />
+        <ControlFields key={`${f.cell.key}-f-${listKey(el)}`} xml={xml} k={f.cell.key} side={undefined} el={el} onApply={onApply} />
         {!f.inGroup && <Span xml={xml} cols={cols} k={f.cell.key} span={f.cell.layout.colSpan} onApply={onApply} />}
         <Others els={[el]} />
       </>
@@ -235,7 +238,7 @@ export function PropertyPanel({ xml, parsed, focusKey, onApply, onUngroup, onClo
         <CommitInput id={`${r.key}-label`} label={t('components.dialogPreview.panel.rangeLabel')} value={r.from.labelElement?.getAttribute('Text') ?? ''} onCommit={(v) => onApply(setLabelText(xml, r.key, 'from', v))} />
         <section className="space-y-2">
           <h4 className="text-xs font-semibold">{t('components.dialogPreview.panel.from')}</h4>
-          <ControlFields key={`${r.key}-from`} xml={xml} k={r.key} side="from" el={r.from.element} nameWarn={splitWarn(toName, true)} onApply={onApply} />
+          <ControlFields key={`${r.key}-from-${listKey(r.from.element)}`} xml={xml} k={r.key} side="from" el={r.from.element} nameWarn={splitWarn(toName, true)} onApply={onApply} />
         </section>
         <section className="space-y-2">
           <div className="flex items-center justify-between gap-2">
@@ -246,7 +249,7 @@ export function PropertyPanel({ xml, parsed, focusKey, onApply, onUngroup, onClo
               </Button>
             )}
           </div>
-          <ControlFields key={`${r.key}-to`} xml={xml} k={r.key} side="to" el={r.to.element} nameWarn={splitWarn(fromName, false)} onApply={onApply} />
+          <ControlFields key={`${r.key}-to-${listKey(r.to.element)}`} xml={xml} k={r.key} side="to" el={r.to.element} nameWarn={splitWarn(fromName, false)} onApply={onApply} />
         </section>
         <Span xml={xml} cols={cols} k={r.key} span={r.layout.colSpan} onApply={onApply} />
         <Others els={[r.from.element, r.to.element]} />
@@ -267,7 +270,9 @@ export function PropertyPanel({ xml, parsed, focusKey, onApply, onUngroup, onClo
   }
 
   return (
-    <aside ref={panelRef} aria-label={t('components.dialogPreview.panel.aria')} className={cn('space-y-3 rounded-md border bg-card p-3', className)}>
+    // Esc ในแผง = ไม่ให้ลอยถึง window (KeyboardShortcuts ผูก Esc กับ Cancel ของหน้า) ครอบทุก control รวม select/checkbox/ปุ่ม
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
+    <aside onKeyDown={(e) => e.key === 'Escape' && e.stopPropagation()} ref={panelRef} aria-label={t('components.dialogPreview.panel.aria')} className={cn('space-y-3 rounded-md border bg-card p-3', className)}>
       <datalist id={DATALIST_ID}>
         {DATA_SOURCES.map((d) => (
           <option key={d.value} value={d.value} label={d.description} />
@@ -283,7 +288,7 @@ export function PropertyPanel({ xml, parsed, focusKey, onApply, onUngroup, onClo
           </Button>
         </div>
       )}
-      {/* key ผูกกับ cell + XML — ร่างที่พิมพ์ค้างไม่ข้ามไปอีก cell และ state โหมดของ Lookup รีเซ็ตตาม XML จริง */}
+      {/* key = focusKey อย่างเดียว — ร่างที่พิมพ์ค้างไม่ข้ามไปอีก cell; โหมด Lookup รีเซ็ตด้วย key ของ ControlFields (listKey) ไม่ใช่ที่นี่ */}
       <div key={`${focusKey ?? ''}`} className="space-y-3">
         {body}
       </div>

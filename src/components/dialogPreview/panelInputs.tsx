@@ -96,7 +96,12 @@ export function RowsEditor({
   validate: (rows: Row[]) => string | null;
 }) {
   const { t } = useI18n();
-  const initial = React.useMemo(() => toRows(items, values), [items, values]);
+  // items/values มาจาก split() ใหม่ทุก render — reset ตามเนื้อหาจริง ไม่ใช่ตามตัวตนของ array ไม่งั้น draft หายทุกครั้งที่แม่ render
+  const sig = JSON.stringify([items, values]);
+  const initial = React.useMemo(() => {
+    const [i, v] = JSON.parse(sig) as [string[], string[]];
+    return toRows(i, v);
+  }, [sig]);
   const [rows, setRows] = React.useState(initial);
   const [error, setError] = React.useState<string | null>(null);
   React.useEffect(() => {
