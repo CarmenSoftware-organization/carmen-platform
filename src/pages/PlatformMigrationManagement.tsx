@@ -606,7 +606,12 @@ export const PlatformMigrationManagement: React.FC = () => {
         title={t('pages.platformMigration.deployConfirmTitle')}
         description={t('pages.platformMigration.deployConfirmDescription')}
         confirmText={t('pages.platformMigration.deployButton')}
-        onConfirm={handleDeploy}
+        // ปิดทันทีที่ยืนยัน — ความคืบหน้าไปโผล่ใน RunConsole แล้ว ถ้ารอให้ deploy จบ dialog จะบัง
+        // คอนโซลไว้ทั้งรอบ (และเดิมไม่มีใครสั่งปิดเลย มันจึงค้างหลังรันเสร็จ)
+        onConfirm={() => {
+          setConfirmDeploy(false);
+          void handleDeploy();
+        }}
       />
 
       <ConfirmDialog
@@ -621,7 +626,10 @@ export const PlatformMigrationManagement: React.FC = () => {
         })}
         confirmText={t('pages.platformMigration.resolveButton')}
         confirmVariant="destructive"
-        onConfirm={handleResolve}
+        onConfirm={() => {
+          setConfirmResolve(false);
+          void handleResolve();
+        }}
       />
 
       <ConfirmDialog
