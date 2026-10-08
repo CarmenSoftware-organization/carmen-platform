@@ -80,9 +80,13 @@ Run the backend audit gates (`app-api-catalog` etc.) before pushing.
 ## Frontend (`carmen-platform`)
 
 ### Types
-`src/types/index.ts` → `ReportTemplate`:
-`calculation_methods?: CalculationMethod[]` with
-`type CalculationMethod = 'fifo' | 'average' | 'average_per_location'`.
+`src/services/reportTemplateService.ts` (where `ReportTemplate` lives — not
+`src/types/index.ts`): `calculation_methods?: CalculationMethod[]` with
+`export type CalculationMethod = 'fifo' | 'average' | 'average_per_location'`.
+
+Backups: add `calculation_methods` to `BACKUP_FIELDS` in
+`src/utils/reportTemplateBackup.ts` (kept identical to backend `SNAPSHOT_FIELDS`).
+Old backup files without the key import as untagged.
 
 ### Report Template Management (`src/pages/ReportTemplateManagement.tsx`)
 
@@ -102,13 +106,18 @@ Run the backend audit gates (`app-api-catalog` etc.) before pushing.
 
 ### Report Template Edit (`src/pages/ReportTemplateEdit.tsx`)
 
-- Field "Calculation methods": three checkboxes, helper text
-  "Leave all unchecked = works with every method". Read-only mode shows the
-  same badges as the list.
+- Field "Calculation methods" in the **BU Scope** section: three checkboxes,
+  helper text "Leave all unchecked = works with every method". Read-only mode
+  shows the same badges as the list.
+- **List templates only.** Form templates (printable documents) hide the field
+  and save `[]`, the same way they already clear the BU allow/deny lists.
+- Checkbox toggles keep the array in canonical order (`fifo`, `average`,
+  `average_per_location`) so untick-then-retick does not leave the form dirty.
 - Flows through `formData` / `savedFormData` → `useUnsavedChanges`, sent on
   save; `doc_version` handling unchanged.
-- Version restore/compare: the versions sheet shows whatever the snapshot has;
-  no special UI.
+- Versions sheet: add `calculation_methods` to the diff list, but skip it when
+  the snapshot predates the field (key absent) — restore keeps the current tags
+  in that case, so showing a diff would be false.
 
 ### i18n
 en + th keys for the group title, column header, "All", "Restricted only",
