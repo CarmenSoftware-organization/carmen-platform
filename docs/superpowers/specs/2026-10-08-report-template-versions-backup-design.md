@@ -182,7 +182,7 @@ validate `source_type ∈ {view,function,procedure}`, `orientation ∈ {portrait
 - util export: `buildBackup(templates)`, `backupFileName(...)`, `downloadJSON(obj, name)` (Blob + `<a download>`
   ตามแบบ `downloadCSV`), `parseBackup(text) → { ok, templates, errors[] } `
 - `parseBackup` ตรวจ: JSON ได้, `format` ตรง, `format_version === 1` (มากกว่า → "ไฟล์มาจากเวอร์ชันใหม่กว่า"),
-  ต่อรายการ: `name`/`report_group`/`dialog`/`content` เป็น string ไม่ว่าง, `template_type ∈ {form,list}`,
+  ต่อรายการ: `name`/`report_group` เป็น string ไม่ว่าง, `dialog`/`content` เป็น string (ว่างได้ — create DTO ยอมรับ และบาง template ไม่มี dialog), `template_type ∈ {form,list}`,
   XML parse ได้ (ใช้ validator ตัวเดียวกับหน้า Edit), `name` ไม่ซ้ำกันเองในไฟล์
 
 **ชื่อไฟล์:** เดี่ยว `report-template_{name-slug}_v{version}_{YYYY-MM-DD}.json` ·
