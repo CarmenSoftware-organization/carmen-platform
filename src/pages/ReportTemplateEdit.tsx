@@ -909,7 +909,10 @@ const ReportTemplateEdit: React.FC = () => {
                               <p className="text-xs text-muted-foreground">{t('pages.reportTemplates.calculationMethodHelp')}</p>
                             </>
                           ) : (
-                            <CalculationMethodBadges methods={formData.calculation_methods} />
+                            // badge คืน <span> ตอนเป็น "ทุกวิธี" — inline ใน space-y-2 จึงไปติดท้าย label; ห่อ div ให้ขึ้นบรรทัดใหม่
+                            <div>
+                              <CalculationMethodBadges methods={formData.calculation_methods} />
+                            </div>
                           )}
                         </div>
                       )}
