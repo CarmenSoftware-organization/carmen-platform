@@ -162,6 +162,16 @@ const ReportTemplateEdit: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dialog' | 'content' | 'preview'>('dialog');
   // เลือกแท็บเริ่มต้นครั้งเดียวตอนโหลดแรก — refetch หลังบันทึก/กู้คืนเวอร์ชันต้องไม่ดึงผู้ใช้ออกจากแท็บที่เปิดอยู่
   const initialTabPickedRef = useRef(false);
+  // dnd-kit ใช้ Esc ยกเลิกการลากด้วยคีย์บอร์ด และ useGlobalShortcuts ก็ฟัง Esc บน window เหมือนกัน
+  // ลำดับของ listener ไม่แน่นอน จึงล้าง flag ใน tick ถัดไป ไม่ให้ Esc เดียวกันหลุดไปกด Cancel ของทั้งหน้า
+  const dialogDragActiveRef = useRef(false);
+  const handleDialogDragActive = useCallback((active: boolean) => {
+    if (active) dialogDragActiveRef.current = true;
+    else
+      setTimeout(() => {
+        dialogDragActiveRef.current = false;
+      }, 0);
+  }, []);
   const [dialogValidation, setDialogValidation] = useState<XmlValidation>({ valid: true });
   const [contentValidation, setContentValidation] = useState<XmlValidation>({ valid: true });
   const formRef = useRef<HTMLFormElement>(null);
@@ -219,6 +229,7 @@ const ReportTemplateEdit: React.FC = () => {
       if (editing && !saving) formRef.current?.requestSubmit();
     },
     onCancel: () => {
+      if (dialogDragActiveRef.current) return;
       if (editing && !isNew) handleCancelEdit();
     },
   });
@@ -1262,7 +1273,11 @@ const ReportTemplateEdit: React.FC = () => {
                         />
                       </div>
                       <div hidden={activeTab !== 'preview'} className="lg:max-h-[calc(100vh-18rem)] lg:overflow-y-auto">
-                        <DialogPreview xml={formData.dialog} />
+                        <DialogPreview
+                          xml={formData.dialog}
+                          onChange={editing ? handleXmlChange('dialog') : undefined}
+                          onDragActiveChange={handleDialogDragActive}
+                        />
                       </div>
                     </>
                   )}
