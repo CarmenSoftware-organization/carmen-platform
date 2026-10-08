@@ -5,7 +5,8 @@ import { PageHeader } from '../components/PageHeader';
 import { ActivityTrailSheet } from '../components/activityTrail/ActivityTrailSheet';
 import { AUDIT_RECORDING_STARTED_ON_PHASE_2 } from '../components/activityTrail/constants';
 import { PLATFORM_SCOPED_RECORD } from '../utils/permissions';
-import reportTemplateService from '../services/reportTemplateService';
+import reportTemplateService, { type ReportTemplate } from '../services/reportTemplateService';
+import { toBackupTemplate, buildBackup, backupFileName, downloadJSON } from '../utils/reportTemplateBackup';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -20,7 +21,7 @@ import { XmlEditor } from '../components/XmlEditor';
 import { DialogPreview } from '../components/DialogPreview';
 import { EmptyState } from '../components/EmptyState';
 import { FetchErrorState } from '../components/FetchErrorState';
-import { Save, Pencil, X, Loader2, SearchX } from 'lucide-react';
+import { Save, Pencil, X, Loader2, SearchX, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import Can from '../components/Can';
 import { validateField } from '../utils/validation';
@@ -481,6 +482,22 @@ const ReportTemplateEdit: React.FC = () => {
                   entityId={id}
                   recordingStartedOn={AUDIT_RECORDING_STARTED_ON_PHASE_2}
                 />
+              </Can>
+              <Can permission="report_template.read">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    // templateRecord = ค่าที่บันทึกแล้ว ไม่ใช่ formData ที่กำลังแก้ (Review Focus #5)
+                    const tpl = toBackupTemplate(templateRecord as ReportTemplate & Record<string, unknown>);
+                    downloadJSON(buildBackup([tpl]), backupFileName([tpl]));
+                    toast.success(t('pages.reportTemplates.backup.done', { count: 1 }));
+                  }}
+                  disabled={!templateRecord}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  {t('pages.reportTemplates.backup.download')}
+                </Button>
               </Can>
               {editing ? (
               <Button variant="outline" size="sm" onClick={handleCancelEdit}>

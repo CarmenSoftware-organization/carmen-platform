@@ -3124,6 +3124,15 @@ export const th: Translations = {
       subscriptionSummaryPlural: 'หมดอายุ {{date}} · {{count}} ฟีเจอร์ · {{used}}/{{cap}} ที่นั่ง',
     },
     reportTemplates: {
+      backup: {
+        download: 'ดาวน์โหลด backup',
+        downloadSelected: 'ดาวน์โหลด backup ({{count}})',
+        downloadAll: 'Backup ทั้งหมด',
+        progress: 'กำลัง backup {{done}}/{{total}}',
+        done: 'Backup แล้ว {{count}} รายการ',
+        partial: 'Backup แล้ว {{count}} ล้มเหลว {{failed}}',
+        failed: 'Backup ไม่สำเร็จ',
+      },
       subtitle: 'จัดการเทมเพลตรายงานทั้งส่วน dialog (XML) และเนื้อหา (.frx เป็น XML)',
       addTemplate: 'เพิ่มเทมเพลต',
       searchPlaceholder: 'ค้นหาเทมเพลตรายงาน...',

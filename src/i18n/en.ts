@@ -2946,6 +2946,15 @@ export const en = {
     // Thai side is now uniform. Keep it that way — a page that reintroduces 'ชนิด' will read
     // as two words for one thing on the same screen.
     reportTemplates: {
+      backup: {
+        download: 'Download backup',
+        downloadSelected: 'Download backup ({{count}})',
+        downloadAll: 'Backup all',
+        progress: 'Backing up {{done}}/{{total}}',
+        done: 'Backed up {{count}} templates',
+        partial: 'Backed up {{count}}, {{failed}} failed',
+        failed: 'Backup failed',
+      },
       subtitle: 'Manage report templates with dialog (XML) and content (.frx to XML)',
       addTemplate: 'Add Template',
       searchPlaceholder: 'Search report templates...',

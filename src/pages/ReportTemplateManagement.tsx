@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, FileText, Download, History } from "lucide-react";
+import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, FileText, Download, History, Loader2 } from "lucide-react";
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
@@ -32,6 +32,7 @@ import type { PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { TKey } from '../i18n/types';
 import { readStoredPerpage } from '../utils/pageRange';
+import { fetchFullTemplates, buildBackup, backupFileName, downloadJSON } from '../utils/reportTemplateBackup';
 
 /**
  * ค่า enum ของ API → คีย์ป้าย ผูกเป็นตารางตายตัวไม่ใช่ t(`...${v}`) เพราะชุดค่าปิดแล้ว
@@ -64,6 +65,31 @@ const ReportTemplateManagement: React.FC = () => {
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedTemplates, setSelectedTemplates] = useState<ReportTemplate[]>([]);
+  const [selectionResetKey, setSelectionResetKey] = useState(0);
+  const [backupProgress, setBackupProgress] = useState<{ done: number; total: number } | null>(null);
+
+  const runBackup = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return;
+    setBackupProgress({ done: 0, total: ids.length });
+    try {
+      const { ok, failed } = await fetchFullTemplates(ids, (done, total) => setBackupProgress({ done, total }));
+      if (ok.length === 0) {
+        toast.error(t('pages.reportTemplates.backup.failed'));
+        return;
+      }
+      downloadJSON(buildBackup(ok), backupFileName(ok));
+      if (failed > 0) toast.warning(t('pages.reportTemplates.backup.partial', { count: ok.length, failed }));
+      else toast.success(t('pages.reportTemplates.backup.done', { count: ok.length }));
+    } finally {
+      setBackupProgress(null);
+    }
+  }, [t]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedTemplates([]);
+    setSelectionResetKey((k) => k + 1);
+  }, []);
 
   const storedSearch = localStorage.getItem('search_report_templates') || '';
   const storedFilters = getStoredJSON<string[]>('filters_report_templates', []);
@@ -345,6 +371,12 @@ const ReportTemplateManagement: React.FC = () => {
                 {t('pages.activityTrail.buttonLabel')}
               </DropdownMenuItem>
             </Can>
+            <Can permission="report_template.read">
+              <DropdownMenuItem onSelect={() => runBackup([row.original.id])} className="cursor-pointer">
+                <Download className="mr-2 h-4 w-4" />
+                {t('pages.reportTemplates.backup.download')}
+              </DropdownMenuItem>
+            </Can>
             <Can permission="report_template.delete">
               <DropdownMenuItem onClick={() => handleDelete(row.original.id)} className="cursor-pointer text-destructive focus:text-destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
@@ -355,7 +387,31 @@ const ReportTemplateManagement: React.FC = () => {
         </DropdownMenu>
       ),
     },
-  ], [navigate, handleDelete, t, lang, activityTrail]);
+  ], [navigate, handleDelete, runBackup, t, lang, activityTrail]);
+
+  // Selection is current-page only: discard whenever the result set changes.
+  useEffect(() => {
+    clearSelection();
+  }, [clearSelection, paginate.page, paginate.perpage, paginate.search, paginate.sort, paginate.advance]);
+
+  const handleBackupAll = async () => {
+    const ids: string[] = [];
+    try {
+      for (let page = 1; ; page += 1) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const res: any = await reportTemplateService.getAll({ ...paginate, page, perpage: 100 });
+        const inner = res.data?.data ?? res.data ?? res;
+        const items: ReportTemplate[] = Array.isArray(inner) ? inner : (inner?.data ?? []);
+        ids.push(...items.map((r) => r.id));
+        const total = (inner?.paginate ?? res.data?.paginate ?? res.paginate)?.total ?? ids.length;
+        if (items.length === 0 || ids.length >= total) break;
+      }
+    } catch (err: unknown) {
+      toast.error(`${t('pages.reportTemplates.backup.failed')}: ${getErrorDetail(err, t)}`);
+      return;
+    }
+    await runBackup(ids);
+  };
 
   return (
     <Layout>
@@ -365,6 +421,14 @@ const ReportTemplateManagement: React.FC = () => {
           subtitle={t('pages.reportTemplates.subtitle')}
           actions={
             <>
+              <Can permission="report_template.read">
+                <Button variant="outline" size="sm" onClick={handleBackupAll} disabled={!!backupProgress || loading || totalRows === 0}>
+                  {backupProgress ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                  {backupProgress
+                    ? t('pages.reportTemplates.backup.progress', backupProgress)
+                    : t('pages.reportTemplates.backup.downloadAll')}
+                </Button>
+              </Can>
               <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || templates.length === 0}>
                 <Download className="mr-2 h-4 w-4" />
                 {t('common.action.export')}
@@ -550,11 +614,24 @@ const ReportTemplateManagement: React.FC = () => {
                 }
               />
             ) : !error ? (
+              <>
+              {selectedTemplates.length > 0 && (
+                <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
+                  <span className="text-sm font-medium">{t('common.state.nSelected', { count: selectedTemplates.length })}</span>
+                  <div className="ml-auto flex items-center gap-2">
+                    <Button variant="outline" size="sm" disabled={!!backupProgress} onClick={() => runBackup(selectedTemplates.map((r) => r.id))}>
+                      <Download className="mr-2 h-4 w-4" />
+                      {t('pages.reportTemplates.backup.downloadSelected', { count: selectedTemplates.length })}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={clearSelection}>{t('common.action.clear')}</Button>
+                  </div>
+                </div>
+              )}
               <div className="relative">
                 {loading && templates.length === 0 ? (
                   // +1 accounts for the `#` row-index column DataTable always prepends,
                   // so the skeleton matches the loaded table's actual header count.
-                  <TableSkeleton columns={columns.length + 1} rows={paginate.perpage || 5} />
+                  <TableSkeleton columns={columns.length + 2} rows={paginate.perpage || 5} />
                 ) : (
                 <>
                 {loading && (
@@ -573,10 +650,16 @@ const ReportTemplateManagement: React.FC = () => {
                   onPaginateChange={handlePaginateChange}
                   onSortChange={handleSortChange}
                   defaultSort={{ id: 'name', desc: false }}
+                  enableRowSelection
+                  getRowId={(row) => row.id}
+                  onSelectionChange={setSelectedTemplates}
+                  selectionResetKey={selectionResetKey}
+                  getRowSelectionLabel={(r) => r.name}
                 />
                 </>
                 )}
               </div>
+              </>
             ) : null}
           </CardContent>
         </Card>
