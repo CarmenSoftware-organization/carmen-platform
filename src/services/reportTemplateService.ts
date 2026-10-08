@@ -141,10 +141,10 @@ const reportTemplateService = {
   restoreVersion: async (
     id: string,
     version: number,
-    docVersion?: number,
+    docVersion: number,
   ): Promise<{ id: string; doc_version: number }> => {
     const response = await api.post(`/api-system/report-templates/${id}/versions/${version}/restore`, {
-      ...(docVersion != null ? { doc_version: docVersion } : {}),
+      doc_version: docVersion,
     });
     return response.data?.data ?? response.data;
   },
