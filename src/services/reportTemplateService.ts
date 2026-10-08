@@ -6,6 +6,8 @@ export type ReportSourceType = "view" | "function" | "procedure";
 
 export type ReportTemplateType = 'form' | 'list';
 
+export type CalculationMethod = 'fifo' | 'average' | 'average_per_location';
+
 export interface ReportSourceParam {
   filter: string;
   type?: string;
@@ -38,6 +40,8 @@ export interface ReportTemplate {
   is_default: boolean;
   allow_business_unit?: unknown;
   deny_business_unit?: unknown;
+  // empty / absent = supports every calculation method
+  calculation_methods?: CalculationMethod[];
   is_active: boolean;
   builder_key?: string;
   source_type?: ReportSourceType;

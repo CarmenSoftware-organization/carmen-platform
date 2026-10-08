@@ -33,6 +33,14 @@ import type { ColumnDef } from '@tanstack/react-table';
 import type { TKey } from '../i18n/types';
 import { readStoredPerpage } from '../utils/pageRange';
 import ReportTemplateImportDialog from './reportTemplates/ReportTemplateImportDialog';
+import {
+  CALCULATION_METHODS,
+  CALCULATION_METHOD_KEYS,
+  CalculationMethodBadges,
+  buildCalculationMethodWhere,
+  readCalculationMethodFilter,
+  type CalculationMethodFilterValue,
+} from './reportTemplates/calculationMethods';
 import { fetchFullTemplates, buildBackup, backupFileName, downloadJSON } from '../utils/reportTemplateBackup';
 
 /**
@@ -98,6 +106,9 @@ const ReportTemplateManagement: React.FC = () => {
   const storedFilters = getStoredJSON<string[]>('filters_report_templates', []);
   const storedSourceTypes = getStoredJSON<string[]>('filters_report_templates_source_type', []);
   const storedTemplateTypes = getStoredJSON<string[]>('filters_report_templates_template_type', []);
+  const storedCalcMethods = readCalculationMethodFilter(
+    getStoredJSON<unknown>('filters_report_templates_calculation_method', []),
+  );
   const storedPage = Number(localStorage.getItem('page_report_templates')) || 1;
   // Bumped from `sort_report_templates` to force-reset users who had the old
   // `created_at:desc` default persisted; the new default is name ascending (A→Z).
@@ -107,10 +118,16 @@ const ReportTemplateManagement: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string[]>(storedFilters);
   const [sourceTypeFilter, setSourceTypeFilter] = useState<string[]>(storedSourceTypes);
   const [templateTypeFilter, setTemplateTypeFilter] = useState<string[]>(storedTemplateTypes);
+  const [calcMethodFilter, setCalcMethodFilter] = useState<CalculationMethodFilterValue[]>(storedCalcMethods);
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
 
-  const buildAdvance = (filters: string[], sourceTypes: string[], templateTypes: string[]) => {
+  const buildAdvance = (
+    filters: string[],
+    sourceTypes: string[],
+    templateTypes: string[],
+    calcMethods: CalculationMethodFilterValue[],
+  ) => {
     const where: Record<string, unknown> = {};
     if (filters.length === 1) {
       where.is_active = filters[0] === 'true';
@@ -125,6 +142,8 @@ const ReportTemplateManagement: React.FC = () => {
     } else if (templateTypes.length > 1) {
       where.template_type = { in: templateTypes };
     }
+    const calcWhere = buildCalculationMethodWhere(calcMethods);
+    if (calcWhere) Object.assign(where, calcWhere);
     where.deleted_at = null;
     return Object.keys(where).length > 0 ? JSON.stringify({ where }) : '';
   };
@@ -134,7 +153,7 @@ const ReportTemplateManagement: React.FC = () => {
     perpage: readStoredPerpage('perpage_report_templates', 10),
     search: storedSearch,
     sort: storedSort,
-    advance: buildAdvance(storedFilters, storedSourceTypes, storedTemplateTypes),
+    advance: buildAdvance(storedFilters, storedSourceTypes, storedTemplateTypes, storedCalcMethods),
     filter: {},
   });
 
@@ -192,7 +211,7 @@ const ReportTemplateManagement: React.FC = () => {
     setStatusFilter(next);
     localStorage.setItem('filters_report_templates', JSON.stringify(next));
     localStorage.setItem('page_report_templates', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(next, sourceTypeFilter, templateTypeFilter), filter: {} }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(next, sourceTypeFilter, templateTypeFilter, calcMethodFilter), filter: {} }));
   };
 
   const handleSourceTypeFilter = (type: string) => {
@@ -202,7 +221,7 @@ const ReportTemplateManagement: React.FC = () => {
     setSourceTypeFilter(next);
     localStorage.setItem('filters_report_templates_source_type', JSON.stringify(next));
     localStorage.setItem('page_report_templates', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(statusFilter, next, templateTypeFilter), filter: {} }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(statusFilter, next, templateTypeFilter, calcMethodFilter), filter: {} }));
   };
 
   const handleTemplateTypeFilter = (type: string) => {
@@ -212,21 +231,36 @@ const ReportTemplateManagement: React.FC = () => {
     setTemplateTypeFilter(next);
     localStorage.setItem('filters_report_templates_template_type', JSON.stringify(next));
     localStorage.setItem('page_report_templates', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(statusFilter, sourceTypeFilter, next), filter: {} }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(statusFilter, sourceTypeFilter, next, calcMethodFilter), filter: {} }));
+  };
+
+  const handleCalcMethodFilter = (value: CalculationMethodFilterValue) => {
+    const next = calcMethodFilter.includes(value)
+      ? calcMethodFilter.filter((s) => s !== value)
+      : [...calcMethodFilter, value];
+    setCalcMethodFilter(next);
+    localStorage.setItem('filters_report_templates_calculation_method', JSON.stringify(next));
+    localStorage.setItem('page_report_templates', '1');
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(statusFilter, sourceTypeFilter, templateTypeFilter, next), filter: {} }));
   };
 
   const handleClearAllFilters = () => {
     setStatusFilter([]);
     setSourceTypeFilter([]);
     setTemplateTypeFilter([]);
+    setCalcMethodFilter([]);
     localStorage.setItem('filters_report_templates', JSON.stringify([]));
     localStorage.setItem('filters_report_templates_source_type', JSON.stringify([]));
     localStorage.setItem('filters_report_templates_template_type', JSON.stringify([]));
+    localStorage.setItem('filters_report_templates_calculation_method', JSON.stringify([]));
     localStorage.setItem('page_report_templates', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([], [], []), filter: {} }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([], [], [], []), filter: {} }));
   };
 
-  const activeFilterCount = (statusFilter.length > 0 ? 1 : 0) + (sourceTypeFilter.length > 0 ? 1 : 0) + (templateTypeFilter.length > 0 ? 1 : 0);
+  const activeFilterCount = (statusFilter.length > 0 ? 1 : 0) + (sourceTypeFilter.length > 0 ? 1 : 0) + (templateTypeFilter.length > 0 ? 1 : 0) + (calcMethodFilter.length > 0 ? 1 : 0);
+
+  const calcMethodLabel = (v: CalculationMethodFilterValue) =>
+    v === 'restricted' ? t('pages.reportTemplates.calculationMethodRestricted') : t(CALCULATION_METHOD_KEYS[v]);
 
   const handleSortChange = (sort: string) => {
     localStorage.setItem('sort_report_templates_v2', sort);
@@ -257,6 +291,9 @@ const ReportTemplateManagement: React.FC = () => {
       ...tpl,
       name_th: tpl.name_i18n?.th ?? '',
       description_th: tpl.description_i18n?.th ?? '',
+      calculation_methods_csv: (tpl.calculation_methods ?? []).length
+        ? CALCULATION_METHODS.filter((m) => tpl.calculation_methods?.includes(m)).map((m) => t(CALCULATION_METHOD_KEYS[m])).join(', ')
+        : t('pages.reportTemplates.calculationMethodAll'),
       ...auditCsvFields(normalizeAudit(tpl)),
     }));
     const csv = generateCSV(rows, [
@@ -265,6 +302,7 @@ const ReportTemplateManagement: React.FC = () => {
       { key: 'name_th', label: t('pages.reportTemplates.csvNameTh') },
       { key: 'description_th', label: t('pages.reportTemplates.csvDescriptionTh') },
       { key: 'report_group', label: t('pages.reportTemplates.columnReportGroup') },
+      { key: 'calculation_methods_csv', label: t('pages.reportTemplates.columnCalculationMethod') },
       { key: 'is_standard', label: t('pages.reportTemplates.columnStandard') },
       { key: 'is_active', label: t('common.status.label') },
       { key: 'created_at', label: t('common.audit.createdAt') },
@@ -323,6 +361,12 @@ const ReportTemplateManagement: React.FC = () => {
           )}
         </div>
       ),
+    },
+    {
+      id: 'calculation_methods',
+      header: t('pages.reportTemplates.columnCalculationMethod'),
+      enableSorting: false,
+      cell: ({ row }) => <CalculationMethodBadges methods={row.original.calculation_methods} />,
     },
     {
       accessorKey: 'is_standard',
@@ -552,6 +596,25 @@ const ReportTemplateManagement: React.FC = () => {
                       </div>
                     </div>
 
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{t('pages.reportTemplates.calculationMethodLabel')}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {([...CALCULATION_METHODS, 'restricted'] as const).map((v) => (
+                          <Button
+                            key={v}
+                            variant={calcMethodFilter.includes(v) ? "default" : "outline"}
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => handleCalcMethodFilter(v)}
+                          >
+                            {calcMethodLabel(v)}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
                     {activeFilterCount > 0 && (
                       <Button variant="outline" size="sm" className="w-full" onClick={handleClearAllFilters}>
                         {t('common.action.clearAllFilters')}
@@ -601,6 +664,18 @@ const ReportTemplateManagement: React.FC = () => {
                       aria-label={t('pages.reportTemplates.removeFilterAria', {
                         label: t(TEMPLATE_TYPE_KEYS[v as keyof typeof TEMPLATE_TYPE_KEYS]),
                       })}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                {calcMethodFilter.map((v) => (
+                  <Badge key={`calc-method-${v}`} variant="secondary" className="text-xs gap-1 pr-1">
+                    {calcMethodLabel(v)}
+                    <button
+                      onClick={() => handleCalcMethodFilter(v)}
+                      className="ml-0.5 hover:text-foreground"
+                      aria-label={t('pages.reportTemplates.removeFilterAria', { label: calcMethodLabel(v) })}
                     >
                       <X className="h-3 w-3" />
                     </button>

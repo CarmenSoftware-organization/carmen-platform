@@ -5,7 +5,8 @@ import { PageHeader } from '../components/PageHeader';
 import { ActivityTrailSheet } from '../components/activityTrail/ActivityTrailSheet';
 import { AUDIT_RECORDING_STARTED_ON_PHASE_2 } from '../components/activityTrail/constants';
 import { PLATFORM_SCOPED_RECORD } from '../utils/permissions';
-import reportTemplateService, { type ReportTemplate } from '../services/reportTemplateService';
+import reportTemplateService, { type ReportTemplate, type CalculationMethod } from '../services/reportTemplateService';
+import { CALCULATION_METHODS, CALCULATION_METHOD_KEYS, CalculationMethodBadges, sortCalculationMethods } from './reportTemplates/calculationMethods';
 import { toBackupTemplate, buildBackup, backupFileName, downloadJSON } from '../utils/reportTemplateBackup';
 import { ReportTemplateVersionsSheet } from './reportTemplates/ReportTemplateVersionsSheet';
 import { SourceLineage } from './reportTemplates/SourceLineage';
@@ -92,6 +93,7 @@ interface ReportTemplateFormData {
   is_default: boolean;
   allow_business_unit: string;
   deny_business_unit: string;
+  calculation_methods: CalculationMethod[];
   is_active: boolean;
   builder_key: string;
   source_type: "view" | "function" | "procedure";
@@ -112,6 +114,7 @@ const initialFormData: ReportTemplateFormData = {
   is_default: false,
   allow_business_unit: '',
   deny_business_unit: '',
+  calculation_methods: [],
   is_active: true,
   builder_key: '',
   source_type: 'view',
@@ -260,6 +263,9 @@ const ReportTemplateEdit: React.FC = () => {
         is_default: template.is_default ?? false,
         allow_business_unit: toCsv(template.allow_business_unit),
         deny_business_unit: toCsv(template.deny_business_unit),
+        calculation_methods: sortCalculationMethods(
+          Array.isArray(template.calculation_methods) ? template.calculation_methods : [],
+        ),
         is_active: template.is_active ?? true,
         builder_key: template.builder_key || '',
         source_type: (template.source_type as 'view' | 'function' | 'procedure') || 'view',
@@ -326,6 +332,16 @@ const ReportTemplateEdit: React.FC = () => {
     setError('');
   };
 
+  // เรียงตาม CALCULATION_METHODS เสมอ — ติ๊กออกแล้วติ๊กกลับต้องได้ array เดิม ไม่งั้น hasChanges ค้างเป็น true
+  const toggleCalculationMethod = (method: CalculationMethod) => {
+    setFormData((prev) => {
+      const set = new Set(prev.calculation_methods);
+      if (set.has(method)) set.delete(method);
+      else set.add(method);
+      return { ...prev, calculation_methods: CALCULATION_METHODS.filter((m) => set.has(m)) };
+    });
+  };
+
   const handleChipChange = (
     field: 'allow_business_unit' | 'deny_business_unit',
   ) => (val: string) => {
@@ -385,6 +401,8 @@ const ReportTemplateEdit: React.FC = () => {
       is_default: isForm ? formData.is_default : undefined,
       allow_business_unit: isForm ? '' : formData.allow_business_unit,
       deny_business_unit: isForm ? '' : formData.deny_business_unit,
+      // form = เอกสารพิมพ์ ไม่ขึ้นกับวิธีคิดต้นทุน — ล้างเหมือน allow/deny
+      calculation_methods: isForm ? [] : formData.calculation_methods,
       // null ล้างค่าที่เก็บไว้ตอน update (undefined = ไม่แตะ ทำให้ลบชื่อ source ไม่ได้); create รับ null เท่ากับไม่มี
       source_name: formData.source_name.trim() || null,
       source_params: { params: cleanParams },
@@ -849,6 +867,32 @@ const ReportTemplateEdit: React.FC = () => {
                           disabled={!editing || isForm}
                         />
                       </div>
+                      {!isForm && (
+                        <div className="space-y-2">
+                          <Label>{t('pages.reportTemplates.calculationMethodLabel')}</Label>
+                          {editing ? (
+                            <>
+                              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                                {CALCULATION_METHODS.map((m) => (
+                                  <label key={m} className="flex items-center gap-2 text-sm cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      id={`calculation_method_${m}`}
+                                      checked={formData.calculation_methods.includes(m)}
+                                      onChange={() => toggleCalculationMethod(m)}
+                                      className="h-4 w-4 rounded border-input"
+                                    />
+                                    {t(CALCULATION_METHOD_KEYS[m])}
+                                  </label>
+                                ))}
+                              </div>
+                              <p className="text-xs text-muted-foreground">{t('pages.reportTemplates.calculationMethodHelp')}</p>
+                            </>
+                          ) : (
+                            <CalculationMethodBadges methods={formData.calculation_methods} />
+                          )}
+                        </div>
+                      )}
                     </>
                   )}
                 </section>
