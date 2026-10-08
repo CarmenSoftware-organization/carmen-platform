@@ -1871,6 +1871,11 @@ export interface CronJobWriteInput {
 
 export type DashboardTemplateKind = 'system' | 'bu_default';
 
+export interface LocalizedTitle {
+  en: string;
+  th?: string;
+}
+
 export interface DashboardTemplate {
   id: string;
   kind: DashboardTemplateKind;
@@ -1878,6 +1883,7 @@ export interface DashboardTemplate {
   dataset_id: string;
   widget_type: string;
   title?: string | null;
+  title_i18n?: LocalizedTitle | null;
   order_index: number;
   params?: Record<string, string | number> | null;
   display?: Record<string, unknown> | null;
