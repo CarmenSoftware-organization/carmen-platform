@@ -754,6 +754,7 @@ export const en = {
     dialogPreview: {
       title: 'Dialog Preview',
       noXmlProvided: 'No XML provided',
+      emptyHint: 'This template has no Dialog XML, so there is no filter dialog to preview.',
       parseError: 'Parse error',
       // `<Dialog>` names the XML root element this component requires — an element name,
       // not prose, so it stays untranslated inside the sentence.
@@ -787,6 +788,8 @@ export const en = {
       fileLoaded: '{{name}} loaded',
       cleared: 'Cleared',
       validXml: 'Valid XML',
+      // ว่างไม่ใช่ 'ถูกต้อง' — editor ที่ไม่มีอะไรเลยไม่ควรได้เครื่องหมายถูกสีเขียว
+      emptyXml: 'Empty',
       // Composed as "{{line}}" then optionally ", col {{column}}" then a literal ": " —
       // two fragments because the column half only renders when the parser reports one.
       lineLabel: 'Line {{line}}',
@@ -3081,6 +3084,7 @@ export const en = {
       allow: 'Allow',
       deny: 'Deny',
       allowPlaceholderForm: 'All business units (form template)',
+      allBusinessUnits: 'All business units',
       allowPlaceholder: 'Type BU code + Enter (blank = all; enforced for BU users)',
       denyPlaceholder: 'Type BU code + Enter (blank = none; enforced for BU users)',
       dataSource: 'Data Source',

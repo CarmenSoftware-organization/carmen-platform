@@ -160,6 +160,8 @@ const ReportTemplateEdit: React.FC = () => {
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<'dialog' | 'content' | 'preview'>('dialog');
+  // เลือกแท็บเริ่มต้นครั้งเดียวตอนโหลดแรก — refetch หลังบันทึก/กู้คืนเวอร์ชันต้องไม่ดึงผู้ใช้ออกจากแท็บที่เปิดอยู่
+  const initialTabPickedRef = useRef(false);
   const [dialogValidation, setDialogValidation] = useState<XmlValidation>({ valid: true });
   const [contentValidation, setContentValidation] = useState<XmlValidation>({ valid: true });
   const formRef = useRef<HTMLFormElement>(null);
@@ -282,6 +284,11 @@ const ReportTemplateEdit: React.FC = () => {
       setSavedFormData(loaded);
       setDocVersion(getDocVersion(template));
       setTemplateRecord(template);
+      if (!initialTabPickedRef.current) {
+        initialTabPickedRef.current = true;
+        // Form template ส่วนใหญ่ไม่มี dialog — เปิดมาเจอ editor ว่างแทน Content ที่มีอยู่จริง
+        if (!loaded.dialog.trim() && loaded.content.trim()) setActiveTab('content');
+      }
     } catch (err: unknown) {
       // A bad/deleted id gates the whole shell (see the notFound branch below);
       // a transient failure keeps the retryable inline banner.
@@ -841,6 +848,17 @@ const ReportTemplateEdit: React.FC = () => {
                     </>
                   ) : (
                     <>
+                      {/* โหมดอ่าน: ไม่มีรายการ allow/deny = ใช้ได้ทุก BU — บรรทัดเดียวแทนกล่อง "-" สองกล่อง */}
+                      {!editing && (isForm || (!formData.allow_business_unit && !formData.deny_business_unit)) ? (
+                        <ReadOnlyField
+                          value={
+                            isForm
+                              ? t('pages.reportTemplates.allowPlaceholderForm')
+                              : t('pages.reportTemplates.allBusinessUnits')
+                          }
+                        />
+                      ) : (
+                      <>
                       <div className="space-y-2">
                         <Label htmlFor="allow_business_unit">{t('pages.reportTemplates.allow')}</Label>
                         <ChipInput
@@ -867,6 +885,8 @@ const ReportTemplateEdit: React.FC = () => {
                           disabled={!editing || isForm}
                         />
                       </div>
+                      </>
+                      )}
                       {!isForm && (
                         <div className="space-y-2">
                           <Label>{t('pages.reportTemplates.calculationMethodLabel')}</Label>
@@ -889,7 +909,10 @@ const ReportTemplateEdit: React.FC = () => {
                               <p className="text-xs text-muted-foreground">{t('pages.reportTemplates.calculationMethodHelp')}</p>
                             </>
                           ) : (
-                            <CalculationMethodBadges methods={formData.calculation_methods} />
+                            // badge คืน <span> ตอนเป็น "ทุกวิธี" — inline ใน space-y-2 จึงไปติดท้าย label; ห่อ div ให้ขึ้นบรรทัดใหม่
+                            <div>
+                              <CalculationMethodBadges methods={formData.calculation_methods} />
+                            </div>
                           )}
                         </div>
                       )}
@@ -1047,6 +1070,8 @@ const ReportTemplateEdit: React.FC = () => {
                     )}
                   </div>
 
+                  {/* view ไม่รับพารามิเตอร์ — โหมดอ่านซ่อนทั้งส่วน แทนการโชว์คำอธิบายว่าส่วนนี้ไม่ใช้ */}
+                  {(editing || formData.source_type !== 'view') && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label>
@@ -1170,6 +1195,7 @@ const ReportTemplateEdit: React.FC = () => {
                       </p>
                     )}
                   </div>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="builder_key">{t('pages.reportTemplates.builderKey')}</Label>

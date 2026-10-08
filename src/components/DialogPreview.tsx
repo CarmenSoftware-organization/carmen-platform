@@ -3,6 +3,7 @@ import { AlertCircle, Eye } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
+import { EmptyState } from './EmptyState';
 import { useI18n } from '../hooks/useI18n';
 import type { TFunction } from '../i18n/types';
 
@@ -132,6 +133,17 @@ function renderControl(el: Element, t: TFunction): React.ReactNode {
 export const DialogPreview: React.FC<DialogPreviewProps> = ({ xml }) => {
   const { t } = useI18n();
   const parsed = useMemo(() => parseDialogXml(xml, t), [xml, t]);
+
+  // ไม่มี XML เลยไม่ใช่ความผิดพลาด (template แบบ Form มักไม่มี dialog) — สีแดงเก็บไว้ให้ XML ที่ parse ไม่ผ่านจริง
+  if (!xml.trim()) {
+    return (
+      <EmptyState
+        icon={Eye}
+        title={t('components.dialogPreview.noXmlProvided')}
+        description={t('components.dialogPreview.emptyHint')}
+      />
+    );
+  }
 
   if (!parsed.ok) {
     return (

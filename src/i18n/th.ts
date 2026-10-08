@@ -541,6 +541,7 @@ export const th: Translations = {
       parseError: 'ข้อผิดพลาดในการแยกวิเคราะห์',
       // <Dialog> คือชื่อ root element ของ XML ที่ต้องมี — เป็นชื่อ element ไม่ใช่ข้อความ
       // ทั่วไป จึงคงไว้ไม่แปลภายในประโยค
+      emptyHint: 'เทมเพลตนี้ไม่มี Dialog XML จึงไม่มีหน้าต่างตัวกรองให้แสดงตัวอย่าง',
       requiresDialogRoot: 'การแสดงตัวอย่างต้องมี root element เป็น <Dialog>',
       // {{source}} คือค่า DataSource ที่ทำความสะอาดแล้ว (เช่น "Vendor") — เป็นข้อมูลจาก XML
       // ไม่ใช่ label ที่ต้องแปล จึงไม่มีคีย์ของตัวเอง
@@ -568,6 +569,7 @@ export const th: Translations = {
       fileLoaded: 'โหลด {{name}} แล้ว',
       cleared: 'ล้างแล้ว',
       validXml: 'XML ถูกต้อง',
+      emptyXml: 'ว่าง',
       // ประกอบเป็น "{{line}}" แล้วต่อด้วย ", col {{column}}" แบบมีเงื่อนไข ก่อนต่อด้วย ": "
       // ตรงๆ — แยกสองชิ้นเพราะส่วนคอลัมน์แสดงเฉพาะเมื่อ parser รายงานมา
       lineLabel: 'บรรทัด {{line}}',
@@ -3254,6 +3256,7 @@ export const th: Translations = {
       allow: 'อนุญาต',
       deny: 'ไม่อนุญาต',
       allowPlaceholderForm: 'ทุกหน่วยธุรกิจ (เทมเพลตฟอร์ม)',
+      allBusinessUnits: 'ทุกหน่วยธุรกิจ',
       allowPlaceholder: 'พิมพ์รหัส BU แล้วกด Enter (ว่าง = ทุก BU · มีผลกับผู้ใช้ BU จริง)',
       denyPlaceholder: 'พิมพ์รหัส BU แล้วกด Enter (ว่าง = ไม่มี · มีผลกับผู้ใช้ BU จริง)',
       dataSource: 'แหล่งข้อมูล',
