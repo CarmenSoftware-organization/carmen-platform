@@ -232,7 +232,7 @@ describe('ReportTemplateEdit — DB objects probe', () => {
     await user.click(screen.getByRole('button', { name: 'Try again' }));
 
     expect(reportTemplateService.listDbObjects).toHaveBeenCalledTimes(2);
-    expect(await screen.findByText('fn_pr_report')).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'fn_pr_report' })).toBeInTheDocument();
     expect(screen.queryByRole('alert')).toBeNull();
   });
 });

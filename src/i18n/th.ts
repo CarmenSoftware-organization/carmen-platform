@@ -3175,8 +3175,13 @@ export const th: Translations = {
         partial: 'Backup แล้ว {{count}} ล้มเหลว {{failed}}',
         failed: 'Backup ไม่สำเร็จ',
       },
+      lineage: {
+        dialog: 'Dialog',
+        dialogFields: 'Dialog · {{count}} ช่อง',
+        dialogFieldsOne: 'Dialog · 1 ช่อง',
+      },
       versions: {
-        button: 'เวอร์ชัน',
+        button: 'เวอร์ชัน XML',
         title: 'ประวัติเวอร์ชัน',
         description: 'ทุกครั้งที่บันทึกจะเกิดเวอร์ชันใหม่ กางดูเพื่อเทียบกับเทมเพลตปัจจุบัน',
         empty: 'ยังไม่มีเวอร์ชัน',

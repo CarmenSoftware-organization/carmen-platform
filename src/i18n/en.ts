@@ -2997,8 +2997,13 @@ export const en = {
         partial: 'Backed up {{count}}, {{failed}} failed',
         failed: 'Backup failed',
       },
+      lineage: {
+        dialog: 'Dialog',
+        dialogFields: 'Dialog · {{count}} fields',
+        dialogFieldsOne: 'Dialog · 1 field',
+      },
       versions: {
-        button: 'Versions',
+        button: 'XML versions',
         title: 'Version history',
         description: 'Every save creates a version. Expand one to compare it with the current template.',
         empty: 'No versions yet',

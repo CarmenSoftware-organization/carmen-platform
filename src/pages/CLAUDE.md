@@ -120,7 +120,7 @@ After create: `navigate(\`/items/\${created.id}/edit\`, { replace: true })` — 
 
 ## Report Template Edit Specifics
 
-`src/pages/ReportTemplateEdit.tsx` uses a different layout from other Edit pages: sticky left column (Info + BU Scope + Metadata) + tabbed right column (Dialog XML / Content XML / Preview) + sticky bottom action bar (offset matches sidebar: `md:left-16 lg:left-60`). Wrap page in `pb-20` so the bar doesn't overlap content. Use `<div hidden={...}>` for tab panels containing CodeMirror so editors stay mounted.
+`src/pages/ReportTemplateEdit.tsx` uses a different layout from other Edit pages: a left panel (one `Card`, three `border-t` sections: Info / BU Scope / Data Source) that scrolls with the page + a **sticky** tabbed right column (Dialog XML / Content XML / Preview, `lg:top-20`, editors sized `calc(100vh - 21rem)`) + sticky bottom action bar (offset matches sidebar: `md:left-16 lg:left-60`). The subtitle is a `SourceLineage` strip (Dialog fields → source → builder key); read mode leaves report group / kind / status to the header badges. Wrap page in `pb-20` so the bar doesn't overlap content. Use `<div hidden={...}>` for tab panels containing CodeMirror so editors stay mounted.
 
 XML utils in `src/utils/xml.ts`: `formatXml`, `validateXml`, `countLines`, `byteSize`, `formatBytes`, `downloadText`. Prefer `XmlEditor`/`DialogPreview` over raw util calls.
 

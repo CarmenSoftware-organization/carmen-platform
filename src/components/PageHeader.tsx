@@ -47,7 +47,7 @@ export function PageHeader({
           {audit && <AuditMeta variant="header" audit={audit} now={now} />}
         </div>
       </div>
-      {actions && <div className="flex items-center gap-3 shrink-0">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-3 shrink-0">{actions}</div>}
     </div>
   );
 }
