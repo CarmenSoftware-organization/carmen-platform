@@ -115,7 +115,8 @@ Details:
   status, so a separate 422 is not possible without a second code).
 - `listSchedules`: fetch the BU's available template ids once
   (`perpage=-1`, `include_print=true`) and set on each schedule
-  `template_available: boolean` and `unavailable_reason?: string`.
+  `template_available: boolean`. (The list endpoint does not say *why* a
+  template is hidden, so no per-schedule reason in this phase.)
   Schedules without a template id → `template_available: true`.
 - Viewer/data passthrough: map micro-report's 403 to a gateway 403 keeping
   `code` + `reason` (not a generic 500).
@@ -126,7 +127,7 @@ Details:
 
 - Report list/picker: no change (backend filters).
 - Schedule list: rows with `template_available === false` show a warning badge
-  + tooltip with the localized reason; i18n en/th for the three reasons.
+  + a generic localized tooltip (no per-reason text — see gateway note).
 - Viewer / data error handling: a 403 with `code === "REPORT_TEMPLATE_UNAVAILABLE"`
   shows "This report is not available for this business unit" (localized)
   instead of the generic error toast.
