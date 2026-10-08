@@ -792,6 +792,23 @@ export const en = {
       warnLabelWithoutControl: 'Label "{{at}}" has no Date or Lookup after it, so the inventory dialog will not show it',
       warnControlWithoutLabel: '{{at}} has no visible label before it, so the inventory dialog will not show it',
       groupNeedsInventory: '<Group> needs the inventory release that supports it. On older inventory builds, grouped fields disappear.',
+      editor: {
+        colsLabel: 'Columns',
+        // {{label}} is the field's label text from the XML
+        spanDecrease: 'Make {{label}} narrower',
+        spanIncrease: 'Make {{label}} wider',
+        spanValue: 'Spans {{count}} of {{cols}} columns',
+        dragHandle: 'Move {{label}}',
+        selectCell: 'Select {{label}} for grouping',
+        groupSelected: 'Group {{count}} cells',
+        clearSelection: 'Clear',
+        rangeSplits: 'From/To ranges become separate fields inside a group.',
+        groupLabel: 'Group',
+        ungroup: 'Ungroup',
+        dropAtEnd: 'Drop here to move to the end',
+        hiddenToLabel: 'This range uses a hidden "to" label and cannot go into a group.',
+        narrowScreen: 'Open this tab on a wider screen to arrange the layout.',
+      },
     },
     // Shared between DialogPreview.tsx and XmlEditor.tsx — both render this exact fallback
     // when a document fails XML parsing with no more specific message available.

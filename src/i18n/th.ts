@@ -571,6 +571,22 @@ export const th: Translations = {
       warnLabelWithoutControl: 'ป้าย "{{at}}" ไม่มี Date หรือ Lookup ตามหลัง หน้า dialog ของ inventory จะไม่แสดง',
       warnControlWithoutLabel: '{{at}} ไม่มีป้ายที่มองเห็นได้นำหน้า หน้า dialog ของ inventory จะไม่แสดง',
       groupNeedsInventory: '<Group> ต้องใช้ inventory เวอร์ชันที่รองรับ ถ้าเป็นเวอร์ชันเก่า field ในกลุ่มจะหายไป',
+      editor: {
+        colsLabel: 'คอลัมน์',
+        spanDecrease: 'ทำให้ {{label}} แคบลง',
+        spanIncrease: 'ทำให้ {{label}} กว้างขึ้น',
+        spanValue: 'กว้าง {{count}} จาก {{cols}} คอลัมน์',
+        dragHandle: 'ย้าย {{label}}',
+        selectCell: 'เลือก {{label}} เพื่อรวมกลุ่ม',
+        groupSelected: 'รวม {{count}} รายการเป็นกลุ่ม',
+        clearSelection: 'ล้าง',
+        rangeSplits: 'ช่วง From/To จะแยกเป็น field เดี่ยวเมื่ออยู่ในกลุ่ม',
+        groupLabel: 'กลุ่ม',
+        ungroup: 'แยกกลุ่ม',
+        dropAtEnd: 'วางที่นี่เพื่อย้ายไปท้ายสุด',
+        hiddenToLabel: 'ช่วงนี้ใช้ป้าย "to" ที่ซ่อนไว้ จึงรวมเข้ากลุ่มไม่ได้',
+        narrowScreen: 'เปิดแท็บนี้บนจอที่กว้างขึ้นเพื่อจัด layout',
+      },
     },
     // ใช้ร่วมกันระหว่าง DialogPreview.tsx กับ XmlEditor.tsx — ทั้งสองไฟล์แสดงข้อความนี้เหมือน
     // กันเป๊ะเมื่อแยกวิเคราะห์ XML ไม่สำเร็จและไม่มีข้อความเจาะจงกว่านี้
