@@ -3,17 +3,24 @@ import { AlertCircle, AlertTriangle, Eye } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { EmptyState } from './EmptyState';
 import { useI18n } from '../hooks/useI18n';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { cn } from '../lib/utils';
 import { parseDialogXml } from '../utils/dialogXml';
 import { CANVAS_W, CellBlock, GRID_COLS } from './dialogPreview/CellView';
 import { warningText } from './dialogPreview/warningText';
+import { DialogLayoutEditor } from './dialogPreview/DialogLayoutEditor';
 
 export interface DialogPreviewProps {
   xml: string;
+  /** มีเมื่อหน้าอยู่ในโหมดแก้ไข — เปิด editor แบบลากวาง */
+  onChange?: (xml: string) => void;
+  onDragActiveChange?: (active: boolean) => void;
 }
 
-export const DialogPreview: React.FC<DialogPreviewProps> = ({ xml }) => {
+export const DialogPreview: React.FC<DialogPreviewProps> = ({ xml, onChange, onDragActiveChange }) => {
   const { t } = useI18n();
+  const wide = useMediaQuery('(min-width: 768px)');
+  const editable = !!onChange && wide;
   const parsed = useMemo(() => parseDialogXml(xml), [xml]);
 
   // ไม่มี XML เลยไม่ใช่ความผิดพลาด (template แบบ Form มักไม่มี dialog) — สีแดงเก็บไว้ให้ XML ที่ parse ไม่ผ่านจริง
@@ -68,9 +75,11 @@ export const DialogPreview: React.FC<DialogPreviewProps> = ({ xml }) => {
               ? t('components.dialogPreview.fieldCountSingular', { count: fieldCount })
               : t('components.dialogPreview.fieldCountPlural', { count: fieldCount })}
           </Badge>
-          <Badge variant="outline" className="text-xs">
-            {t('components.dialogPreview.colsBadge', { count: parsed.cols })}
-          </Badge>
+          {!editable && (
+            <Badge variant="outline" className="text-xs">
+              {t('components.dialogPreview.colsBadge', { count: parsed.cols })}
+            </Badge>
+          )}
           {notices.length > 0 && (
             <Badge variant="warning" className="text-xs">
               {notices.length === 1
@@ -92,11 +101,18 @@ export const DialogPreview: React.FC<DialogPreviewProps> = ({ xml }) => {
         </ul>
       )}
       <div className="rounded-md border bg-muted/20 p-4 sm:p-6">
-        <div className={cn('grid grid-cols-1 gap-4', GRID_COLS[parsed.cols], CANVAS_W[parsed.cols])}>
-          {parsed.cells.map((cell) => (
-            <CellBlock key={cell.key} cell={cell} t={t} />
-          ))}
-        </div>
+        {editable && onChange ? (
+          <DialogLayoutEditor xml={xml} parsed={parsed} onChange={onChange} onDragActiveChange={onDragActiveChange} />
+        ) : (
+          <>
+            {onChange && <p className="mb-3 text-xs text-muted-foreground">{t('components.dialogPreview.editor.narrowScreen')}</p>}
+            <div className={cn('grid grid-cols-1 gap-4', GRID_COLS[parsed.cols], CANVAS_W[parsed.cols])}>
+              {parsed.cells.map((cell) => (
+                <CellBlock key={cell.key} cell={cell} t={t} />
+              ))}
+            </div>
+          </>
+        )}
         <p className="mt-4 text-[11px] text-muted-foreground italic">
           {t('components.dialogPreview.previewOnlyNote')}
         </p>
