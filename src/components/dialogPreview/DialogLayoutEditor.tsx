@@ -183,10 +183,15 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
   const onChangeRef = React.useRef(onChange);
   onChangeRef.current = onChange;
   const addRef = React.useRef<HTMLButtonElement | null>(null);
-  const undoDelete = (before: string, after: string) => {
+  const undoDelete = (before: string, after: string, e: React.MouseEvent) => {
     // editor ปิดแล้ว (Save/Cancel) หรือมีการแก้หลังลบ — เขียน XML ก่อนลบทับไม่ได้ ไม่งั้นฟอร์มต่างจากที่ผู้ใช้เห็น/บันทึก
     if (!mountedRef.current || xmlRef.current !== after) {
       toast.info(t('components.dialogPreview.editor.undoStale'));
+      return;
+    }
+    // คืน XML เก่า = key เลื่อนและแผงล้าง — ร่างที่ผิดในแผงจะหายเงียบ จึงต้องแก้ก่อน; preventDefault ให้ toast อยู่ต่อ กด Undo ซ้ำได้
+    if (blockedSwitch()) {
+      e.preventDefault();
       return;
     }
     onChangeRef.current(before);
@@ -211,7 +216,7 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
     });
     toast(t('components.dialogPreview.editor.deleted', { label }), {
       duration: 10000,
-      action: { label: t('components.dialogPreview.editor.undo'), onClick: () => undoDelete(xml, next) },
+      action: { label: t('components.dialogPreview.editor.undo'), onClick: (e) => undoDelete(xml, next, e) },
     });
   };
   // ตำแหน่งที่จะเพิ่ม — ตาม cell ที่แผงแก้อยู่ (spec: ต่อหลัง cell นั้น; field ในกลุ่ม = เข้ากลุ่ม แต่ช่วงไปต่อหลังกลุ่ม)
