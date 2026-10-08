@@ -1,9 +1,13 @@
 import React from 'react';
+import { toast } from 'sonner';
 import {
   DndContext,
   KeyboardSensor,
   PointerSensor,
   closestCenter,
+  pointerWithin,
+  type Announcements,
+  type CollisionDetection,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -34,8 +38,16 @@ export interface DialogLayoutEditorProps {
   onDragActiveChange?: (active: boolean) => void;
 }
 
-const cellLabel = (c: DialogCell, groupWord: string): string =>
-  c.kind === 'group' ? groupWord : c.kind === 'range' ? c.label.replace(/ From$/, '') : c.label;
+const cellLabel = (c: DialogCell): string => (c.kind === 'range' ? c.label.replace(/ From$/, '') : c.kind === 'group' ? '' : c.label);
+
+// ชี้อยู่ในช่องไหนให้ช่องนั้นชนะ (ช่องท้าย Group ไม่ถูก field ใกล้ ๆ แย่ง) — ถ้าชี้อยู่ทั้งกล่อง Group และ field ข้างใน
+// เลือกตัวข้างใน; คีย์บอร์ดไม่มีพิกัดเมาส์ pointerWithin จึงว่าง และตกไปใช้ closestCenter เหมือนเดิม
+const collision: CollisionDetection = (args) => {
+  const hits = pointerWithin(args);
+  const inner = hits.filter((h) => !/^g\d+$/.test(String(h.id)));
+  if (inner.length) return inner;
+  return hits.length ? hits : closestCenter(args);
+};
 
 export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }: DialogLayoutEditorProps) {
   const { t } = useI18n();
@@ -44,6 +56,37 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
     if (next !== xml) onChange(next);
   };
   const groupWord = t('components.dialogPreview.editor.groupLabel');
+  // ชื่อที่อ่านออกเสียงได้ของทุก id ที่ dnd-kit รู้จัก — Group มีลำดับต่อท้าย ไม่อย่างนั้นทุกกล่องชื่อ "Group" เหมือนกัน
+  const labels = new Map<string, string>();
+  let groupNo = 0;
+  for (const c of parsed.cells) {
+    if (c.kind === 'group') {
+      groupNo++;
+      labels.set(c.key, `${groupWord} ${groupNo}`);
+      labels.set(`end:${c.key}`, `${t('components.dialogPreview.editor.dropAtEnd')} (${groupWord} ${groupNo})`);
+      c.fields.forEach((f) => labels.set(f.key, f.label));
+    } else labels.set(c.key, cellLabel(c));
+  }
+  labels.set('end:dialog', t('components.dialogPreview.editor.dropAtEnd'));
+  const nameOf = (id: string | number) => labels.get(String(id)) ?? String(id);
+  const announcements: Announcements = {
+    onDragStart: ({ active }) => t('components.dialogPreview.editor.announceStart', { label: nameOf(active.id) }),
+    onDragOver: ({ active, over }) =>
+      over
+        ? t('components.dialogPreview.editor.announceOver', { label: nameOf(active.id), target: nameOf(over.id) })
+        : t('components.dialogPreview.editor.announceOverNone', { label: nameOf(active.id) }),
+    onDragEnd: ({ active, over }) =>
+      over
+        ? t('components.dialogPreview.editor.announceEnd', { label: nameOf(active.id), target: nameOf(over.id) })
+        : t('components.dialogPreview.editor.announceEndNone', { label: nameOf(active.id) }),
+    onDragCancel: ({ active }) => t('components.dialogPreview.editor.announceCancel', { label: nameOf(active.id) }),
+  };
+  // Cols/ColSpan แก้แค่ attribute — key ไม่เลื่อน จึงพาการเลือกตามไปยัง XML ใหม่ได้
+  const applyKeepingSelection = (next: string) => {
+    if (next === xml) return;
+    setSelection({ xml: next, keys: selected });
+    onChange(next);
+  };
 
   // ผูกการเลือกไว้กับ string ที่เลือก — XML เปลี่ยนจากที่ไหนก็ตาม key อาจเลื่อน จึงถือว่าไม่ได้เลือกอะไร
   const [selection, setSelection] = React.useState<{ xml: string; keys: string[] }>({ xml, keys: [] });
@@ -76,7 +119,23 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
     onDragActiveChange?.(false);
     if (!over) return;
     const target = dropTarget(map, String(active.id), String(over.id));
-    if (target) apply(moveCell(xml, String(active.id), target));
+    if (!target) return;
+    const activeKey = String(active.id);
+    const next = moveCell(xml, activeKey, target);
+    if (next !== xml) {
+      onChange(next);
+      return;
+    }
+    // วางไม่ได้ (ไม่ใช่วางที่เดิม) — บอกเหตุผล ไม่ให้เงียบ
+    const intoGroup =
+      ('end' in target && target.end !== 'dialog') ||
+      ('before' in target && Object.values(map.groups).some((list) => list.includes(target.before)));
+    if (!intoGroup) return;
+    if (map.groups[activeKey]) toast.info(t('components.dialogPreview.editor.groupIntoGroup'));
+    else {
+      const cell = parsed.cells.find((c) => c.key === activeKey);
+      if (cell && hasHiddenToLabel(cell)) toast.info(t('components.dialogPreview.editor.hiddenToLabel'));
+    }
   };
 
   return (
@@ -92,7 +151,7 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
               variant={parsed.cols === n ? 'secondary' : 'ghost'}
               className="h-7 w-8 px-0"
               aria-pressed={parsed.cols === n}
-              onClick={() => apply(setCols(xml, n))}
+              onClick={() => applyKeepingSelection(setCols(xml, n))}
             >
               {n}
             </Button>
@@ -112,7 +171,8 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
       )}
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={collision}
+        accessibility={{ announcements, screenReaderInstructions: { draggable: t('components.dialogPreview.editor.instructions') } }}
         onDragStart={() => onDragActiveChange?.(true)}
         onDragCancel={() => {
           if (mountedRef.current) onDragActiveChange?.(false);
@@ -122,25 +182,33 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
         <SortableContext items={map.dialog} strategy={rectSortingStrategy}>
           <div className={cn('grid grid-cols-1 gap-4', GRID_COLS[parsed.cols], CANVAS_W[parsed.cols])}>
             {parsed.cells.map((cell) => {
-              const label = cellLabel(cell, groupWord);
+              const label = nameOf(cell.key);
               const toolbar = (handle: React.ReactNode) => (
                 <CellToolbar
                   label={label}
                   span={cell.layout.colSpan}
                   cols={parsed.cols}
-                  onSpan={(n) => apply(setColSpan(xml, cell.key, n))}
+                  onSpan={(n) => applyKeepingSelection(setColSpan(xml, cell.key, n))}
                   handle={handle}
                   select={
                     cell.kind === 'group' ? undefined : (
-                      <input
-                        type="checkbox"
-                        className="mx-1 h-3.5 w-3.5 accent-primary"
-                        checked={selected.includes(cell.key)}
-                        disabled={hasHiddenToLabel(cell)}
-                        title={hasHiddenToLabel(cell) ? t('components.dialogPreview.editor.hiddenToLabel') : undefined}
-                        aria-label={t('components.dialogPreview.editor.selectCell', { label })}
-                        onChange={() => toggle(cell.key)}
-                      />
+                      // input ที่ disabled ไม่โชว์ title ตอน hover — ใส่ title ที่ span ห่อ และผูกเหตุผลด้วย aria-describedby
+                      <span className="mx-1 inline-flex" title={hasHiddenToLabel(cell) ? t('components.dialogPreview.editor.hiddenToLabel') : undefined}>
+                        <input
+                          type="checkbox"
+                          className="h-3.5 w-3.5 accent-primary"
+                          checked={selected.includes(cell.key)}
+                          disabled={hasHiddenToLabel(cell)}
+                          aria-label={t('components.dialogPreview.editor.selectCell', { label })}
+                          aria-describedby={hasHiddenToLabel(cell) ? `why-${cell.key}` : undefined}
+                          onChange={() => toggle(cell.key)}
+                        />
+                        {hasHiddenToLabel(cell) && (
+                          <span id={`why-${cell.key}`} className="sr-only">
+                            {t('components.dialogPreview.editor.hiddenToLabel')}
+                          </span>
+                        )}
+                      </span>
                     )
                   }
                 />
@@ -155,7 +223,7 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
               return (
                 <SortableCell key={cell.key} id={cell.key} label={label} className={COL_SPAN[cell.layout.colSpan]} toolbar={toolbar}>
                   <div className="rounded-md border border-dashed p-3 pt-8">
-                    <span className="absolute left-3 top-2 text-[11px] font-medium text-muted-foreground">{groupWord}</span>
+                    <span className="absolute left-3 top-2 text-[11px] font-medium text-muted-foreground">{label}</span>
                     <Button
                       type="button"
                       variant="ghost"
@@ -172,8 +240,9 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
                             key={f.key}
                             id={f.key}
                             label={f.label}
+                            hoverGroup="field"
                             toolbar={(handle) => (
-                              <div className="absolute right-1 top-1 z-10 opacity-0 transition-opacity group-hover/cell:opacity-100 group-focus-within/cell:opacity-100">
+                              <div className="absolute right-1 top-1 z-10 opacity-0 transition-opacity group-hover/field:opacity-100 group-focus-within/field:opacity-100">
                                 {handle}
                               </div>
                             )}
