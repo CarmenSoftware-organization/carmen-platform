@@ -80,7 +80,7 @@ is built **last**.
     <Label Text="Date To"/><Date Name="DateTo" Value="@today"/>
   </Group>
   <Label Text="Group By"/><Lookup Name="GroupBy" Items="A~B" Values="a~b"/>
-  <Label Text="Remark"/><Text Name="Remark" ColSpan="3"/>
+  <Label Text="Vendor"/><Lookup Name="Vendor" DataSource="@vendor_list" ColSpan="3"/>
 </Dialog>
 ```
 
@@ -123,7 +123,10 @@ cell outside Groups. The platform preview adopts the **same** pairing rule.
 
 ### Everywhere
 
-- Unknown attributes/elements are ignored, never an error.
+- Unknown attributes/elements are ignored, never an error. The inventory run
+  dialog only renders `Date` and `Lookup`; any other element is dropped there.
+  The platform preview keeps drawing such elements as a raw tag box (as today)
+  but adds an `unknownElement` warning saying inventory will not show it.
 - Below `sm` (640px): one column, `ColSpan` ignored, Group contents stack.
 - Grid flows row by row in document order with no dense packing; a span that
   does not fit leaves a gap. Order matching the XML beats tightness.
@@ -134,7 +137,7 @@ cell outside Groups. The platform preview adopts the **same** pairing rule.
 Inventory corrects invalid values **silently**. The platform preview applies the
 **same** correction and **lists a warning** for each one (`Cols` clamped/invalid,
 `ColSpan` clamped/invalid, `ColSpan` on a `Label`, nested Group lifted, empty
-Group skipped), so the author learns at edit time.
+Group skipped, element other than `Date`/`Lookup`), so the author learns at edit time.
 
 ## Parsers and types
 
@@ -158,7 +161,8 @@ type DialogCell =
 type DialogWarning =
   | { code: 'colsClamped' | 'colsInvalid'; raw: string; used: number }
   | { code: 'colSpanClamped' | 'colSpanInvalid'; raw: string; used: number; at: string }
-  | { code: 'nestedGroupFlattened' | 'emptyGroup' | 'colSpanOnLabel'; at: string };
+  | { code: 'nestedGroupFlattened' | 'emptyGroup' | 'colSpanOnLabel'; at: string }
+  | { code: 'unknownElement'; at: string; tag: string };
 interface DialogParseResult {
   ok: boolean;
   error?: 'empty' | 'parse' | 'noDialogRoot';
@@ -238,7 +242,8 @@ Every grid starts with `grid-cols-1` for mobile.
 - Warnings render above the grid as a list using the `--warning` token, one line
   each (e.g. `ColSpan="5" on ProductFrom clamped to 3`).
 - Transition guard: while inventory production lacks Group support, any
-  `<Group>` triggers an extra warning that it needs the newer inventory
+  `<Group>` triggers an extra notice (computed in the component from
+  `cells`, not a parser warning, so removing it touches one line) that it needs the newer inventory
   release. Removed once inventory production ships Group.
 - New strings go under `components.dialogPreview.*` in both `en.ts` and `th.ts`.
 
