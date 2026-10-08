@@ -472,9 +472,11 @@ const ReportTemplateEdit: React.FC = () => {
               ? t('pages.reportTemplates.newSubtitle')
               : t('pages.reportTemplates.editSubtitle')
           }
-          afterTitle={!isNew && !loading && docVersion != null ? <Badge variant="secondary">v{docVersion}</Badge> : undefined}
+          afterTitle={!isNew && templateRecord != null && docVersion != null ? <Badge variant="secondary">v{docVersion}</Badge> : undefined}
           audit={!isNew && !loading ? normalizeAudit(templateRecord) : undefined}
-          actions={!isNew && !loading && (
+          // gate บน "โหลด record แล้ว" ไม่ใช่ !loading — refetch (หลังบันทึก/กู้คืนเวอร์ชัน) ตั้ง loading=true
+          // ถ้าผูกกับ loading แผ่นเวอร์ชันที่เปิดอยู่จะถูก unmount กลางการกู้คืน; ปุ่มที่ห้ามกดระหว่าง refetch ใช้ disabled แทน
+          actions={!isNew && templateRecord != null && (
             <>
               {/* report template ไม่สังกัด cluster — PLATFORM_SCOPED_RECORD ทำให้เหลือ
                   ทางเดียวคือสิทธิ์ระดับ platform ตรงกับที่ backend บังคับ */}
@@ -506,20 +508,20 @@ const ReportTemplateEdit: React.FC = () => {
                     downloadJSON(buildBackup([tpl]), backupFileName([tpl]));
                     toast.success(t('pages.reportTemplates.backup.done', { count: 1 }));
                   }}
-                  disabled={!templateRecord}
+                  disabled={!templateRecord || loading}
                 >
                   <Download className="mr-2 h-4 w-4" />
                   {t('pages.reportTemplates.backup.download')}
                 </Button>
               </Can>
               {editing ? (
-              <Button variant="outline" size="sm" onClick={handleCancelEdit}>
+              <Button variant="outline" size="sm" onClick={handleCancelEdit} disabled={loading}>
                 <X className="mr-2 h-4 w-4" />
                 {t('common.cancel')}
               </Button>
             ) : (
               <Can permission="report_template.update">
-                <Button variant="outline" size="sm" onClick={handleEditToggle}>
+                <Button variant="outline" size="sm" onClick={handleEditToggle} disabled={loading}>
                   <Pencil className="mr-2 h-4 w-4" />
                   {t('common.action.edit')}
                 </Button>
