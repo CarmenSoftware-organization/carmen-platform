@@ -145,9 +145,9 @@ function ControlFields({ xml, k, side, el, nameWarn, onApply }: ControlFieldsPro
               values={values}
               validate={(rows) => issueText(t, validateRows(rows))}
               onCommit={writeRows}
-              // สลับ cell ระหว่างร่างค้าง — เขียนได้เฉพาะเมื่อ XML ยังเป็นฉบับที่ร่างนี้เห็น (unmount เพราะ XML เปลี่ยน = key อาจเลื่อนแล้ว)
+              // สลับ cell ระหว่างร่างค้าง — เขียนได้เฉพาะเมื่อแผงยังอยู่และ XML ยังเป็นฉบับที่ร่างนี้เห็น (unmount เพราะ XML เปลี่ยน = key อาจเลื่อนแล้ว)
               onLeave={(rows) => {
-                if (panel?.xmlRef.current === xml) writeRows(rows);
+                if (panel?.aliveRef.current && panel.xmlRef.current === xml) writeRows(rows);
               }}
             />
           )}
@@ -225,7 +225,16 @@ export function PropertyPanel({ xml, parsed, focusKey, onApply, onUngroup, onClo
     else set.delete(id);
     if (before !== set.size > 0) blockingRef.current?.(set.size > 0);
   }, []);
-  const ctx = React.useMemo<PanelContextValue>(() => ({ report, xmlRef }), [report]);
+  // cleanup ของ layout effect รันใน commit ก่อน cleanup ของ useEffect ในลูก — ช่องที่ unmount พร้อมแผงจึงเห็น false แล้ว
+  // (Cmd/Ctrl+S: Save ส่งฟอร์มที่ไม่มีร่าง แล้วปิด editor — ถ้าร่างถูกเขียนตอนนั้น ฟอร์มจะต่างจาก server เงียบ ๆ)
+  const aliveRef = React.useRef(true);
+  React.useLayoutEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
+  const ctx = React.useMemo<PanelContextValue>(() => ({ report, xmlRef, aliveRef }), [report]);
 
   // ช่องที่ถือ focus ถูก remount (เช่น Enter ในช่องแหล่งข้อมูลทำให้โหมด Lookup รีเซ็ต) — focus ตกไปที่ body แล้ว Esc ถัดไป
   // จะไปยกเลิกทั้งหน้า จึงคืน focus ให้ช่องเดิม (id เดิม) หรือช่องแรกของแผง

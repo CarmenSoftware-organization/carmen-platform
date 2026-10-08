@@ -15,6 +15,8 @@ export interface PanelContextValue {
   report: (id: string, blocked: boolean) => void;
   /** XML ล่าสุดที่แผงได้รับ (อัปเดตตอน render) — ใช้ตัดสินตอน unmount ว่าร่างยังเขียนลง XML เดิมได้ไหม */
   xmlRef: React.RefObject<string>;
+  /** false เมื่อทั้งแผงกำลังถูกถอด (ปิด editor หลัง Save/Cancel, ออกจากหน้า) — ร่างที่ค้างต้องทิ้ง ไม่ใช่เขียนลงฟอร์ม */
+  aliveRef: React.RefObject<boolean>;
 }
 
 export const PanelContext = React.createContext<PanelContextValue | null>(null);
