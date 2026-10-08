@@ -187,7 +187,11 @@ export default function ReportTemplateImportDialog({ open, onOpenChange, onImpor
               type="file"
               accept=".json,application/json"
               className="hidden"
-              onChange={(e) => handleFile(e.target.files?.[0])}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = ''; // เลือกไฟล์เดิมซ้ำได้หลังเกิดข้อผิดพลาด
+                handleFile(f);
+              }}
             />
             <Button variant="outline" onClick={() => inputRef.current?.click()} disabled={checking}>
               {checking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileUp className="mr-2 h-4 w-4" />}
