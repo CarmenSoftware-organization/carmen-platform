@@ -774,6 +774,23 @@ export const en = {
       fieldCountSingular: '{{count}} field',
       fieldCountPlural: '{{count}} fields',
       previewOnlyNote: 'Preview only. Controls are disabled and lookup data is not loaded.',
+      // {{count}} is the effective Cols value after clamping
+      colsBadge: '{{count}} cols',
+      warningCountSingular: '{{count}} warning',
+      warningCountPlural: '{{count}} warnings',
+      rangeFrom: 'From',
+      rangeTo: 'To',
+      // {{raw}} is the attribute value as written; {{used}} the value applied; {{at}} the
+      // control Name (or label text / <Tag>#n) — all data from the XML, never translated
+      warnColsInvalid: 'Cols="{{raw}}" is not a whole number of 1 or more, so {{used}} is used',
+      warnColsClamped: 'Cols="{{raw}}" is above the maximum, so {{used}} is used',
+      warnColSpanInvalid: 'ColSpan="{{raw}}" on {{at}} is not a whole number of 1 or more, so {{used}} is used',
+      warnColSpanClamped: 'ColSpan="{{raw}}" on {{at}} is wider than Cols, so {{used}} is used',
+      warnColSpanOnLabel: 'ColSpan on label "{{at}}" has no effect. Put it on the control.',
+      warnUnknownElement: '<{{tag}}> ({{at}}) is not a Date or Lookup, so the inventory dialog will not show it',
+      warnNestedGroup: 'A <Group> inside {{at}} was merged into it. Groups cannot be nested.',
+      warnEmptyGroup: '{{at}} is empty and was skipped',
+      groupNeedsInventory: '<Group> needs the inventory release that supports it. On older inventory builds, grouped fields disappear.',
     },
     // Shared between DialogPreview.tsx and XmlEditor.tsx — both render this exact fallback
     // when a document fails XML parsing with no more specific message available.
