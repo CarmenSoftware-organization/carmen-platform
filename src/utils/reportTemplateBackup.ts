@@ -15,7 +15,7 @@ export const BACKUP_FIELDS = [
   'name', 'name_i18n', 'description', 'description_i18n', 'report_group', 'template_type',
   'dialog', 'content', 'builder_key', 'view_name', 'source_type', 'source_name', 'source_params',
   'orientation', 'signature_config', 'is_standard', 'is_default', 'is_active',
-  'allow_business_unit', 'deny_business_unit',
+  'allow_business_unit', 'deny_business_unit', 'calculation_methods',
 ] as const;
 
 export type BackupTemplate = ReportTemplateSnapshot & { id?: string; version?: number };
