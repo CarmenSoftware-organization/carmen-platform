@@ -62,8 +62,9 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
   for (const c of parsed.cells) {
     if (c.kind === 'group') {
       groupNo++;
-      labels.set(c.key, `${groupWord} ${groupNo}`);
-      labels.set(`end:${c.key}`, `${t('components.dialogPreview.editor.dropAtEnd')} (${groupWord} ${groupNo})`);
+      const name = c.label || `${groupWord} ${groupNo}`;
+      labels.set(c.key, name);
+      labels.set(`end:${c.key}`, `${t('components.dialogPreview.editor.dropAtEnd')} (${name})`);
       c.fields.forEach((f) => labels.set(f.key, f.label));
     } else labels.set(c.key, cellLabel(c));
   }
@@ -223,16 +224,20 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
               return (
                 <SortableCell key={cell.key} id={cell.key} label={label} className={COL_SPAN[cell.layout.colSpan]} toolbar={toolbar}>
                   <div className="rounded-md border border-dashed p-3 pt-8">
-                    <span className="absolute left-3 top-2 text-[11px] font-medium text-muted-foreground">{label}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute left-14 top-1 h-6 px-2 text-[11px]"
-                      onClick={() => apply(ungroup(xml, cell.key))}
-                    >
-                      {t('components.dialogPreview.editor.ungroup')}
-                    </Button>
+                    <div className="absolute left-3 right-28 top-1 flex min-w-0 items-center gap-2">
+                      <span className="truncate text-[11px] font-medium text-muted-foreground" title={label}>
+                        {label}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 shrink-0 px-2 text-[11px]"
+                        onClick={() => apply(ungroup(xml, cell.key))}
+                      >
+                        {t('components.dialogPreview.editor.ungroup')}
+                      </Button>
+                    </div>
                     <GroupItems items={map.groups[cell.key]}>
                       <div className={cn('grid grid-cols-1 gap-4', GRID_COLS[Math.min(cell.fields.length, MAX_COLS)])}>
                         {cell.fields.map((f) => (

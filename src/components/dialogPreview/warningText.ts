@@ -23,5 +23,7 @@ export function warningText(w: DialogWarning, t: TFunction): string {
       return t('components.dialogPreview.warnLabelWithoutControl', { at: w.at });
     case 'controlWithoutLabel':
       return t('components.dialogPreview.warnControlWithoutLabel', { at: w.at });
+    case 'emptyLabel':
+      return t('components.dialogPreview.warnEmptyLabel', { at: w.at });
   }
 }
