@@ -1,7 +1,7 @@
 // คำสั่งแก้ Dialog XML ของ editor แบบลากวาง — ทุกฟังก์ชันรับ string คืน string และไม่ throw
 // แก้ DOM ตรงจุดแล้ว serialize กลับ เพื่อให้ attribute/comment/element ที่ไม่รู้จักอยู่ครบ
 // กติกาเต็มอยู่ที่ docs/superpowers/specs/2026-10-08-dialog-layout-editor-design.md
-import { MAX_COLS, parseDialogDocument, type DialogCell } from './dialogXml';
+import { CONTROL_TAGS, MAX_COLS, parseDialogDocument, type DialogCell } from './dialogXml';
 
 export type MoveTarget = { before: string } | { end: string };
 
@@ -27,6 +27,33 @@ interface Located {
   hiddenTo: boolean;
 }
 
+/**
+ * ตำแหน่งของ root ใน string: ข้าม <?…?>, <!--…-->, <!DOCTYPE…> ก่อนหน้าแบบไล่ทีละตัว
+ * (regex หา "<Dialog" ตรง ๆ จะไปเจอในคอมเมนต์ได้) และหาจุดจบของ <Dialog/> แบบปิดในตัวด้วย
+ */
+function rootSpan(xml: string): { start: number; end: number } {
+  let i = 0;
+  for (;;) {
+    while (i < xml.length && /\s/.test(xml[i])) i++;
+    const close = xml.startsWith('<?', i) ? xml.indexOf('?>', i) + 2 : xml.startsWith('<!--', i) ? xml.indexOf('-->', i) + 3 : xml.startsWith('<!', i) ? xml.indexOf('>', i) + 1 : -1;
+    if (close <= i) break;
+    i = close;
+  }
+  const start = i;
+  let quote = '';
+  let j = start;
+  for (; j < xml.length; j++) {
+    const ch = xml[j];
+    if (quote) {
+      if (ch === quote) quote = '';
+    } else if (ch === '"' || ch === "'") quote = ch;
+    else if (ch === '>') break;
+  }
+  if (xml[j - 1] === '/') return { start, end: j + 1 };
+  const closeTag = xml.lastIndexOf('</Dialog>');
+  return { start, end: closeTag >= 0 ? closeTag + '</Dialog>'.length : xml.length };
+}
+
 function load(xml: string): Loaded | null {
   if (!xml.trim()) return null;
   let doc: Document;
@@ -38,14 +65,13 @@ function load(xml: string): Loaded | null {
   if (doc.querySelector('parsererror')) return null;
   const parsed = parseDialogDocument(doc);
   if (!parsed.ok) return null;
-  const start = xml.search(/<Dialog[\s/>]/);
-  const close = xml.lastIndexOf('</Dialog>');
+  const span = rootSpan(xml);
   return {
     root: doc.documentElement,
     cells: parsed.cells,
     cols: parsed.cols,
-    prefix: start > 0 ? xml.slice(0, start) : '',
-    suffix: close >= 0 ? xml.slice(close + '</Dialog>'.length) : (xml.match(/\s*$/)?.[0] ?? ''),
+    prefix: xml.slice(0, span.start),
+    suffix: xml.slice(span.end),
     eol: xml.includes('\r\n') ? '\r\n' : '\n',
   };
 }
@@ -108,8 +134,6 @@ function relayout(container: Element, eol: string): void {
   container.appendChild(doc.createTextNode(eol + '  '.repeat(depth - 1)));
 }
 
-const hasContent = (el: Element) =>
-  Array.from(el.childNodes).some((n) => !(n.nodeType === 3 && !(n.textContent ?? '').trim()));
 
 export function setCols(xml: string, n: number): string {
   const l = load(xml);
@@ -153,12 +177,22 @@ export function moveCell(xml: string, key: string, target: MoveTarget): string {
   }
   if (src.hiddenTo && container !== l.root) return xml;
   const from = src.nodes[0].parentElement as Element;
+  // ย้ายไปท้ายกล่องที่ตัวเองอยู่ท้ายสุดแล้ว = ไม่ได้ย้าย (กันการจัดช่องว่างใหม่ทำให้หน้า dirty เปล่า ๆ)
+  if (ref === null && container === from) {
+    let n = src.nodes[src.nodes.length - 1].nextSibling;
+    while (n && n.nodeType === 3 && !(n.textContent ?? '').trim()) n = n.nextSibling;
+    if (!n) return xml;
+  }
   for (const node of src.nodes) container.insertBefore(node, ref);
   const touched = new Set<Element>([from, container]);
-  if (from !== l.root && from.tagName === 'Group' && !hasContent(from)) {
-    from.parentElement?.removeChild(from);
+  // Group ที่ไม่เหลือ control แล้ว editor มองไม่เห็นอีก — ยกของที่เหลือ (comment, Label กำพร้า) ออกมาแทนการทิ้ง
+  const hasControl = Array.from(from.getElementsByTagName('*')).some((e) => CONTROL_TAGS.has(e.tagName));
+  if (from !== l.root && from.tagName === 'Group' && !hasControl) {
+    const parent = from.parentElement as Element;
+    while (from.firstChild) parent.insertBefore(from.firstChild, from);
+    parent.removeChild(from);
     touched.delete(from);
-    touched.add(l.root);
+    touched.add(parent);
   }
   touched.forEach((c) => relayout(c, l.eol));
   return save(l);
@@ -173,7 +207,7 @@ export function groupCells(xml: string, keys: string[]): string {
   const sorted = (found as Located[]).sort((a, b) =>
     a.nodes[0].compareDocumentPosition(b.nodes[0]) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
   );
-  const group = l.root.ownerDocument.createElement('Group');
+  const group = l.root.ownerDocument.createElementNS(l.root.namespaceURI, 'Group');
   l.root.insertBefore(group, sorted[0].nodes[0]);
   for (const x of sorted) for (const node of x.nodes) group.appendChild(node);
   relayout(group, l.eol);

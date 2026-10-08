@@ -173,6 +173,46 @@ describe('text outside the root', () => {
   });
 });
 
+describe('review minors', () => {
+  it('dropping the last cell on its own end zone leaves hand-formatted XML untouched', () => {
+    const x = '<Dialog>\n  <Label Text="A"/><Date Name="A"/>\n  <Label Text="B"/>\n  <Date Name="B"/>\n</Dialog>';
+    const keys = keysOf(x);
+    expect(moveCell(x, keys[keys.length - 1], { end: 'dialog' })).toBe(x);
+  });
+
+  it('a comment before the root that mentions <Dialog does not break the output', () => {
+    const x = '<!-- old <Dialog Cols="9"> -->\n<Dialog>\n  <Label Text="A"/><Date Name="A"/>\n</Dialog>';
+    const out = setCols(x, 2);
+    expect(out).toBe('<!-- old <Dialog Cols="9"> -->\n<Dialog Cols="2">\n  <Label Text="A"/><Date Name="A"/>\n</Dialog>');
+  });
+
+  it('keeps a comment after a self-closing root', () => {
+    expect(setCols('<Dialog/>\n<!-- trailing -->', 2)).toBe('<Dialog Cols="2"/>\n<!-- trailing -->');
+  });
+
+  it('a group left with no control is unwrapped, not left behind or deleted with its leftovers', () => {
+    const x = `<Dialog>
+  <Group>
+    <!-- keep me -->
+    <Label Text="A"/><Date Name="A"/>
+  </Group>
+</Dialog>`;
+    const g = cellsOf(x)[0];
+    if (g.kind !== 'group') throw new Error('expected group');
+    expect(moveCell(x, g.fields[0].key, { end: 'dialog' })).toBe(`<Dialog>
+  <!-- keep me -->
+  <Label Text="A"/><Date Name="A"/>
+</Dialog>`);
+  });
+
+  it('creates <Group> in the root namespace', () => {
+    const x = '<Dialog xmlns="urn:x">\n  <Label Text="A"/><Date Name="A"/>\n  <Label Text="B"/><Date Name="B"/>\n</Dialog>';
+    const out = groupCells(x, keysOf(x));
+    expect(out).toContain('<Group>');
+    expect(out).not.toContain('xmlns=""');
+  });
+});
+
 describe('dropTarget', () => {
   const map = { dialog: ['a', 'b', 'c', 'g'], groups: { g: ['g1', 'g2'] } };
   it('dragging down within a container lands after the item it is over', () => {
