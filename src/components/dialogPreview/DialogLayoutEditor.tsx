@@ -56,8 +56,23 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+  // dnd-kit ไม่รื้อ KeyboardSensor ที่กำลังลากเมื่อ DndContext ถูก unmount (เช่น กด Cancel/Save กลางการลาก)
+  // ปุ่มจบการลากตัวถัดไป (Space/Enter/Tab) จะเรียก onDragEnd ตัวเก่าที่ถือ xml/onChange เก่า แล้วเขียนทับฟอร์ม
+  // จึงต้องทิ้งทุก callback หลัง unmount และคืนสถานะ "ไม่ได้ลาก" ให้หน้าเอง
+  const mountedRef = React.useRef(true);
+  const dragActiveChangeRef = React.useRef(onDragActiveChange);
+  dragActiveChangeRef.current = onDragActiveChange;
+  React.useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      dragActiveChangeRef.current?.(false);
+    };
+  }, []);
+
   const map = containerMap(parsed.cells);
   const onDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!mountedRef.current) return;
     onDragActiveChange?.(false);
     if (!over) return;
     const target = dropTarget(map, String(active.id), String(over.id));
@@ -99,7 +114,9 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={() => onDragActiveChange?.(true)}
-        onDragCancel={() => onDragActiveChange?.(false)}
+        onDragCancel={() => {
+          if (mountedRef.current) onDragActiveChange?.(false);
+        }}
         onDragEnd={onDragEnd}
       >
         <SortableContext items={map.dialog} strategy={rectSortingStrategy}>
