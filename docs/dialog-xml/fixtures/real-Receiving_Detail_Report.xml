@@ -1,0 +1,16 @@
+<Dialog>
+  <Label Text="Date From"/><Date Name="DateFrom"/>
+  <Label Text="Date To"/><Date Name="DateTo"/>
+  <Label Text="Vendor From"/><Lookup Name="VendorFrom" DataSource="@vendor_list"/>
+  <Label Text="Vendor To"/><Lookup Name="VendorTo" DataSource="@vendor_list"/>
+  <Label Text="Location From"/><Lookup Name="LocationFrom" DataSource="@location_list"/>
+  <Label Text="Location To"/><Lookup Name="LocationTo" DataSource="@location_list"/>
+  <Label Text="Category From"/><Lookup Name="CategoryFrom" DataSource="@category_list"/>
+  <Label Text="Category To"/><Lookup Name="CategoryTo" DataSource="@category_list"/>
+  <Label Text="SubCategory From"/><Lookup Name="SubCategoryFrom" DataSource="@subcategory_list"/>
+  <Label Text="SubCategory To"/><Lookup Name="SubCategoryTo" DataSource="@subcategory_list"/>
+  <Label Text="ItemGroup From"/><Lookup Name="ItemGroupFrom" DataSource="@itemgroup_list"/>
+  <Label Text="ItemGroup To"/><Lookup Name="ItemGroupTo" DataSource="@itemgroup_list"/>
+  <Label Text="Product From"/><Lookup Name="ProductFrom" DataSource="@product_list"/>
+  <Label Text="Product To"/><Lookup Name="ProductTo" DataSource="@product_list"/>
+</Dialog>

@@ -1,0 +1,76 @@
+{
+  "cols": 1,
+  "cells": [
+    {
+      "kind": "range",
+      "colSpan": 1,
+      "names": [
+        "DateFrom",
+        "DateTo"
+      ]
+    },
+    {
+      "kind": "range",
+      "colSpan": 1,
+      "names": [
+        "VendorFrom",
+        "VendorTo"
+      ]
+    },
+    {
+      "kind": "range",
+      "colSpan": 1,
+      "names": [
+        "LocationFrom",
+        "LocationTo"
+      ]
+    },
+    {
+      "kind": "range",
+      "colSpan": 1,
+      "names": [
+        "CategoryFrom",
+        "CategoryTo"
+      ]
+    },
+    {
+      "kind": "range",
+      "colSpan": 1,
+      "names": [
+        "SubCategoryFrom",
+        "SubCategoryTo"
+      ]
+    },
+    {
+      "kind": "range",
+      "colSpan": 1,
+      "names": [
+        "ItemGroupFrom",
+        "ItemGroupTo"
+      ]
+    },
+    {
+      "kind": "range",
+      "colSpan": 1,
+      "names": [
+        "ProductFrom",
+        "ProductTo"
+      ]
+    },
+    {
+      "kind": "single",
+      "colSpan": 1,
+      "names": [
+        "Status"
+      ]
+    },
+    {
+      "kind": "single",
+      "colSpan": 1,
+      "names": [
+        "GroupBy"
+      ]
+    }
+  ],
+  "warnings": []
+}

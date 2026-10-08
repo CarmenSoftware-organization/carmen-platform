@@ -1,0 +1,29 @@
+{
+  "cols": 1,
+  "cells": [
+    {
+      "kind": "range",
+      "colSpan": 1,
+      "names": [
+        "CategoryFrom",
+        "CategoryTo"
+      ]
+    },
+    {
+      "kind": "range",
+      "colSpan": 1,
+      "names": [
+        "LocationFrom",
+        "LocationTo"
+      ]
+    },
+    {
+      "kind": "single",
+      "colSpan": 1,
+      "names": [
+        "Status"
+      ]
+    }
+  ],
+  "warnings": []
+}

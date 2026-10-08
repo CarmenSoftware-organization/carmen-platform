@@ -1,0 +1,10 @@
+<Dialog>
+  <Label Text="As at Date"/><Date Name="Date" Value="@today"/>
+  <Label Text="Location From"/><Lookup Name="LocationFrom" DataSource="@location_list"/>
+  <Label Text="Location To"/><Lookup Name="LocationTo" DataSource="@location_list"/>
+  <Label Text="Product From"/><Lookup Name="ProductFrom" DataSource="@product_list"/>
+  <Label Text="Product To"/><Lookup Name="ProductTo" DataSource="@product_list"/>
+  <Label Text="Category From"/><Lookup Name="CategoryFrom" DataSource="@category_list"/>
+  <Label Text="Category To"/><Lookup Name="CategoryTo" DataSource="@category_list"/>
+  <Label Text="Group By"/><Lookup Name="GroupBy" Items="Location~Category~Product" Values="Location~Category~Product"/>
+</Dialog>

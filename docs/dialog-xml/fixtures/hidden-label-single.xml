@@ -1,0 +1,3 @@
+<Dialog>
+  <Label Text="X" Visible="false"/><Date Name="X"/>
+</Dialog>

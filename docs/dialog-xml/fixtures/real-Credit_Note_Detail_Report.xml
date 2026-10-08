@@ -1,0 +1,7 @@
+<Dialog>
+  <Label Text="Date From"/><Date Name="DateFrom"/>
+  <Label Text="Date To"/><Date Name="DateTo"/>
+  <Label Text="Vendor From"/><Lookup Name="VendorFrom" DataSource="@vendor_list"/>
+  <Label Text="Vendor To"/><Lookup Name="VendorTo" DataSource="@vendor_list"/>
+  <Label Text="Status"/><Lookup Name="Status" Items="ALL~Draft~In Progress~Completed~Cancelled~Voided" Values="ALL~draft~in_progress~completed~cancelled~voided"/>
+</Dialog>

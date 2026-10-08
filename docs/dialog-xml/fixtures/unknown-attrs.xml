@@ -1,0 +1,3 @@
+<Dialog Cols="2" Theme="dark">
+  <Label Text="Status" Hint="x"/><Lookup Name="Status" Items="ALL~Open" Values="ALL~O" Tooltip="pick one"/>
+</Dialog>

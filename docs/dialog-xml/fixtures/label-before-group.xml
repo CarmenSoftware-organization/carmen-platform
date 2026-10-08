@@ -1,0 +1,7 @@
+<Dialog Cols="2">
+  <Label Text="Dangling"/>
+  <Group ColSpan="2">
+    <Label Text="Date From"/><Date Name="DateFrom"/>
+    <Label Text="Date To"/><Date Name="DateTo"/>
+  </Group>
+</Dialog>

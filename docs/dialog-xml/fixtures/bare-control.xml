@@ -1,0 +1,4 @@
+<Dialog>
+  <Date Name="Bare"/>
+  <Label Text="S"/><Lookup Name="S" Items="x" Values="x"/>
+</Dialog>

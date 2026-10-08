@@ -1,0 +1,29 @@
+{
+  "cols": 1,
+  "cells": [
+    {
+      "kind": "range",
+      "colSpan": 1,
+      "names": [
+        "DateFrom",
+        "DateTo"
+      ]
+    },
+    {
+      "kind": "range",
+      "colSpan": 1,
+      "names": [
+        "VendorFrom",
+        "VendorTo"
+      ]
+    },
+    {
+      "kind": "single",
+      "colSpan": 1,
+      "names": [
+        "Status"
+      ]
+    }
+  ],
+  "warnings": []
+}

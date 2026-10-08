@@ -548,13 +548,29 @@ export const th: Translations = {
       selectPlaceholder: 'เลือก {{source}}…',
       // คำสำรองแทน {{source}} เมื่อ XML ไม่มี attribute DataSource เลย
       genericValue: 'ค่า',
-      noControl: '(ไม่มีตัวควบคุม)',
       previewUnavailable: 'ไม่สามารถแสดงตัวอย่างได้',
       // พหูพจน์คงค่าเดียวกันทั้งสองคีย์ — ภาษาไทยไม่ผันตามจำนวน เหมือน
       // pages.news.articleTotal/articlesTotal
       fieldCountSingular: 'ฟิลด์ {{count}} รายการ',
       fieldCountPlural: 'ฟิลด์ {{count}} รายการ',
       previewOnlyNote: 'แสดงตัวอย่างเท่านั้น ตัวควบคุมถูกปิดใช้งานและไม่ได้โหลดข้อมูล lookup',
+      colsBadge: '{{count}} คอลัมน์',
+      warningCountSingular: 'คำเตือน {{count}} รายการ',
+      warningCountPlural: 'คำเตือน {{count}} รายการ',
+      rangeFrom: 'จาก',
+      rangeTo: 'ถึง',
+      // {{raw}} คือค่าตามที่เขียนใน XML, {{used}} คือค่าที่ใช้จริง, {{at}} คือ Name ของ control — เป็นข้อมูลจาก XML ไม่ต้องแปล
+      warnColsInvalid: 'Cols="{{raw}}" ไม่ใช่จำนวนเต็มตั้งแต่ 1 ขึ้นไป จึงใช้ {{used}} แทน',
+      warnColsClamped: 'Cols="{{raw}}" เกินค่าสูงสุด จึงใช้ {{used}} แทน',
+      warnColSpanInvalid: 'ColSpan="{{raw}}" ที่ {{at}} ไม่ใช่จำนวนเต็มตั้งแต่ 1 ขึ้นไป จึงใช้ {{used}} แทน',
+      warnColSpanClamped: 'ColSpan="{{raw}}" ที่ {{at}} กว้างกว่า Cols จึงใช้ {{used}} แทน',
+      warnColSpanOnLabel: 'ColSpan บนป้าย "{{at}}" ไม่มีผล ให้ย้ายไปใส่ที่ control แทน',
+      warnUnknownElement: '<{{tag}}> ({{at}}) ไม่ใช่ Date หรือ Lookup หน้า dialog ของ inventory จะไม่แสดง',
+      warnNestedGroup: '<Group> ที่ซ้อนอยู่ใน {{at}} ถูกรวมเข้ากับกลุ่มนอก เพราะซ้อน Group ไม่ได้',
+      warnEmptyGroup: '{{at}} ว่างเปล่า จึงถูกข้ามไป',
+      warnLabelWithoutControl: 'ป้าย "{{at}}" ไม่มี Date หรือ Lookup ตามหลัง หน้า dialog ของ inventory จะไม่แสดง',
+      warnControlWithoutLabel: '{{at}} ไม่มีป้ายที่มองเห็นได้นำหน้า หน้า dialog ของ inventory จะไม่แสดง',
+      groupNeedsInventory: '<Group> ต้องใช้ inventory เวอร์ชันที่รองรับ ถ้าเป็นเวอร์ชันเก่า field ในกลุ่มจะหายไป',
     },
     // ใช้ร่วมกันระหว่าง DialogPreview.tsx กับ XmlEditor.tsx — ทั้งสองไฟล์แสดงข้อความนี้เหมือน
     // กันเป๊ะเมื่อแยกวิเคราะห์ XML ไม่สำเร็จและไม่มีข้อความเจาะจงกว่านี้

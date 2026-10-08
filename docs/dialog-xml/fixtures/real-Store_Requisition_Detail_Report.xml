@@ -1,0 +1,9 @@
+<Dialog>
+  <Label Text="SR Date From"/><Date Name="DateFrom" Value="@blank"/>
+  <Label Text="SR Date To"/><Date Name="DateTo" Value="@blank"/>
+  <Label Text="Issue Date From"/><Date Name="IssueDateFrom" Value="@blank"/>
+  <Label Text="Issue Date To"/><Date Name="IssueDateTo" Value="@blank"/>
+  <Label Text="Expected Date From"/><Date Name="ExpectedDateFrom" Value="@blank"/>
+  <Label Text="Expected Date To"/><Date Name="ExpectedDateTo" Value="@blank"/>
+  <Label Text="Status"/><Lookup Name="Status" Items="ALL~Draft~In Progress~Completed~Cancelled~Voided" Values="ALL~draft~in_progress~completed~cancelled~voided"/>
+</Dialog>

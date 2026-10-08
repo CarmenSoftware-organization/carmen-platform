@@ -1,0 +1,10 @@
+<Dialog>
+  <Label Text="Date From"/><Date Name="DateFrom"/>
+  <Label Text="Date To"/><Date Name="DateTo"/>
+  <Label Text="Vendor From"/><Lookup Name="VendorFrom" DataSource="@vendor_list"/>
+  <Label Text="Vendor To"/><Lookup Name="VendorTo" DataSource="@vendor_list"/>
+  <Label Text="Location From"/><Lookup Name="LocationFrom" DataSource="@location_list"/>
+  <Label Text="Location To"/><Lookup Name="LocationTo" DataSource="@location_list"/>
+  <Label Text="Status"/><Lookup Name="Status" Multi="true" Items="Draft~In Progress~Approved~Completed~Voided" Values="draft~in_progress~approved~completed~voided"/>
+  <Label Text="Group By"/><Lookup Name="GroupBy" Items="PR No.~Date~Vendor~Location" Values="PrNo~Date~VendorCode~LocationCode"/>
+</Dialog>

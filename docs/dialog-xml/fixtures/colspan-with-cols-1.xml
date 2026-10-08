@@ -1,0 +1,3 @@
+<Dialog>
+  <Label Text="Status"/><Lookup Name="Status" Items="ALL~Open" Values="ALL~O" ColSpan="3"/>
+</Dialog>

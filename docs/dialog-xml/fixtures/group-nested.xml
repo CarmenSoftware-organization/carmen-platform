@@ -1,0 +1,8 @@
+<Dialog Cols="2">
+  <Group ColSpan="2">
+    <Label Text="Location From"/><Lookup Name="LocationFrom" DataSource="@location_list"/>
+    <Group>
+      <Label Text="Location To"/><Lookup Name="LocationTo" DataSource="@location_list"/>
+    </Group>
+  </Group>
+</Dialog>

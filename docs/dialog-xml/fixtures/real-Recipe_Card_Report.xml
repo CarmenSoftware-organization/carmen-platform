@@ -1,0 +1,7 @@
+<Dialog>
+  <Label Text="Category From"/><Lookup Name="CategoryFrom" DataSource="@category_list"/>
+  <Label Text="Category To"/><Lookup Name="CategoryTo" DataSource="@category_list"/>
+  <Label Text="Location From"/><Lookup Name="LocationFrom" DataSource="@location_list"/>
+  <Label Text="Location To"/><Lookup Name="LocationTo" DataSource="@location_list"/>
+  <Label Text="Status"/><Lookup Name="Status" Items="ALL~Active~Inactive" Values="ALL~Active~Inactive"/>
+</Dialog>

@@ -1,0 +1,3 @@
+<Dialog Cols="2">
+  <Group><Label Text="A"/><Date Name="A"/><Date Name="B"/></Group>
+</Dialog>
