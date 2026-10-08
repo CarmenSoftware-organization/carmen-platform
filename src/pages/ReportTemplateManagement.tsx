@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, FileText, Download, History, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, FileText, Download, History, Loader2, Upload } from "lucide-react";
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
@@ -32,6 +32,7 @@ import type { PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { TKey } from '../i18n/types';
 import { readStoredPerpage } from '../utils/pageRange';
+import ReportTemplateImportDialog from './reportTemplates/ReportTemplateImportDialog';
 import { fetchFullTemplates, buildBackup, backupFileName, downloadJSON } from '../utils/reportTemplateBackup';
 
 /**
@@ -67,6 +68,7 @@ const ReportTemplateManagement: React.FC = () => {
   const [error, setError] = useState('');
   const [selectedTemplates, setSelectedTemplates] = useState<ReportTemplate[]>([]);
   const [selectionResetKey, setSelectionResetKey] = useState(0);
+  const [importOpen, setImportOpen] = useState(false);
   const [backupProgress, setBackupProgress] = useState<{ done: number; total: number } | null>(null);
 
   const runBackup = useCallback(async (ids: string[]) => {
@@ -420,6 +422,12 @@ const ReportTemplateManagement: React.FC = () => {
           subtitle={t('pages.reportTemplates.subtitle')}
           actions={
             <>
+              <Can permission="report_template.create">
+                <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  {t('pages.reportTemplates.importDialog.button')}
+                </Button>
+              </Can>
               <Can permission="report_template.read">
                 <Button variant="outline" size="sm" onClick={handleBackupAll} disabled={!!backupProgress || loading || totalRows === 0}>
                   {backupProgress ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
@@ -664,6 +672,7 @@ const ReportTemplateManagement: React.FC = () => {
         </Card>
       </div>
 
+      <ReportTemplateImportDialog open={importOpen} onOpenChange={setImportOpen} onImported={() => fetchTemplates(paginate)} />
       <ConfirmDialog
         open={deleteId !== null}
         onOpenChange={(open) => { if (!open) setDeleteId(null); }}
