@@ -166,7 +166,7 @@ export function moveCell(xml: string, key: string, target: MoveTarget): string {
 
 export function groupCells(xml: string, keys: string[]): string {
   const l = load(xml);
-  const unique = [...new Set(keys)];
+  const unique = Array.from(new Set(keys));
   if (!l || unique.length < 2) return xml;
   const found = unique.map((k) => locate(l, k));
   if (found.some((x) => !x || x.kind === 'group' || x.inGroup || x.hiddenTo)) return xml;
