@@ -548,7 +548,6 @@ export const th: Translations = {
       selectPlaceholder: 'เลือก {{source}}…',
       // คำสำรองแทน {{source}} เมื่อ XML ไม่มี attribute DataSource เลย
       genericValue: 'ค่า',
-      noControl: '(ไม่มีตัวควบคุม)',
       previewUnavailable: 'ไม่สามารถแสดงตัวอย่างได้',
       // พหูพจน์คงค่าเดียวกันทั้งสองคีย์ — ภาษาไทยไม่ผันตามจำนวน เหมือน
       // pages.news.articleTotal/articlesTotal
@@ -569,6 +568,8 @@ export const th: Translations = {
       warnUnknownElement: '<{{tag}}> ({{at}}) ไม่ใช่ Date หรือ Lookup หน้า dialog ของ inventory จะไม่แสดง',
       warnNestedGroup: '<Group> ที่ซ้อนอยู่ใน {{at}} ถูกรวมเข้ากับกลุ่มนอก เพราะซ้อน Group ไม่ได้',
       warnEmptyGroup: '{{at}} ว่างเปล่า จึงถูกข้ามไป',
+      warnLabelWithoutControl: 'ป้าย "{{at}}" ไม่มี Date หรือ Lookup ตามหลัง หน้า dialog ของ inventory จะไม่แสดง',
+      warnControlWithoutLabel: '{{at}} ไม่มีป้ายที่มองเห็นได้นำหน้า หน้า dialog ของ inventory จะไม่แสดง',
       groupNeedsInventory: '<Group> ต้องใช้ inventory เวอร์ชันที่รองรับ ถ้าเป็นเวอร์ชันเก่า field ในกลุ่มจะหายไป',
     },
     // ใช้ร่วมกันระหว่าง DialogPreview.tsx กับ XmlEditor.tsx — ทั้งสองไฟล์แสดงข้อความนี้เหมือน

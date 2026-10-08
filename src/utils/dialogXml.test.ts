@@ -23,12 +23,12 @@ describe('parseDialogXml', () => {
     expect(r.warnings).toEqual([]);
   });
 
-  it('keeps label-only cells and unlabelled controls the preview always showed', () => {
+  it('drops what inventory drops — orphan labels and unlabelled controls — and warns instead', () => {
     const r = parseDialogXml('<Dialog><Label Text="Orphan"/><Label Text="X"/><Date Name="D"/><Date Name="Bare"/></Dialog>');
-    expect(r.cells.map((c) => (c.kind === 'field' ? [c.label, c.element?.getAttribute('Name') ?? null] : c.kind))).toEqual([
-      ['Orphan', null],
-      ['X', 'D'],
-      [undefined, 'Bare'],
+    expect(r.cells.map((c) => (c.kind === 'field' ? [c.label, c.element.getAttribute('Name')] : c.kind))).toEqual([['X', 'D']]);
+    expect(r.warnings).toEqual([
+      { code: 'labelWithoutControl', at: 'Orphan' },
+      { code: 'controlWithoutLabel', at: 'Bare' },
     ]);
   });
 
@@ -57,10 +57,11 @@ describe('parseDialogXml', () => {
     expect(r.counts).toEqual({ Date: 2 });
   });
 
-  it('keeps an orphan label before a group as its own cell', () => {
+  it('an orphan label before a group takes no grid slot', () => {
     const r = parseDialogXml(
       '<Dialog Cols="2"><Label Text="Dangling"/><Group><Label Text="A"/><Date Name="A"/></Group></Dialog>',
     );
-    expect(r.cells.map((c) => c.kind)).toEqual(['field', 'group']);
+    expect(r.cells.map((c) => c.kind)).toEqual(['group']);
+    expect(r.warnings.map((w) => w.code)).toEqual(['labelWithoutControl']);
   });
 });

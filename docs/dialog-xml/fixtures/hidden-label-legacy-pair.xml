@@ -1,0 +1,4 @@
+<Dialog>
+  <Label Text="Vendor"/><Lookup Name="VendorFrom" DataSource="@vendor_list"/>
+  <Label Text="to" Visible="false"/><Lookup Name="VendorTo" DataSource="@vendor_list"/>
+</Dialog>

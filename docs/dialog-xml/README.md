@@ -13,7 +13,9 @@ four places — keep them in step:
 ## Elements
 
 - `<Dialog Cols="1–4">` — root. `Cols` absent/invalid → 1, > 4 → 4.
-- `<Label Text="…" [Visible="false"]/>` followed by a control = one field.
+- A visible `<Label Text="…"/>` followed by a control = one field. A control
+  without a visible label in front, or a label without a control after it, is
+  not shown by inventory — the preview warns instead of drawing it.
 - Controls: `<Date Name Value/>`, `<Lookup Name DataSource|Items+Values [Multi="true"] [Value]/>`.
   Inventory renders only these two.
 - `ColSpan="n"` on a control or `<Group>`: integer ≥ 1, clamped to `Cols`.

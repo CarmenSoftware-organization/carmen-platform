@@ -1,23 +1,21 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CONTROL_TAGS, parseDialogXml, type DialogField, type DialogParseResult } from './dialogXml';
+import { parseDialogXml, type DialogField, type DialogParseResult } from './dialogXml';
 
 // jsdom ทำให้ import.meta.url เป็น http:// — ใช้ dirname ของไฟล์แทน
 const DIR = join(import.meta.dirname, '../../docs/dialog-xml/fixtures/');
 
-const isControl = (f: DialogField) => !!f.element && CONTROL_TAGS.has(f.element.tagName);
-const nameOf = (f: DialogField) => f.element?.getAttribute('Name') ?? '';
+const nameOf = (f: DialogField) => f.element.getAttribute('Name') ?? '';
 
 function summarize(r: DialogParseResult) {
   return {
     cols: r.cols,
-    cells: r.cells.flatMap((c) => {
-      if (c.kind === 'range') return [{ kind: 'range', colSpan: c.layout.colSpan, names: [nameOf(c.from), nameOf(c.to)] }];
-      if (c.kind === 'group') {
-        return [{ kind: 'group', colSpan: c.layout.colSpan, names: c.fields.filter(isControl).map(nameOf) }];
-      }
-      return isControl(c) ? [{ kind: 'single', colSpan: c.layout.colSpan, names: [nameOf(c)] }] : [];
+    // ทุก cell ที่ preview วาด — ไม่กรองอะไรทิ้ง ไม่อย่างนั้น fixture จะมองไม่เห็นจุดที่สอง parser วาดต่างกัน
+    cells: r.cells.map((c) => {
+      if (c.kind === 'range') return { kind: 'range', colSpan: c.layout.colSpan, names: [nameOf(c.from), nameOf(c.to)] };
+      if (c.kind === 'group') return { kind: 'group', colSpan: c.layout.colSpan, names: c.fields.map(nameOf) };
+      return { kind: 'single', colSpan: c.layout.colSpan, names: [nameOf(c)] };
     }),
     warnings: r.warnings.map((w) => w.code),
   };

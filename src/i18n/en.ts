@@ -766,7 +766,6 @@ export const en = {
       // Fallback noun substituted for {{source}} when the XML carries no DataSource
       // attribute at all.
       genericValue: 'value',
-      noControl: '(no control)',
       previewUnavailable: 'Preview unavailable',
       // Plurals stay in the English value only — Thai does not inflect for number, same
       // pattern as pages.news.articleTotal/articlesTotal and
@@ -790,6 +789,8 @@ export const en = {
       warnUnknownElement: '<{{tag}}> ({{at}}) is not a Date or Lookup, so the inventory dialog will not show it',
       warnNestedGroup: 'A <Group> inside {{at}} was merged into it. Groups cannot be nested.',
       warnEmptyGroup: '{{at}} is empty and was skipped',
+      warnLabelWithoutControl: 'Label "{{at}}" has no Date or Lookup after it, so the inventory dialog will not show it',
+      warnControlWithoutLabel: '{{at}} has no visible label before it, so the inventory dialog will not show it',
       groupNeedsInventory: '<Group> needs the inventory release that supports it. On older inventory builds, grouped fields disappear.',
     },
     // Shared between DialogPreview.tsx and XmlEditor.tsx — both render this exact fallback

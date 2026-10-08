@@ -94,10 +94,15 @@ is built **last**.
 
 Direct children of `<Dialog>` form cells, in document order:
 
-1. `Label` followed by a non-`Label` element → labelled field (existing rule).
-2. A control with no preceding `Label` → unlabelled field.
-3. A `Label` with no control after it → label-only cell (existing behaviour).
-4. `<Group>` → group cell.
+1. A visible `Label` followed by a `Date`/`Lookup` → field (inventory's existing rule).
+2. `<Group>` → group cell.
+
+Everything else is dropped by inventory and therefore by the preview too, which
+lists a warning instead of drawing it: a control with no visible `Label` in
+front (`controlWithoutLabel`), a `Label` with no control after it
+(`labelWithoutControl`), and any element other than `Label`/`Date`/`Lookup`/
+`Group` (`unknownElement`). (Revised after the final review: the preview used to
+draw these, which shifted the grid away from what inventory shows.)
 
 Inventory's existing range auto-pairing (`Label`, `XFrom`, `Label`, `XTo`, or a
 `"to"`/invisible second label) still collapses four elements into one **range**
@@ -123,10 +128,8 @@ cell outside Groups. The platform preview adopts the **same** pairing rule.
 
 ### Everywhere
 
-- Unknown attributes/elements are ignored, never an error. The inventory run
-  dialog only renders `Date` and `Lookup`; any other element is dropped there.
-  The platform preview keeps drawing such elements as a raw tag box (as today)
-  but adds an `unknownElement` warning saying inventory will not show it.
+- Unknown attributes/elements are ignored, never an error. Both renderers show
+  only `Date` and `Lookup`; the preview warns `unknownElement` for anything else.
 - Below `sm` (640px): one column, `ColSpan` ignored, Group contents stack.
 - Grid flows row by row in document order with no dense packing; a span that
   does not fit leaves a gap. Order matching the XML beats tightness.

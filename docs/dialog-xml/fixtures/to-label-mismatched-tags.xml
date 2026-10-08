@@ -1,0 +1,4 @@
+<Dialog>
+  <Label Text="Date From"/><Date Name="DateFrom"/>
+  <Label Text="to"/><Lookup Name="L" Items="x" Values="x"/>
+</Dialog>

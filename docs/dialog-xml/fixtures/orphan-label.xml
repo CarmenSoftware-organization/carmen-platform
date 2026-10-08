@@ -1,0 +1,5 @@
+<Dialog Cols="2">
+  <Label Text="Orphan"/>
+  <Label Text="A"/><Date Name="A"/>
+  <Label Text="B"/><Date Name="B"/>
+</Dialog>

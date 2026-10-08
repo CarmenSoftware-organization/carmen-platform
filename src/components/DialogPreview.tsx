@@ -84,14 +84,8 @@ function renderControl(el: Element, t: TFunction): React.ReactNode {
 function FieldBlock({ field, t, className }: { field: DialogField; t: TFunction; className?: string }) {
   return (
     <div className={cn('space-y-2', className)}>
-      {field.label !== undefined && (
-        <Label className="text-xs text-muted-foreground">{field.label || ' '}</Label>
-      )}
-      {field.element ? (
-        renderControl(field.element, t)
-      ) : (
-        <div className="text-xs text-muted-foreground italic">{t('components.dialogPreview.noControl')}</div>
-      )}
+      <Label className="text-xs text-muted-foreground">{field.label || ' '}</Label>
+      {renderControl(field.element, t)}
     </div>
   );
 }
@@ -109,7 +103,7 @@ function CellBlock({ cell, t }: { cell: DialogCell; t: TFunction }) {
           ].map(({ side, caption }) => (
             <div key={side.key} className="space-y-1">
               <span className="text-[11px] text-muted-foreground">{caption}</span>
-              {side.element && renderControl(side.element, t)}
+              {renderControl(side.element, t)}
             </div>
           ))}
         </div>
@@ -152,6 +146,10 @@ function warningText(w: DialogWarning, t: TFunction): string {
       return t('components.dialogPreview.warnNestedGroup', { at: w.at });
     case 'emptyGroup':
       return t('components.dialogPreview.warnEmptyGroup', { at: w.at });
+    case 'labelWithoutControl':
+      return t('components.dialogPreview.warnLabelWithoutControl', { at: w.at });
+    case 'controlWithoutLabel':
+      return t('components.dialogPreview.warnControlWithoutLabel', { at: w.at });
   }
 }
 

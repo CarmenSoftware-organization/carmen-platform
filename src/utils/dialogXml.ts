@@ -10,8 +10,8 @@ export interface DialogLayout {
 
 export interface DialogField {
   key: string;
-  label?: string;
-  element: Element | null;
+  label: string;
+  element: Element;
   layout: DialogLayout;
 }
 
@@ -24,7 +24,8 @@ export type DialogWarning =
   | { code: 'colsClamped' | 'colsInvalid'; raw: string; used: number }
   | { code: 'colSpanClamped' | 'colSpanInvalid'; raw: string; used: number; at: string }
   | { code: 'nestedGroupFlattened' | 'emptyGroup' | 'colSpanOnLabel'; at: string }
-  | { code: 'unknownElement'; at: string; tag: string };
+  | { code: 'unknownElement'; at: string; tag: string }
+  | { code: 'labelWithoutControl' | 'controlWithoutLabel'; at: string };
 
 export interface DialogParseResult {
   ok: boolean;
@@ -36,9 +37,10 @@ export interface DialogParseResult {
   warnings: DialogWarning[];
 }
 
-interface Draft extends DialogField {
-  hiddenLabel: boolean;
-}
+// ลำดับของ Label / control หลังตัด element ที่ inventory ไม่รู้จักทิ้ง — เทียบเท่า DialogNode ของ inventory
+type DialogNode =
+  | { type: 'label'; text: string; visible: boolean; at: string }
+  | { type: 'control'; key: string; tag: string; name: string; element: Element; layout: DialogLayout; at: string };
 
 const INT = /^\s*\d+\s*$/;
 
@@ -85,59 +87,79 @@ function readSpan(el: Element, cols: number, at: string, warnings: DialogWarning
   return n;
 }
 
-/** Label + element ถัดไปที่ไม่ใช่ Label = หนึ่ง field (กติกาเดิมของ preview) */
-function toDrafts(elements: Element[], cols: number, warnings: DialogWarning[], keyPrefix: string): Draft[] {
-  const drafts: Draft[] = [];
-  const control = (el: Element, index: number) => {
-    const at = describeEl(el, index);
-    if (!CONTROL_TAGS.has(el.tagName)) warnings.push({ code: 'unknownElement', at, tag: el.tagName });
-    return { element: el, layout: { colSpan: readSpan(el, cols, at, warnings) } };
-  };
-  for (let i = 0; i < elements.length; i++) {
-    const el = elements[i];
-    const key = `${keyPrefix}${i}`;
-    if (el.tagName !== 'Label') {
-      drafts.push({ key, label: undefined, hiddenLabel: false, ...control(el, i) });
+function toNodes(elements: Element[], cols: number, warnings: DialogWarning[], keyPrefix: string): DialogNode[] {
+  const nodes: DialogNode[] = [];
+  elements.forEach((el, i) => {
+    const at = describeEl(el, i);
+    if (el.tagName === 'Label') {
+      if (el.hasAttribute('ColSpan')) warnings.push({ code: 'colSpanOnLabel', at });
+      nodes.push({ type: 'label', text: el.getAttribute('Text') || '', visible: el.getAttribute('Visible') !== 'false', at });
+    } else if (CONTROL_TAGS.has(el.tagName)) {
+      nodes.push({
+        type: 'control',
+        key: `${keyPrefix}${i}`,
+        tag: el.tagName,
+        name: el.getAttribute('Name') || '',
+        element: el,
+        layout: { colSpan: readSpan(el, cols, at, warnings) },
+        at,
+      });
+    } else {
+      // inventory ไม่รู้จัก element นี้และตัดทิ้งก่อนจับคู่ — preview ต้องตัดเหมือนกัน
+      warnings.push({ code: 'unknownElement', at, tag: el.tagName });
+    }
+  });
+  return nodes;
+}
+
+type ControlNode = Extract<DialogNode, { type: 'control' }>;
+
+const isControl = (n: DialogNode | undefined): n is ControlNode => n?.type === 'control';
+
+// isToLabel / isNamedPair ของ inventory (parse-report-dialog.ts) ทีละบรรทัด
+const isToLabel = (n: DialogNode | undefined) => n?.type === 'label' && (!n.visible || n.text === 'to');
+
+const isNamedPair = (from: ControlNode, to: DialogNode | undefined) =>
+  isControl(to) && to.tag === from.tag && from.name.endsWith('From') && to.name === `${from.name.slice(0, -'From'.length)}To`;
+
+const toField = (label: string, c: ControlNode): DialogField => ({ key: c.key, label, element: c.element, layout: c.layout });
+
+/**
+ * กติกาเดียวกับ groupFields ของ inventory ทุกข้อ: cell ต้องเริ่มด้วย Label ที่มองเห็น ตามด้วย control
+ * ส่วนที่ inventory ทิ้ง (Label ไม่มี control, control ไม่มี Label) ไม่ถูกวาด แต่ขึ้นคำเตือนแทน
+ */
+function groupNodes(nodes: DialogNode[], pairRanges: boolean, warnings: DialogWarning[]): DialogCell[] {
+  const cells: DialogCell[] = [];
+  let i = 0;
+  while (i < nodes.length) {
+    const node = nodes[i];
+    if (node.type !== 'label' || !node.visible) {
+      if (node.type === 'control') warnings.push({ code: 'controlWithoutLabel', at: node.at });
+      i++;
       continue;
     }
-    if (el.hasAttribute('ColSpan')) warnings.push({ code: 'colSpanOnLabel', at: describeEl(el, i) });
-    const label = el.getAttribute('Text') || '';
-    const hiddenLabel = el.getAttribute('Visible') === 'false';
-    const next = elements[i + 1];
-    if (next && next.tagName !== 'Label') {
-      drafts.push({ key, label, hiddenLabel, ...control(next, i + 1) });
+    const next = nodes[i + 1];
+    if (!isControl(next)) {
+      warnings.push({ code: 'labelWithoutControl', at: node.text || node.at });
       i++;
-    } else {
-      drafts.push({ key, label, hiddenLabel, element: null, layout: { colSpan: 1 } });
+      continue;
     }
-  }
-  return drafts;
-}
-
-/** กติกาจับคู่ From/To เดียวกับ inventory (isToLabel / isNamedPair) */
-function isRangePair(a: Draft, b: Draft | undefined): b is Draft {
-  if (!b || !a.element || !b.element) return false;
-  if (a.label === undefined || a.hiddenLabel || b.label === undefined) return false;
-  const tag = a.element.tagName;
-  if (!CONTROL_TAGS.has(tag) || b.element.tagName !== tag) return false;
-  if (b.hiddenLabel || b.label === 'to') return true;
-  const from = a.element.getAttribute('Name') || '';
-  const to = b.element.getAttribute('Name') || '';
-  return from.endsWith('From') && to === `${from.slice(0, -'From'.length)}To`;
-}
-
-const strip = (d: Draft): DialogField => ({ key: d.key, label: d.label, element: d.element, layout: d.layout });
-
-function pairRanges(drafts: Draft[]): DialogCell[] {
-  const cells: DialogCell[] = [];
-  for (let i = 0; i < drafts.length; i++) {
-    const a = drafts[i];
-    const b = drafts[i + 1];
-    if (isRangePair(a, b)) {
-      cells.push({ kind: 'range', key: a.key, label: a.label ?? '', from: strip(a), to: strip(b), layout: a.layout });
-      i++;
+    const after = nodes[i + 2];
+    const to = nodes[i + 3];
+    const isPaired = (isToLabel(after) && isControl(to)) || (after?.type === 'label' && isNamedPair(next, to));
+    if (pairRanges && isPaired && isControl(to)) {
+      cells.push({
+        kind: 'range',
+        key: next.key,
+        label: node.text,
+        from: toField(node.text, next),
+        to: toField(after?.type === 'label' ? after.text : '', to),
+        layout: next.layout,
+      });
+      i += 4;
     } else {
-      cells.push({ kind: 'field', ...strip(a) });
+      cells.push({ kind: 'field', ...toField(node.text, next) });
+      i += 2;
     }
   }
   return cells;
@@ -146,7 +168,7 @@ function pairRanges(drafts: Draft[]): DialogCell[] {
 function tally(cells: DialogCell[]): Record<string, number> {
   const counts: Record<string, number> = {};
   const add = (f: DialogField) => {
-    if (f.element) counts[f.element.tagName] = (counts[f.element.tagName] || 0) + 1;
+    counts[f.element.tagName] = (counts[f.element.tagName] || 0) + 1;
   };
   for (const c of cells) {
     if (c.kind === 'range') {
@@ -188,7 +210,7 @@ export function parseDialogXml(xml: string): DialogParseResult {
   let run: Element[] = [];
   let runStart = 0;
   const flush = () => {
-    if (run.length) cells.push(...pairRanges(toDrafts(run, cols, warnings, `${runStart}-`)));
+    if (run.length) cells.push(...groupNodes(toNodes(run, cols, warnings, `${runStart}-`), true, warnings));
     run = [];
   };
   Array.from(root.children).forEach((el, index) => {
@@ -199,8 +221,10 @@ export function parseDialogXml(xml: string): DialogParseResult {
     }
     flush();
     const at = `<Group>#${index + 1}`;
-    const drafts = toDrafts(groupChildren(el, at, warnings), cols, warnings, `${index}-`);
-    if (drafts.length === 0) {
+    const fields = groupNodes(toNodes(groupChildren(el, at, warnings), cols, warnings, `${index}-`), false, warnings).flatMap(
+      (c) => (c.kind === 'field' ? [{ key: c.key, label: c.label, element: c.element, layout: c.layout }] : []),
+    );
+    if (fields.length === 0) {
       warnings.push({ code: 'emptyGroup', at });
       return;
     }
@@ -208,7 +232,7 @@ export function parseDialogXml(xml: string): DialogParseResult {
       kind: 'group',
       key: `g${index}`,
       layout: { colSpan: readSpan(el, cols, at, warnings) },
-      fields: drafts.map(strip),
+      fields,
     });
   });
   flush();
