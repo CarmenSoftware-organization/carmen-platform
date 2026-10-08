@@ -53,10 +53,11 @@ Details:
 
 ## micro-report
 
-- `model.ReportTemplate`: add `CalculationMethods pq.StringArray`
-  (`gorm:"column:calculation_methods;type:enum_calculation_method[]"`, read-only
-  — never written by micro-report; GORM `Save` must not include it, use
-  `<-:false`).
+- `model.ReportTemplate`: add read-only `CalculationMethodsCSV string`
+  (`gorm:"->;column:calculation_methods_csv"`), filled by adding
+  `array_to_string(rt.calculation_methods, ',') AS calculation_methods_csv` to
+  the repo's `templateSelectCols`. No `lib/pq` (not a direct dependency); `->`
+  keeps GORM `Create`/`Save` from ever writing it.
 - New `db.BuCalculationMethod(ctx, buCode) (string, error)` alongside `BuName`,
   reading `tb_business_unit.calculation_method` via `model.PlatformTable`.
 - New file `model/availability.go`: `TemplateAvailability`, `parseBuList`.
@@ -66,11 +67,14 @@ Details:
   reflects the filtered set.
 - **Single** — new `GET /api/:buCode/report/templates/:id`: 200 with the
   template when available, 403 (below) when not, 404 when missing.
-- **Run-time guard** — one helper used by every handler that resolves a
-  template for a BU: `viewer`, `viewer-with-data`, `export-pdf-with-data`,
-  `data`, `generate-async` (when `report_template_id` is set). The non-BU
-  `/api/reports/generate` is guarded when its body carries a BU and a template
-  id. Response on refusal:
+- **Run-time guard lives in `service.ReportService`**, right after each template
+  load: `ViewReport` (also covers the async worker, which calls `ViewReport`),
+  `BuildData`, and `prepareExternalDataTemplate` (the `viewer-with-data` /
+  `export-pdf-with-data` routes look templates up **by name**). It returns a
+  typed `*model.TemplateUnavailableError{Reason}`. `generate-async` also checks
+  up front (when `report_template_id` is set) so a refused job is never queued.
+  `/api/reports/generate` takes no template (only `report_type`) — not guarded.
+- Handlers map the typed error with `errors.As` to
   `403 {"error": "...", "code": "REPORT_TEMPLATE_UNAVAILABLE", "reason": "<reason>"}`.
 - Global `/api/report-templates` (admin/platform use) is **unchanged**.
 
@@ -94,8 +98,21 @@ Details:
   and confirm the inventory FE reads only fields present in both.
 - `getTemplate(bu_code, id)` → new micro-report single endpoint; 403 passes
   through.
+- **Error code passthrough:** the gateway's `request()` currently reduces an
+  upstream error body to a string. When the body carries a string `code`, it
+  throws `HttpException({ error, code, reason }, status)` instead; the global
+  exception filter then resolves the catalog entry and emits
+  `error.code = "REPORT_TEMPLATE_UNAVAILABLE"` (what the inventory FE's
+  `ApiError.appCode` reads), a localized message, and keeps `reason` as an extra
+  top-level field.
+- **Error catalog** (`packages/error-catalog/src/catalog.ts`): add
+  `REPORT_TEMPLATE_UNAVAILABLE` — `makeId(MODULE.REPORT_TEMPLATE, 4)`,
+  `http_status: 403`, en "This report is not available for this business unit",
+  th "รายงานนี้ใช้กับหน่วยธุรกิจนี้ไม่ได้"; regenerate `reference/`.
 - `createSchedule`: when `report_template_id` is given, check availability via
-  the single endpoint first; unavailable → **422** with the same `reason`.
+  the single endpoint first; unavailable → the same **403**
+  `REPORT_TEMPLATE_UNAVAILABLE` (the exception filter forces the catalog's
+  status, so a separate 422 is not possible without a second code).
 - `listSchedules`: fetch the BU's available template ids once
   (`perpage=-1`, `include_print=true`) and set on each schedule
   `template_available: boolean` and `unavailable_reason?: string`.
@@ -113,7 +130,7 @@ Details:
 - Viewer / data error handling: a 403 with `code === "REPORT_TEMPLATE_UNAVAILABLE"`
   shows "This report is not available for this business unit" (localized)
   instead of the generic error toast.
-- Schedule create: a 422 from the gateway surfaces the localized reason.
+- Schedule create: the 403 surfaces through the existing error toast (catalog message is already localized by the gateway).
 
 ## Platform (this repo)
 
@@ -139,7 +156,7 @@ Each step is backward compatible with the previous state of the next.
 | Unavailable template in list | omitted |
 | Unavailable template fetched / run by id | 403 `REPORT_TEMPLATE_UNAVAILABLE` + reason |
 | Scheduled run of unavailable template | skipped, `last_error = "skipped: <reason>"`, no retry, no notification |
-| Creating a schedule for unavailable template | 422 + reason |
+| Creating a schedule for unavailable template | 403 `REPORT_TEMPLATE_UNAVAILABLE` + reason |
 | BU calc method lookup fails (DB error) | 500 (not fail-open — a DB error is not "unknown method") |
 | BU calc method null / BU row missing | costing rule skipped |
 
