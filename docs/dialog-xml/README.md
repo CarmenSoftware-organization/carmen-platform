@@ -49,6 +49,21 @@ Below 640px every dialog is one column.
 > inventory **production**. Older builds silently drop that field. `Label` on
 > `<Group>` is safe on older builds (the heading is just missing).
 
+### Fields added by the layout editor
+
+The editor's **Add field** menu writes classic pairs only — never `Label=` (see the
+rollout rule above):
+
+| Kind | XML |
+|---|---|
+| Date | `<Label Text="New field"/><Date Name="Date1"/>` |
+| Lookup | `<Label Text="New field"/><Lookup Name="Lookup1" DataSource="@product_list"/>` |
+| Date range | `<Label Text="New field"/><Date Name="Date1From"/>` + `<Label Text="to"/><Date Name="Date1To"/>` |
+| Lookup range | as Date range, with `<Lookup … DataSource="@product_list"/>` on both sides |
+
+The number is the smallest one that keeps every `Name` in the dialog unique.
+Deleting the last field of a `<Group>` removes the group as well.
+
 ## Fixtures
 
 `fixtures/<name>.xml` + `fixtures/<name>.expected.json`. Both frontends run every

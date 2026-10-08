@@ -288,6 +288,86 @@ export function setGroupLabel(xml: string, groupKey: string, text: string): stri
   return save(l);
 }
 
+export type NewFieldKind = 'date' | 'lookup' | 'dateRange' | 'lookupRange';
+
+/** ค่าเริ่มต้นของ field ที่ editor สร้าง — ป้ายแบบ <Label> เดิม (Label= ใช้ไม่ได้จนกว่า inventory production รองรับ) */
+export const NEW_FIELD_LABEL = 'New field';
+/** Lookup ใหม่ต้องมีแหล่งข้อมูลตั้งแต่เขียนครั้งแรก — validateDataSource บังคับ และ XML ต้องไม่อยู่ในสภาพผิด */
+export const NEW_LOOKUP_SOURCE = '@product_list';
+
+/** เลข n ที่น้อยที่สุดที่ทุกชื่อที่จะสร้าง (ช่วง = ทั้ง From และ To) ยังไม่มี control ใดในเอกสารใช้ รวมใน Group */
+function freeBase(root: Element, prefix: string, range: boolean): string {
+  const used = new Set(
+    Array.from(root.getElementsByTagName('*'))
+      .filter((e) => CONTROL_TAGS.has(e.tagName))
+      .map((e) => e.getAttribute('Name') ?? ''),
+  );
+  for (let n = 1; ; n++) {
+    const base = `${prefix}${n}`;
+    if ((range ? [`${base}From`, `${base}To`] : [base]).every((x) => !used.has(x))) return base;
+  }
+}
+
+/**
+ * เพิ่ม field ต่อหลัง cell afterKey (null = ท้าย Dialog) — field ใน Group: field เดี่ยวเข้ากลุ่ม ช่วงไปต่อหลังกลุ่ม
+ * ช่วงที่สร้างจับคู่ได้ทั้งป้าย "to" และชื่อคู่ XFrom/XTo ผู้เขียนแก้อย่างใดอย่างหนึ่งทีหลังก็ยังเป็นช่วงเดียว
+ */
+export function insertField(xml: string, afterKey: string | null, kind: NewFieldKind): { xml: string; name: string | null } {
+  const none = { xml, name: null };
+  const l = load(xml);
+  if (!l) return none;
+  const range = kind === 'dateRange' || kind === 'lookupRange';
+  const tag = kind === 'date' || kind === 'dateRange' ? 'Date' : 'Lookup';
+  let parent: Element = l.root;
+  let ref: Node | null = null;
+  if (afterKey !== null) {
+    const at = locate(l, afterKey);
+    if (!at) return none;
+    const anchor = range && at.inGroup ? at.inGroup : at.nodes[at.nodes.length - 1];
+    parent = anchor.parentElement as Element;
+    ref = anchor.nextSibling;
+  }
+  const doc = l.root.ownerDocument;
+  const make = (name: string, attrs: Record<string, string>) => {
+    const el = doc.createElementNS(l.root.namespaceURI, name);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    return el;
+  };
+  const control = (name: string) => make(tag, tag === 'Lookup' ? { Name: name, DataSource: NEW_LOOKUP_SOURCE } : { Name: name });
+  const base = freeBase(l.root, tag, range);
+  const name = range ? `${base}From` : base;
+  const nodes = [make('Label', { Text: NEW_FIELD_LABEL }), control(name)];
+  if (range) nodes.push(make('Label', { Text: 'to' }), control(`${base}To`));
+  for (const n of nodes) parent.insertBefore(n, ref);
+  relayout(parent, l.eol);
+  return { xml: save(l), name };
+}
+
+/** ลบ cell ทั้งก้อน (field = ป้าย + control, ช่วง = 4 โหนด, กลุ่ม = ทั้งกล่อง) — field สุดท้ายในกลุ่มพากลุ่มเปล่าออกไปด้วย */
+export function deleteCell(xml: string, key: string): string {
+  const l = load(xml);
+  const at = l && locate(l, key);
+  if (!l || !at) return xml;
+  const parent = at.nodes[0].parentElement as Element;
+  for (const n of at.nodes) n.parentNode?.removeChild(n);
+  if (at.inGroup && at.inGroup.children.length === 0) {
+    at.inGroup.parentNode?.removeChild(at.inGroup);
+    relayout(l.root, l.eol);
+  } else relayout(parent, l.eol);
+  return save(l);
+}
+
+/** key ของ cell ที่ control ชื่อนี้อยู่ (ช่วง = ชื่อฝั่ง From) — key อิงตำแหน่ง หลังเพิ่ม field จึงต้องหาใหม่จากชื่อ */
+export function keyOfName(cells: DialogCell[], name: string): string | null {
+  for (const c of cells) {
+    if (c.kind === 'group') {
+      const f = c.fields.find((x) => x.element.getAttribute('Name') === name);
+      if (f) return f.key;
+    } else if ((c.kind === 'range' ? c.from.element : c.element).getAttribute('Name') === name) return c.key;
+  }
+  return null;
+}
+
 export function containerMap(cells: DialogCell[]): ContainerMap {
   const groups: Record<string, string[]> = {};
   for (const c of cells) if (c.kind === 'group') groups[c.key] = c.fields.map((f) => f.key);
