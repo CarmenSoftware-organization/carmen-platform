@@ -183,6 +183,11 @@ describe('dropTarget', () => {
     expect(dropTarget(map, 'c', 'a')).toEqual({ before: 'a' });
     expect(dropTarget(map, 'a', 'g2')).toEqual({ before: 'g2' });
   });
+  it('a field dropped on its own group, or a group on its own contents, is a no-op', () => {
+    expect(dropTarget(map, 'g1', 'g')).toBeNull();
+    expect(dropTarget(map, 'g', 'g2')).toBeNull();
+    expect(dropTarget(map, 'g', 'end:g')).toBeNull();
+  });
   it('end zones and self-drops', () => {
     expect(dropTarget(map, 'a', 'end:g')).toEqual({ end: 'g' });
     expect(dropTarget(map, 'a', 'a')).toBeNull();

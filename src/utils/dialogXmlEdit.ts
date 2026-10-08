@@ -202,6 +202,12 @@ export function containerMap(cells: DialogCell[]): ContainerMap {
 /** แปลงผลการลากของ dnd-kit (active, over) เป็นเป้าหมายของ moveCell — ลากลงในกล่องเดิม = วางหลังตัวที่ทับ */
 export function dropTarget(map: ContainerMap, activeKey: string, overId: string): MoveTarget | null {
   if (overId === activeKey) return null;
+  // closestCenter ชนกับกล่อง Group ที่ตัวเองอยู่ได้ง่าย (ศูนย์กลางใกล้กัน) — วางลงกล่องตัวเองไม่ใช่การย้ายออก
+  const ownGroup = Object.entries(map.groups).find(([, list]) => list.includes(activeKey))?.[0];
+  if (ownGroup && overId === ownGroup) return null;
+  // Group ลากไปทับ field หรือช่องท้ายของตัวเอง = ไม่ย้าย
+  const ownFields = map.groups[activeKey];
+  if (ownFields && (ownFields.includes(overId) || overId === `end:${activeKey}`)) return null;
   if (overId.startsWith('end:')) return { end: overId.slice('end:'.length) };
   const listOf = (k: string): [string, string[]] | null => {
     if (map.dialog.includes(k)) return ['dialog', map.dialog];
