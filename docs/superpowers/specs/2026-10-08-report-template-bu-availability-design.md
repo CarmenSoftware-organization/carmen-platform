@@ -113,10 +113,12 @@ Details:
   the single endpoint first; unavailable → the same **403**
   `REPORT_TEMPLATE_UNAVAILABLE` (the exception filter forces the catalog's
   status, so a separate 422 is not possible without a second code).
-- `listSchedules`: fetch the BU's available template ids once
-  (`perpage=-1`, `include_print=true`) and set on each schedule
-  `template_available: boolean`. (The list endpoint does not say *why* a
-  template is hidden, so no per-schedule reason in this phase.)
+- `listSchedules`: for each distinct template id used by the BU's schedules,
+  ask the BU single-template endpoint; only a **403** marks the template
+  unavailable (`template_available: false`). A 404 (inactive / soft-deleted —
+  scheduled runs still execute through `FindByID`) or any other failure leaves
+  `template_available: true`, so the badge never tells users to delete a
+  working schedule and a micro-report hiccup never breaks the list.
   Schedules without a template id → `template_available: true`.
 - Viewer/data passthrough: map micro-report's 403 to a gateway 403 keeping
   `code` + `reason` (not a generic 500).
@@ -140,6 +142,11 @@ fields to say they are now enforced for BU users (en + th).
 
 ## Deploy Order
 
+0. **Column check:** micro-report's template select now reads
+   `rt.calculation_methods`; the Phase A migration must be applied on the
+   platform DB micro-report reads, or every template read fails (42703).
+   Verified on DEV 2026-10-08 (Phase A "Restricted only" filter queries the
+   column without error).
 1. **Data audit first** (DEV and production share the DEV backend): list
    templates whose allow/deny lists are non-empty — enforcement turns them on
    for the first time. Review with the user before step 2.
