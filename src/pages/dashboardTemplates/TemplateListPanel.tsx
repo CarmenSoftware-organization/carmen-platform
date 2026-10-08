@@ -21,7 +21,7 @@ import { useDashboardDatasets } from './useDashboardDatasets';
 import TemplateEditDialog from './TemplateEditDialog';
 
 export default function TemplateListPanel({ kind }: { kind: DashboardTemplateKind }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { datasets, byId, loading: datasetsLoading, failed: datasetsFailed } = useDashboardDatasets();
   const modules = kind === 'bu_default' ? [MAIN_MODULE, ...DASHBOARD_MODULES] : [...DASHBOARD_MODULES];
   const [module, setModule] = useState<string>(kind === 'bu_default' ? MAIN_MODULE : 'procurement');
@@ -143,7 +143,7 @@ export default function TemplateListPanel({ kind }: { kind: DashboardTemplateKin
                 <tbody>
                   {items.map((row, i) => (
                     <tr key={row.id} className="border-b last:border-0">
-                      <td className="px-3 py-2">{row.title || byId.get(row.dataset_id)?.name || row.dataset_id}</td>
+                      <td className="px-3 py-2">{(lang === 'th' && row.title_i18n?.th) || row.title_i18n?.en || row.title || byId.get(row.dataset_id)?.name || row.dataset_id}</td>
                       <td className="px-3 py-2">
                         <span className="font-mono text-xs">{row.dataset_id}</span>
                         {!datasetsLoading && !datasetsFailed && !byId.has(row.dataset_id) && (

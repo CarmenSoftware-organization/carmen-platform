@@ -33,7 +33,8 @@ export default function TemplateEditDialog({
   const { t } = useI18n();
   const [datasetId, setDatasetId] = useState('');
   const [widgetType, setWidgetType] = useState('');
-  const [title, setTitle] = useState('');
+  const [titleEn, setTitleEn] = useState('');
+  const [titleTh, setTitleTh] = useState('');
   const [params, setParams] = useState<Record<string, string | number>>({});
   const [isActive, setIsActive] = useState(true);
   const [allowBu, setAllowBu] = useState<string[]>([]);
@@ -46,7 +47,8 @@ export default function TemplateEditDialog({
     if (!open) return;
     setDatasetId(template?.dataset_id ?? '');
     setWidgetType(template?.widget_type ?? '');
-    setTitle(template?.title ?? '');
+    setTitleEn(template?.title_i18n?.en ?? template?.title ?? '');
+    setTitleTh(template?.title_i18n?.th ?? '');
     setParams(template?.params ?? {});
     setIsActive(template?.is_active ?? true);
     setAllowBu(template?.allow_business_unit ?? []);
@@ -75,12 +77,19 @@ export default function TemplateEditDialog({
 
   const handleSave = async () => {
     if (!datasetId || !widgetType) return;
+    const en = titleEn.trim();
+    const th = titleTh.trim();
+    // backend ตอบ 400 ถ้ามี th แต่ไม่มี en — กันไว้ก่อนยิง
+    if (th && !en) {
+      setError(t('pages.dashboardTemplates.titleEnRequired'));
+      return;
+    }
     setSaving(true);
     setError(null);
     const common = {
       dataset_id: datasetId,
       widget_type: widgetType,
-      title: title.trim() || null,
+      title_i18n: en ? { en, ...(th ? { th } : {}) } : null,
       params: Object.keys(params).length ? params : null,
       is_active: isActive,
       ...(kind === 'system'
@@ -156,12 +165,25 @@ export default function TemplateEditDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="dt-title">{t('pages.dashboardTemplates.fieldTitle')}</Label>
+            <Label htmlFor="dt-title-en">{t('pages.dashboardTemplates.fieldTitleEn')}</Label>
             <Input
-              id="dt-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              id="dt-title-en"
+              value={titleEn}
+              onChange={(e) => setTitleEn(e.target.value)}
               placeholder={t('pages.dashboardTemplates.fieldTitlePlaceholder')}
+              maxLength={255}
+              disabled={saving}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="dt-title-th">{t('pages.dashboardTemplates.fieldTitleTh')}</Label>
+            <Input
+              id="dt-title-th"
+              value={titleTh}
+              onChange={(e) => setTitleTh(e.target.value)}
+              placeholder={t('pages.dashboardTemplates.fieldTitleThPlaceholder')}
+              maxLength={255}
               disabled={saving}
             />
           </div>
