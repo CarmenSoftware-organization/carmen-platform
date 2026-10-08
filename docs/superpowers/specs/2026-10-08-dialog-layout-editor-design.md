@@ -57,7 +57,7 @@ found, the input string is returned unchanged — never a throw.
 |---|---|
 | `setCols(xml, n)` | Sets `Cols` on `<Dialog>`; `n = 1` **removes** the attribute. Existing `ColSpan`s above `n` are left alone — the parser clamps and warns, and raising `Cols` again restores them. |
 | `setColSpan(xml, key, n)` | Sets `ColSpan` on a field's control, a range's From control, or a `<Group>`. Clamped to 1..`Cols`; `1` removes the attribute. |
-| `moveCell(xml, key, target)` | Moves all of a cell's nodes: field = Label + control; range = its 4 nodes; group = the `<Group>` element. `target` is `{ before: key }` or `{ end: 'dialog' }` or `{ end: groupKey }`. A group cannot move into a group. A group left empty is removed. A range moved into a group splits into two fields. |
+| `moveCell(xml, key, target)` | Moves all of a cell's nodes: field = Label + control; range = its 4 nodes; group = the `<Group>` element. `target` is `{ before: key }` (lands in whichever container holds that key — so `before` a field inside a group moves into that group), `{ end: 'dialog' }`, or `{ end: groupKey }`. Moving a cell before itself is a no-op. A group cannot move into a group. A group left empty is removed. A range moved into a group splits into two fields. |
 | `groupCells(xml, keys)` | Requires ≥ 2 keys, all top-level field or range cells. Inserts a `<Group>` at the first selected cell's position and moves the selected cells into it in document order. Ranges split into two fields (no pairing inside groups). |
 | `ungroup(xml, groupKey)` | Replaces the `<Group>` with its children in place. The group's `ColSpan` is dropped; From/To pairs re-pair on their own outside the group. |
 
