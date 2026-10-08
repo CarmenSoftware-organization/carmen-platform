@@ -89,6 +89,8 @@ export default function TemplateEditDialog({
     const common = {
       dataset_id: datasetId,
       widget_type: widgetType,
+      // ส่ง title คู่ด้วย: backend รุ่นเก่าอ่านฟิลด์นี้ / backend ใหม่ใช้ title_i18n เป็นหลัก
+      title: en || null,
       title_i18n: en ? { en, ...(th ? { th } : {}) } : null,
       params: Object.keys(params).length ? params : null,
       is_active: isActive,
