@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import reportTemplateService, { type ReportTemplate } from '../../services/reportTemplateService';
-import { parseBackup, MAX_BACKUP_BYTES, type BackupTemplate, type BackupProblem } from '../../utils/reportTemplateBackup';
+import { parseBackup, BACKUP_FIELDS, MAX_BACKUP_BYTES, type BackupTemplate, type BackupProblem } from '../../utils/reportTemplateBackup';
 import { pickLocalized, secondaryLocalized, withPlainEn } from '../../utils/localized';
 import { getErrorDetail } from '../../utils/errorParser';
 import { useI18n } from '../../hooks/useI18n';
@@ -50,17 +50,21 @@ async function loadExistingNames(): Promise<Map<string, string>> {
 
 /**
  * แปลงแถวในไฟล์ backup เป็น payload ของ create/update
- * - ตัด id/version (import ไม่ใช้) และ view_name (DTO ไม่รับ — gateway strip ทิ้งอยู่แล้ว แต่ไม่ส่งเลยดีกว่า)
+ * - หยิบเฉพาะ BACKUP_FIELDS (ไม่มี id/version) และตัด view_name (DTO ไม่รับ — gateway strip ทิ้งอยู่แล้ว แต่ไม่ส่งเลยดีกว่า)
  * - name_i18n null = ไม่มี → ไม่ส่ง; ถ้ามีให้ en = name เสมอ (backend ปฏิเสธ th ที่ไม่มี en; parseBackup normalize name แล้ว)
  * - description เดี่ยวคือค่าจริงของ EN: ประกอบ description_i18n จาก description + th ของไฟล์
  *   เพื่อไม่ให้ description_i18n: null ไปล้าง description ที่มีค่าอยู่
  * - source_params / signature_config ที่ seeder ของ micro-report เก็บเป็น {} → เติม params/blocks เป็น []
  */
 function payloadOf(tpl: BackupTemplate): Partial<ReportTemplate> {
+  // ไฟล์มาจากภายนอก — หยิบเฉพาะฟิลด์ที่ backup รู้จัก ห้าม spread ทั้งก้อน (กัน mass assignment
+  // เช่น doc_version/deleted_at/created_by_id ที่แอบใส่มาในไฟล์)
+  const picked: Record<string, unknown> = {};
+  for (const key of BACKUP_FIELDS) if (key in tpl) picked[key] = (tpl as Record<string, unknown>)[key];
   const {
-    id: _id, version: _version, view_name: _viewName,
+    view_name: _viewName,
     name_i18n, description_i18n, source_params, signature_config, ...rest
-  } = tpl;
+  } = picked as BackupTemplate;
   const out: Partial<ReportTemplate> = { ...rest, change_type: 'import' };
 
   if (name_i18n) out.name_i18n = { ...name_i18n, en: rest.name };

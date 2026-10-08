@@ -11,7 +11,7 @@ export const BACKUP_FORMAT_VERSION = 1;
 export const MAX_BACKUP_BYTES = 10 * 1024 * 1024;
 
 /** ฟิลด์ที่เก็บลงไฟล์ — ชุดเดียวกับ snapshot ฝั่ง backend (SNAPSHOT_FIELDS) */
-const BACKUP_FIELDS = [
+export const BACKUP_FIELDS = [
   'name', 'name_i18n', 'description', 'description_i18n', 'report_group', 'template_type',
   'dialog', 'content', 'builder_key', 'view_name', 'source_type', 'source_name', 'source_params',
   'orientation', 'signature_config', 'is_standard', 'is_default', 'is_active',
