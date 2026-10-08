@@ -243,9 +243,10 @@ const ReportTemplateEdit: React.FC = () => {
         return String(v);
       };
       const loaded: ReportTemplateFormData = {
-        name: template.name_i18n?.en || template.name || '',
+        // EN อ่านจากคอลัมน์เดิม (ค่าจริง): ผู้เขียนนอกระบบแก้แค่ name/description — อ่าน *_i18n.en ก่อนจะเห็นค่าเก่าและบันทึกทับกลับ
+        name: template.name || template.name_i18n?.en || '',
         name_th: template.name_i18n?.th || '',
-        description: template.description_i18n?.en ?? template.description ?? '',
+        description: template.description ?? template.description_i18n?.en ?? '',
         description_th: template.description_i18n?.th || '',
         report_group: template.report_group || '',
         dialog: template.dialog || '',
@@ -380,7 +381,8 @@ const ReportTemplateEdit: React.FC = () => {
       is_default: isForm ? formData.is_default : undefined,
       allow_business_unit: isForm ? '' : formData.allow_business_unit,
       deny_business_unit: isForm ? '' : formData.deny_business_unit,
-      source_name: formData.source_name.trim() || undefined,
+      // null ล้างค่าที่เก็บไว้ตอน update (undefined = ไม่แตะ ทำให้ลบชื่อ source ไม่ได้); create รับ null เท่ากับไม่มี
+      source_name: formData.source_name.trim() || null,
       source_params: { params: cleanParams },
     };
 

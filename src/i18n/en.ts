@@ -2992,6 +2992,8 @@ export const en = {
         downloadAll: 'Backup all',
         progress: 'Backing up {{done}}/{{total}}',
         done: 'Backed up {{count}} templates',
+        doneOne: 'Backed up 1 template',
+        listing: 'Listing templates…',
         partial: 'Backed up {{count}}, {{failed}} failed',
         failed: 'Backup failed',
       },

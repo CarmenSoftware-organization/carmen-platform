@@ -23,3 +23,15 @@ export function secondaryLocalized(
   const other = lang === 'th' ? i18n?.en : i18n?.th;
   return other && other !== primary ? other : undefined;
 }
+
+/**
+ * i18n ที่ EN มาจากคอลัมน์เดิม (ค่าจริง) — ผู้เขียนนอกระบบแก้แค่ name/description
+ * ทำให้ *_i18n.en ค้างค่าเก่าได้; ไม่มีค่าเดิมค่อยใช้ i18n.en
+ */
+export function withPlainEn(
+  i18n: LocalizedText | null | undefined,
+  plain: string | null | undefined,
+): LocalizedText {
+  const en = plain || i18n?.en;
+  return { ...(i18n ?? {}), ...(en ? { en } : {}) };
+}

@@ -7,9 +7,10 @@ import { Badge } from '../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import reportTemplateService, { type ReportTemplate } from '../../services/reportTemplateService';
 import { parseBackup, MAX_BACKUP_BYTES, type BackupTemplate, type BackupProblem } from '../../utils/reportTemplateBackup';
-import { pickLocalized, secondaryLocalized } from '../../utils/localized';
+import { pickLocalized, secondaryLocalized, withPlainEn } from '../../utils/localized';
 import { getErrorDetail } from '../../utils/errorParser';
 import { useI18n } from '../../hooks/useI18n';
+import { useAuth } from '../../context/AuthContext';
 import type { TKey } from '../../i18n/types';
 
 type Status = 'new' | 'conflict' | 'invalid';
@@ -47,16 +48,44 @@ async function loadExistingNames(): Promise<Map<string, string>> {
   return map;
 }
 
-/** ตัด id/version ของไฟล์ทิ้ง — import ไม่ใช้ */
+/**
+ * แปลงแถวในไฟล์ backup เป็น payload ของ create/update
+ * - ตัด id/version (import ไม่ใช้) และ view_name (DTO ไม่รับ — gateway strip ทิ้งอยู่แล้ว แต่ไม่ส่งเลยดีกว่า)
+ * - name_i18n null = ไม่มี → ไม่ส่ง; ถ้ามีให้ en = name เสมอ (backend ปฏิเสธ th ที่ไม่มี en; parseBackup normalize name แล้ว)
+ * - description เดี่ยวคือค่าจริงของ EN: ประกอบ description_i18n จาก description + th ของไฟล์
+ *   เพื่อไม่ให้ description_i18n: null ไปล้าง description ที่มีค่าอยู่
+ * - source_params / signature_config ที่ seeder ของ micro-report เก็บเป็น {} → เติม params/blocks เป็น []
+ */
 function payloadOf(tpl: BackupTemplate): Partial<ReportTemplate> {
-  const { id: _id, version: _version, ...rest } = tpl;
-  // backend ปฏิเสธ name_i18n ที่มี th แต่ไม่มี en — ให้ en = name เสมอ (parseBackup normalize name แล้ว)
-  const name_i18n = rest.name_i18n ? { ...rest.name_i18n, en: rest.name } : undefined;
-  return { ...rest, ...(name_i18n ? { name_i18n } : {}), change_type: 'import' };
+  const {
+    id: _id, version: _version, view_name: _viewName,
+    name_i18n, description_i18n, source_params, signature_config, ...rest
+  } = tpl;
+  const out: Partial<ReportTemplate> = { ...rest, change_type: 'import' };
+
+  if (name_i18n) out.name_i18n = { ...name_i18n, en: rest.name };
+
+  const description = rest.description as string | null | undefined;
+  if (description !== undefined) {
+    const { en: _staleEn, ...others } = description_i18n ?? {};
+    const merged = { ...others, ...(description?.trim() ? { en: description } : {}) };
+    out.description_i18n = Object.keys(merged).length ? merged : null;
+  } else if (description_i18n !== undefined) {
+    out.description_i18n = description_i18n;
+  }
+
+  out.source_params = Array.isArray(source_params?.params) ? source_params : { ...source_params, params: [] };
+  out.signature_config = Array.isArray(signature_config?.blocks)
+    ? signature_config
+    : { ...signature_config, blocks: [] };
+  return out;
 }
 
 export default function ReportTemplateImportDialog({ open, onOpenChange, onImported }: Props) {
   const { t, lang } = useI18n();
+  const { hasPermission } = useAuth();
+  // เขียนทับ = update — ผู้ที่มีแค่ report_template.create ทำได้แค่สร้าง/ข้าม
+  const canOverwrite = hasPermission('report_template.update');
   const inputRef = useRef<HTMLInputElement>(null);
   const [rows, setRows] = useState<Row[] | null>(null);
   const [checking, setChecking] = useState(false);
@@ -73,7 +102,8 @@ export default function ReportTemplateImportDialog({ open, onOpenChange, onImpor
   };
 
   const handleOpenChange = (next: boolean) => {
-    if (running) return; // ปิดระหว่างนำเข้าไม่ได้
+    // ปิดระหว่างนำเข้า หรือระหว่างโหลดชื่อเดิม (setRows ที่มาช้าจะทิ้งพรีวิวค้างไว้) ไม่ได้
+    if (running || checking) return;
     if (!next) reset();
     onOpenChange(next);
   };
@@ -202,7 +232,7 @@ export default function ReportTemplateImportDialog({ open, onOpenChange, onImpor
 
         {rows && (
           <div className="space-y-3">
-            {!finished && rows.some((r) => r.status === 'conflict') && (
+            {!finished && canOverwrite && rows.some((r) => r.status === 'conflict') && (
               <Button variant="outline" size="sm" onClick={overwriteAll} disabled={running}>
                 {t('pages.reportTemplates.importDialog.overwriteAll')}
               </Button>
@@ -220,11 +250,12 @@ export default function ReportTemplateImportDialog({ open, onOpenChange, onImpor
                 </thead>
                 <tbody>
                   {rows.map((r) => {
-                    const secondary = secondaryLocalized(r.template.name_i18n, lang);
+                    const nameI18n = withPlainEn(r.template.name_i18n, r.template.name);
+                    const secondary = secondaryLocalized(nameI18n, lang);
                     return (
                       <tr key={r.index} className="border-t align-top">
                         <td className="px-3 py-2">
-                          <div>{pickLocalized(r.template.name_i18n, r.template.name, lang)}</div>
+                          <div>{pickLocalized(nameI18n, r.template.name, lang)}</div>
                           {secondary && <div className="text-xs text-muted-foreground">{secondary}</div>}
                           {r.problems.map((p) => (
                             <div key={p} className="text-xs text-destructive">
@@ -244,7 +275,7 @@ export default function ReportTemplateImportDialog({ open, onOpenChange, onImpor
                                 : r.outcome === 'overwritten' ? 'resultOverwritten'
                                 : r.outcome === 'failed' ? 'resultFailed' : 'actionSkip'}` as TKey)}
                             </span>
-                          ) : r.status === 'conflict' ? (
+                          ) : r.status === 'conflict' && canOverwrite ? (
                             <Select value={r.action} onValueChange={(v) => setAction(r.index, v as Action)} disabled={running}>
                               <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
                               <SelectContent>
@@ -268,7 +299,7 @@ export default function ReportTemplateImportDialog({ open, onOpenChange, onImpor
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={running}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={running || checking}>
             {t('common.cancel')}
           </Button>
           {rows && !finished && (

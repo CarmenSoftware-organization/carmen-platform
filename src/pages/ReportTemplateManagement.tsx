@@ -26,7 +26,7 @@ import { AUDIT_RECORDING_STARTED_ON_PHASE_2 } from '../components/activityTrail/
 import { PLATFORM_SCOPED_RECORD } from '../utils/permissions';
 import { auditColumns } from '../components/auditColumns';
 import { useI18n } from '../hooks/useI18n';
-import { pickLocalized, secondaryLocalized } from '../utils/localized';
+import { pickLocalized, secondaryLocalized, withPlainEn } from '../utils/localized';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -82,6 +82,7 @@ const ReportTemplateManagement: React.FC = () => {
       }
       downloadJSON(buildBackup(ok), backupFileName(ok));
       if (failed > 0) toast.warning(t('pages.reportTemplates.backup.partial', { count: ok.length, failed }));
+      else if (ok.length === 1) toast.success(t('pages.reportTemplates.backup.doneOne'));
       else toast.success(t('pages.reportTemplates.backup.done', { count: ok.length }));
     } finally {
       setBackupProgress(null);
@@ -286,19 +287,19 @@ const ReportTemplateManagement: React.FC = () => {
             className="text-primary hover:underline whitespace-nowrap"
             title={row.original.name}
           >
-            {pickLocalized(row.original.name_i18n, row.original.name, lang)}
+            {pickLocalized(withPlainEn(row.original.name_i18n, row.original.name), row.original.name, lang)}
           </Link>
-          {secondaryLocalized(row.original.name_i18n, lang) && (
+          {secondaryLocalized(withPlainEn(row.original.name_i18n, row.original.name), lang) && (
             <span className="text-xs text-muted-foreground">
-              {secondaryLocalized(row.original.name_i18n, lang)}
+              {secondaryLocalized(withPlainEn(row.original.name_i18n, row.original.name), lang)}
             </span>
           )}
-          {pickLocalized(row.original.description_i18n, row.original.description, lang) && (
+          {pickLocalized(withPlainEn(row.original.description_i18n, row.original.description), row.original.description, lang) && (
             <span
               className="text-xs text-muted-foreground truncate max-w-[320px]"
-              title={pickLocalized(row.original.description_i18n, row.original.description, lang)}
+              title={pickLocalized(withPlainEn(row.original.description_i18n, row.original.description), row.original.description, lang)}
             >
-              {pickLocalized(row.original.description_i18n, row.original.description, lang)}
+              {pickLocalized(withPlainEn(row.original.description_i18n, row.original.description), row.original.description, lang)}
             </span>
           )}
         </div>
@@ -397,6 +398,9 @@ const ReportTemplateManagement: React.FC = () => {
   }, [clearSelection, paginate.page, paginate.perpage, paginate.search, paginate.sort, paginate.advance]);
 
   const handleBackupAll = async () => {
+    if (backupProgress) return;
+    // ตั้ง busy ก่อนวนรวบ id — ปุ่มถูก disable และกดซ้ำไม่ได้ระหว่างรวบรายการ (total 0 = กำลังรวบรายการ)
+    setBackupProgress({ done: 0, total: 0 });
     const ids: string[] = [];
     try {
       for (let page = 1; ; page += 1) {
@@ -409,6 +413,11 @@ const ReportTemplateManagement: React.FC = () => {
       }
     } catch (err: unknown) {
       toast.error(`${t('pages.reportTemplates.backup.failed')}: ${getErrorDetail(err, t)}`);
+      setBackupProgress(null);
+      return;
+    }
+    if (ids.length === 0) {
+      setBackupProgress(null);
       return;
     }
     await runBackup(ids);
@@ -432,7 +441,9 @@ const ReportTemplateManagement: React.FC = () => {
                 <Button variant="outline" size="sm" onClick={handleBackupAll} disabled={!!backupProgress || loading || totalRows === 0}>
                   {backupProgress ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                   {backupProgress
-                    ? t('pages.reportTemplates.backup.progress', backupProgress)
+                    ? backupProgress.total === 0
+                      ? t('pages.reportTemplates.backup.listing')
+                      : t('pages.reportTemplates.backup.progress', backupProgress)
                     : t('pages.reportTemplates.backup.downloadAll')}
                 </Button>
               </Can>

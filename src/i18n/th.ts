@@ -3170,6 +3170,8 @@ export const th: Translations = {
         downloadAll: 'Backup ทั้งหมด',
         progress: 'กำลัง backup {{done}}/{{total}}',
         done: 'Backup แล้ว {{count}} รายการ',
+        doneOne: 'Backup แล้ว 1 รายการ',
+        listing: 'กำลังรวบรวมรายการ…',
         partial: 'Backup แล้ว {{count}} ล้มเหลว {{failed}}',
         failed: 'Backup ไม่สำเร็จ',
       },

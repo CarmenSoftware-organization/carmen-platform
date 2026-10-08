@@ -38,9 +38,10 @@ interface Props {
 
 /** ฟิลด์ scalar ที่แสดงในรายการ "ต่างจากปัจจุบัน" (XML ไปอยู่ใน diff แยก) */
 const SCALAR_FIELDS: Array<{ key: string; read: (s: Partial<ReportTemplateSnapshot>) => unknown }> = [
-  { key: 'name', read: (s) => s.name_i18n?.en ?? s.name },
+  // EN = คอลัมน์เดิม (ค่าจริง) ก่อน *_i18n.en — ตรงกับที่หน้าแก้ไขอ่าน
+  { key: 'name', read: (s) => s.name || s.name_i18n?.en || '' },
   { key: 'name.th', read: (s) => s.name_i18n?.th ?? '' },
-  { key: 'description', read: (s) => s.description_i18n?.en ?? s.description ?? '' },
+  { key: 'description', read: (s) => s.description ?? s.description_i18n?.en ?? '' },
   { key: 'description.th', read: (s) => s.description_i18n?.th ?? '' },
   { key: 'report_group', read: (s) => s.report_group },
   { key: 'template_type', read: (s) => s.template_type },
