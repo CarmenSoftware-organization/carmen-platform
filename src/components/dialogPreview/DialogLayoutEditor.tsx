@@ -1,6 +1,6 @@
 import React from 'react';
 import { toast } from 'sonner';
-import { Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import {
   DndContext,
   KeyboardSensor,
@@ -17,18 +17,22 @@ import { SortableContext, rectSortingStrategy, sortableKeyboardCoordinates } fro
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
 import { useI18n } from '../../hooks/useI18n';
-import { MAX_COLS, type DialogCell, type DialogParseResult } from '../../utils/dialogXml';
+import { MAX_COLS, parseDialogXml, type DialogCell, type DialogParseResult } from '../../utils/dialogXml';
 import {
   containerMap,
   deleteCell,
   dropTarget,
   groupCells,
   hasHiddenToLabel,
+  insertField,
+  keyOfName,
   moveCell,
   setColSpan,
   setCols,
   ungroup,
+  type NewFieldKind,
 } from '../../utils/dialogXmlEdit';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { CANVAS_PX, CANVAS_W, COL_SPAN, CellBlock, FieldBlock, GRID_COLS } from './CellView';
 import { CellToolbar } from './CellToolbar';
 import { PropertyPanel } from './PropertyPanel';
@@ -44,6 +48,13 @@ export interface DialogLayoutEditorProps {
 // แผง property กว้าง w-72 (288px) + gap-4 (16px) — ต้องตรงกับคลาสด้านล่าง
 const PANEL_PX = 288;
 const GAP_PX = 16;
+
+const ADD_KINDS = [
+  { kind: 'date', label: 'components.dialogPreview.editor.addDate', range: false },
+  { kind: 'lookup', label: 'components.dialogPreview.editor.addLookup', range: false },
+  { kind: 'dateRange', label: 'components.dialogPreview.editor.addDateRange', range: true },
+  { kind: 'lookupRange', label: 'components.dialogPreview.editor.addLookupRange', range: true },
+] as const satisfies readonly { kind: NewFieldKind; label: string; range: boolean }[];
 
 const cellLabel = (c: DialogCell): string => (c.kind === 'range' ? c.label.replace(/ From$/, '') : c.kind === 'group' ? '' : c.label);
 
@@ -203,6 +214,31 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
       action: { label: t('components.dialogPreview.editor.undo'), onClick: () => undoDelete(xml, next) },
     });
   };
+  // ตำแหน่งที่จะเพิ่ม — ตาม cell ที่แผงแก้อยู่ (spec: ต่อหลัง cell นั้น; field ในกลุ่ม = เข้ากลุ่ม แต่ช่วงไปต่อหลังกลุ่ม)
+  const focusGroup = focusKey ? parsed.cells.find((c) => c.kind === 'group' && c.fields.some((f) => f.key === focusKey)) : undefined;
+  const addWhere = !focusKey
+    ? t('components.dialogPreview.editor.addAtEnd')
+    : focusGroup
+      ? t('components.dialogPreview.editor.addInGroup', { group: nameOf(focusGroup.key), label: nameOf(focusKey) })
+      : t('components.dialogPreview.editor.addAfter', { label: nameOf(focusKey) });
+  // Radix คืน focus ให้ปุ่ม trigger ตอนเมนูปิด — หลังเพิ่ม field ต้องให้ focus อยู่ในแผงแทน
+  const addedRef = React.useRef(false);
+  const addField = (kind: NewFieldKind) => {
+    if (blockedSwitch()) return;
+    const { xml: next, name } = insertField(xml, focusKey, kind);
+    if (!name || next === xml) return;
+    const key = keyOfName(parseDialogXml(next).cells, name);
+    addedRef.current = true;
+    setFocus({ xml: next, key });
+    onChange(next);
+    requestAnimationFrame(() => {
+      if (key) canvasRef.current?.querySelector<HTMLElement>(`[data-cell-key="${CSS.escape(key)}"]`)?.scrollIntoView({ block: 'nearest' });
+      const panel = panelRef.current;
+      const lookup = kind === 'lookup' || kind === 'lookupRange';
+      // ช่อง DataSource มี list= (datalist) — ช่องแรกที่เป็น input คือ Label เสมอ ปุ่ม Delete ในหัวแผงไม่ใช่ input
+      (lookup ? panel?.querySelector<HTMLElement>('input[list]') : panel?.querySelector<HTMLElement>('input'))?.focus();
+    });
+  };
 
   // วางแผงข้างผืนผ้าใบเมื่อพื้นที่ของ editor เอง (ไม่ใช่ viewport) พอให้ผืนผ้าใบเต็มความกว้างของ Cols ปัจจุบัน
   // — ที่ lg หน้ายังแบ่งคอลัมน์ซ้าย + sidebar อยู่ breakpoint จึงบีบผืนผ้าใบจนแคบ
@@ -264,6 +300,36 @@ export function DialogLayoutEditor({ xml, parsed, onChange, onDragActiveChange }
             </Button>
           ))}
         </div>
+        {/* เมนูเปิด = editor ไม่ว่าง (ทางเดียวกับการลาก) — Esc ปิดเมนูอย่างเดียว ไม่ไปกด Cancel ของทั้งหน้า
+            หน้า ReportTemplateEdit ล้าง flag ใน tick ถัดไป จึงทันกับ listener Esc บน window ของ event เดียวกัน */}
+        <DropdownMenu onOpenChange={(open) => onDragActiveChange?.(open)}>
+          <DropdownMenuTrigger asChild>
+            <Button ref={addRef} type="button" size="sm" variant="outline" className="ml-auto h-7 px-2 text-xs">
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              {t('components.dialogPreview.editor.addField')}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            onCloseAutoFocus={(e) => {
+              if (!addedRef.current) return;
+              addedRef.current = false;
+              e.preventDefault();
+            }}
+          >
+            <DropdownMenuLabel className="text-[11px] font-normal text-muted-foreground">{addWhere}</DropdownMenuLabel>
+            {ADD_KINDS.map((k) => (
+              <DropdownMenuItem key={k.kind} onSelect={() => addField(k.kind)}>
+                <span>{t(k.label)}</span>
+                {k.range && focusGroup && (
+                  <span className="ml-auto pl-3 text-[11px] text-muted-foreground">
+                    {t('components.dialogPreview.editor.addRangeAfterGroup', { group: nameOf(focusGroup.key) })}
+                  </span>
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       {selected.length >= 2 && (
         <div className="flex flex-wrap items-center gap-3 rounded-md border bg-card px-3 py-2 text-xs">
