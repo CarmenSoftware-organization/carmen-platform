@@ -20,6 +20,8 @@
 | จับคู่ตอน import ด้วย | `name` (unique ต่อ `deleted_at`) — `id` ข้าม environment ไม่ตรงกัน |
 | diff ของ XML | `@codemirror/merge` (dependency ใหม่ — user อนุมัติแล้ว) |
 | `is_default` ตอน restore/import | **ไม่แตะ** — คงค่าปลายทางเดิม; สร้างใหม่ = `false` |
+| ชื่อ/คำอธิบายหลายภาษา (เพิ่มกลางทาง) | `name_i18n` / `description_i18n` `{en?, th?}` แบบเดียวกับ widget `title_i18n` — ดู §7 |
+| i18n ไปถึงแอป inventory ไหม | **รอบนี้ไม่** — เก็บข้อมูลครบใน platform; micro-report + inventory FE เป็น spec ถัดไป |
 
 ### 0.1 บั๊กเดิมที่ต้องแก้ในงานนี้
 
@@ -54,7 +56,7 @@ model tb_report_template_version {
 }
 ```
 
-- `snapshot` = ทุกฟิลด์ที่แก้ได้: `name, description, report_group, template_type, dialog, content,
+- `snapshot` = ทุกฟิลด์ที่แก้ได้: `name, name_i18n, description, description_i18n, report_group, template_type, dialog, content,
   builder_key, view_name, source_type, source_name, source_params, orientation, signature_config,
   is_standard, is_default, is_active, allow_business_unit, deny_business_unit`
   — ไม่รวม `id`, `doc_version`, audit fields (`*_at`, `*_by_id`)
@@ -251,6 +253,56 @@ Dialog ใหม่ `src/pages/reportTemplates/ReportTemplateImportDialog.tsx`
 8. ผู้ใช้ที่มีแค่ `report_template.read` → เห็นแผ่นเวอร์ชัน/export แต่ไม่เห็นปุ่มกู้คืน/นำเข้า
 9. จอ 390px (iframe probe ตาม `reference_iframe_viewport_probe`) → diff เป็น unified, แผ่นเวอร์ชันไม่ล้น
 
+## 7. ชื่อ/คำอธิบายหลายภาษา (`name_i18n`, `description_i18n`)
+
+เพิ่มกลางทางตามคำขอ user (2026-10-08) — แบบเดียวกับ widget `title_i18n`
+(`apps/micro-cluster/src/cluster/dashboard-template/dashboard-template-title.ts`, FE commit `e13ab10` + `50fa243`)
+
+### 7.1 Backend
+
+- **migration แยก** `…_report_template_name_description_i18n` — **timestamp ก่อน** migration ตารางเวอร์ชัน (§1.1)
+  เพื่อให้ snapshot ที่ backfill มีฟิลด์ i18n:
+  ```sql
+  ALTER TABLE "tb_report_template" ADD COLUMN IF NOT EXISTS "name_i18n" JSONB;
+  ALTER TABLE "tb_report_template" ADD COLUMN IF NOT EXISTS "description_i18n" JSONB;
+  UPDATE "tb_report_template" SET "name_i18n" = jsonb_build_object('en', btrim("name"))
+   WHERE "name_i18n" IS NULL AND btrim("name") <> '';
+  UPDATE "tb_report_template" SET "description_i18n" = jsonb_build_object('en', btrim("description"))
+   WHERE "description_i18n" IS NULL AND "description" IS NOT NULL AND btrim("description") <> '';
+  ```
+- helper เดียว `report-template-i18n.ts` (`normalizeI18n`, `resolveNameWrite`, `resolveDescriptionWrite`) ใช้ใน create/update/restore:
+
+  | | `name_i18n` | `description_i18n` |
+  |---|---|---|
+  | `en` | บังคับ (= `name`, unique) | ไม่บังคับ |
+  | มี `th` ไม่มี `en` | 400 | ได้ — `description = null` |
+  | เขียนคอลัมน์เดิม | `name = en` | `description = en ?? null` |
+  | client เก่าส่งแค่คอลัมน์เดิม | merge `en` ลง i18n เดิม (TH รอด) | เหมือนกัน |
+  | ค่า i18n ว่างทั้งก้อน | ใช้ไม่ได้ (name บังคับ) | `description = null`, `description_i18n = NULL` |
+
+- **unique/เช็คชื่อซ้ำ/ค้นหา/จับคู่ import ผูกกับ `name` (EN) ตัวเดียว** — ไม่เปลี่ยน
+- DTO: `name_i18n: { en: string.min(1), th?: string }` optional; `description_i18n: { en?: string, th?: string }`
+  nullable optional; create ต้องมี `name` หรือ `name_i18n.en` (refine)
+- restore: snapshot ที่ไม่มีฟิลด์ i18n → สร้างจากคอลัมน์เดิม (`{en: name}`)
+
+### 7.2 Frontend
+
+- `ReportTemplate` + `LocalizedText = { en?: string; th?: string }` (ใน `src/types/index.ts` ตาม rule 10)
+- หน้า Edit: Name (EN)* + Name (TH), Description (EN) + Description (TH) — grid 2 คอลัมน์ที่ `lg`, ซ้อนบนมือถือ;
+  save ส่งทั้ง `name`/`description` และ `name_i18n`/`description_i18n` (เผื่อ backend เก่า ตาม `50fa243`)
+- เลือกภาษาแสดงด้วย util เดียว `pickLocalized(i18n, fallback, lang)` = `(lang==='th' && th) || en || th || fallback`
+  ใช้ที่: หัวหน้า Edit (`PageHeader title`), คอลัมน์ name/description ในตาราง (อีกภาษาเป็นบรรทัดรอง `text-xs text-muted-foreground`),
+  พรีวิว import, แผ่นเวอร์ชัน
+- CSV export เพิ่ม `name_th`, `description_th`
+- ไฟล์ backup มีทั้งสองฟิลด์; diff ฟิลด์ในแผ่นเวอร์ชันแสดง `name.th`, `description.th` แยก
+
+### 7.3 ข้อจำกัดที่รู้แล้ว
+
+- ช่องค้นหายังค้น `name` (EN)/`description`/`report_group` — **พิมพ์ภาษาไทยไม่เจอ** (paginate ค้นใน JSON ไม่ได้)
+- micro-report + carmen-inventory-frontend-react ยังแสดง `name` (EN) — spec ถัดไป
+- §5 เพิ่มตรวจ: กรอก TH ทั้งสองฟิลด์ → สลับภาษา → ตาราง/หัวเปลี่ยน; description มีแค่ TH → save ผ่าน;
+  name มีแค่ TH → ถูกปฏิเสธฝั่ง FE ก่อนยิง; client เก่า (curl ส่งแค่ `name`) → `name_i18n.th` ไม่หาย
+
 ## 6. นอกขอบเขต
 
 - import แบบ atomic / endpoint import ฝั่ง backend
@@ -258,3 +310,5 @@ Dialog ใหม่ `src/pages/reportTemplates/ReportTemplateImportDialog.tsx`
 - retention/purge เวอร์ชัน
 - export/import ไฟล์แบบ zip หรือแยก XML
 - diff ระหว่างสองเวอร์ชันเก่า (เทียบได้เฉพาะ เวอร์ชันนั้น ↔ ปัจจุบัน)
+- ค้นหาชื่อ/คำอธิบายภาษาไทยในตาราง
+- แสดง `name_i18n`/`description_i18n` ใน micro-report และแอป inventory (spec ถัดไป)
