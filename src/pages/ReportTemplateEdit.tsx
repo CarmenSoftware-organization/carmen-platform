@@ -8,6 +8,7 @@ import { PLATFORM_SCOPED_RECORD } from '../utils/permissions';
 import reportTemplateService, { type ReportTemplate } from '../services/reportTemplateService';
 import { toBackupTemplate, buildBackup, backupFileName, downloadJSON } from '../utils/reportTemplateBackup';
 import { ReportTemplateVersionsSheet } from './reportTemplates/ReportTemplateVersionsSheet';
+import { SourceLineage } from './reportTemplates/SourceLineage';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -68,6 +69,9 @@ const SOURCE_TYPE_OPTION_KEYS: Record<'view' | 'function' | 'procedure', TKey> =
   function: 'pages.reportTemplates.sourceTypeFunction',
   procedure: 'pages.reportTemplates.sourceTypeProcedure',
 };
+
+// ตัวแก้ XML ปักอยู่ใต้แถบบน — สูงพอดีจอหลังหักแถบบน แท็บ ปุ่มเครื่องมือ แถบสถานะ และแถบบันทึกด้านล่าง
+const EDITOR_MAX_HEIGHT = 'calc(100vh - 21rem)';
 
 interface SourceParamRow {
   filter: string;
@@ -470,9 +474,18 @@ const ReportTemplateEdit: React.FC = () => {
             )
           }
           subtitle={
-            isNew
-              ? t('pages.reportTemplates.newSubtitle')
-              : t('pages.reportTemplates.editSubtitle')
+            isNew ? (
+              t('pages.reportTemplates.newSubtitle')
+            ) : templateRecord != null ? (
+              <SourceLineage
+                dialog={formData.dialog}
+                sourceType={formData.source_type}
+                sourceName={formData.source_name}
+                builderKey={formData.builder_key}
+              />
+            ) : (
+              t('pages.reportTemplates.editSubtitle')
+            )
           }
           afterTitle={!isNew && templateRecord != null && docVersion != null ? <Badge variant="secondary">v{docVersion}</Badge> : undefined}
           audit={!isNew && !loading ? normalizeAudit(templateRecord) : undefined}
@@ -560,13 +573,12 @@ const ReportTemplateEdit: React.FC = () => {
         {/* Form */}
         <form ref={formRef} onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(320px,380px)_1fr] gap-4 sm:gap-6">
-            {/* Left column */}
-            <div className="space-y-4 sm:space-y-6 lg:sticky lg:top-4 lg:self-start">
+            {/* Left column — แผงเดียวสามส่วน เลื่อนตามหน้าได้ปกติ ตัวที่ปักอยู่กับที่คือฝั่ง XML
+                (เดิมปักคอลัมน์นี้ แต่สูงกว่าจอเองเลยไม่เคยปักจริง และฝั่งขวาโล่งครึ่งจอ) */}
+            <div>
               <Card>
-                <CardHeader>
+                <section className="space-y-4">
                   <CardTitle className="text-base">{t('pages.reportTemplates.templateInfo')}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
                   {loading ? (
                     <div className="space-y-4">
                       {[...Array(5)].map((_, i) => (
@@ -613,7 +625,6 @@ const ReportTemplateEdit: React.FC = () => {
                         )}
                       </div>
 
-                      <div className="grid gap-4 lg:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="name">{t('pages.reportTemplates.nameEnLabel')} {editing && '*'}</Label>
                         {editing ? (
@@ -654,9 +665,7 @@ const ReportTemplateEdit: React.FC = () => {
                           <ReadOnlyField value={formData.name_th} />
                         )}
                       </div>
-                      </div>
 
-                      <div className="grid gap-4 lg:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="description">{t('pages.reportTemplates.descriptionEnLabel')}</Label>
                         {editing ? (
@@ -672,7 +681,7 @@ const ReportTemplateEdit: React.FC = () => {
                         ) : (
                           <ReadOnlyField
                             value={formData.description}
-                            className="h-auto min-h-[4.5rem] items-start whitespace-pre-wrap py-2"
+                            className="h-auto items-start whitespace-pre-wrap py-2"
                           />
                         )}
                       </div>
@@ -691,16 +700,16 @@ const ReportTemplateEdit: React.FC = () => {
                         ) : (
                           <ReadOnlyField
                             value={formData.description_th}
-                            className="h-auto min-h-[4.5rem] items-start whitespace-pre-wrap py-2"
+                            className="h-auto items-start whitespace-pre-wrap py-2"
                           />
                         )}
                       </div>
-                      </div>
 
+                      {/* โหมดอ่าน: report group / kind / status อยู่บน badge ใต้หัวเรื่องแล้ว ไม่ซ้ำในแผงนี้ */}
+                      {editing && (
                       <div className="space-y-2">
-                        <Label htmlFor="report_group">{t('pages.reportTemplates.columnReportGroup')} {editing && '*'}</Label>
-                        {editing ? (
-                          isForm ? (
+                        <Label htmlFor="report_group">{t('pages.reportTemplates.columnReportGroup')} *</Label>
+                        {isForm ? (
                             <>
                               <select
                                 id="report_group"
@@ -749,15 +758,11 @@ const ReportTemplateEdit: React.FC = () => {
                                 <p className="text-xs text-destructive">{fieldErrors.report_group}</p>
                               )}
                             </>
-                          )
-                        ) : (
-                          <div>
-                            <Badge variant="outline">{formData.report_group || '-'}</Badge>
-                          </div>
-                        )}
+                          )}
                       </div>
+                      )}
 
-                      {editing ? (
+                      {editing && (
                         <div className="space-y-2">
                           <div className="grid grid-cols-2 gap-3">
                             {!isForm && (
@@ -804,48 +809,13 @@ const ReportTemplateEdit: React.FC = () => {
                             </p>
                           )}
                         </div>
-                      ) : (
-                        <div className="grid grid-cols-2 gap-3">
-                          {!isForm && (
-                            <div className="space-y-2">
-                              <Label className="text-xs text-muted-foreground">{t('pages.reportTemplates.kind')}</Label>
-                              <div>
-                                <Badge variant={formData.is_standard ? 'default' : 'outline'}>
-                                  {formData.is_standard ? t('pages.reportTemplates.standard') : t('common.option.custom')}
-                                </Badge>
-                              </div>
-                            </div>
-                          )}
-                          {isForm && (
-                            <div className="space-y-2">
-                              <Label className="text-xs text-muted-foreground">{t('pages.reportTemplates.groupDefault')}</Label>
-                              <div>
-                                <Badge variant={formData.is_default ? 'default' : 'outline'}>
-                                  {formData.is_default ? t('common.label.default') : t('pages.reportTemplates.notDefault')}
-                                </Badge>
-                              </div>
-                            </div>
-                          )}
-                          <div className="space-y-2">
-                            <Label className="text-xs text-muted-foreground">{t('common.status.label')}</Label>
-                            <div>
-                              <Badge variant={formData.is_active ? 'success' : 'secondary'}>
-                                {formData.is_active ? t('common.status.active') : t('common.status.inactive')}
-                              </Badge>
-                            </div>
-                          </div>
-                        </div>
                       )}
                     </>
                   )}
-                </CardContent>
-              </Card>
+                </section>
 
-              <Card>
-                <CardHeader>
+                <section className="space-y-4 border-t pt-5">
                   <CardTitle className="text-base">{t('pages.reportTemplates.buScope')}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
                   {loading ? (
                     <>
                       <Skeleton className="h-9 w-full" />
@@ -881,14 +851,10 @@ const ReportTemplateEdit: React.FC = () => {
                       </div>
                     </>
                   )}
-                </CardContent>
-              </Card>
+                </section>
 
-              <Card>
-                <CardHeader>
+                <section className="space-y-4 border-t pt-5">
                   <CardTitle className="text-base">{t('pages.reportTemplates.dataSource')}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="source_type">{t('pages.reportTemplates.sourceTypeLabel')}</Label>
                     {editing ? (
@@ -1176,13 +1142,12 @@ const ReportTemplateEdit: React.FC = () => {
                       <ReadOnlyField value={formData.builder_key} />
                     )}
                   </div>
-                </CardContent>
+                </section>
               </Card>
-
             </div>
 
-            {/* Right column */}
-            <div>
+            {/* Right column — ปักไว้ใต้แถบบน (h-16) ให้โค้ดอยู่ในสายตาตลอดที่เลื่อนฟอร์มซ้าย */}
+            <div className="min-w-0 lg:sticky lg:top-20 lg:self-start">
               <Card>
                 <CardHeader>
                   {/* แถบนี้เคยเขียน count badge กับจุดแดง error ขึ้นมาเอง ซึ่งเป็น markup
@@ -1210,7 +1175,7 @@ const ReportTemplateEdit: React.FC = () => {
                           uploadAccept=".xml,.txt"
                           readOnly={!editing}
                           minHeight={360}
-                          maxHeight={560}
+                          maxHeight={EDITOR_MAX_HEIGHT}
                         />
                       </div>
                       <div hidden={activeTab !== 'content'}>
@@ -1223,10 +1188,10 @@ const ReportTemplateEdit: React.FC = () => {
                           uploadAccept=".frx,.xml,.txt"
                           readOnly={!editing}
                           minHeight={360}
-                          maxHeight={560}
+                          maxHeight={EDITOR_MAX_HEIGHT}
                         />
                       </div>
-                      <div hidden={activeTab !== 'preview'}>
+                      <div hidden={activeTab !== 'preview'} className="lg:max-h-[calc(100vh-18rem)] lg:overflow-y-auto">
                         <DialogPreview xml={formData.dialog} />
                       </div>
                     </>

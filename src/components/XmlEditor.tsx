@@ -38,8 +38,9 @@ export interface XmlEditorProps {
   value: string;
   onChange?: (value: string) => void;
   placeholder?: string;
-  minHeight?: number;
-  maxHeight?: number;
+  /** px หรือความยาว CSS ใดก็ได้ เช่น `calc(100vh - 20rem)` ให้พอดีจอ */
+  minHeight?: number | string;
+  maxHeight?: number | string;
   label?: string;
   filename?: string;
   onParseChange?: (status: XmlValidation) => void;
@@ -59,7 +60,7 @@ const baseExtensions = () => [
   syntaxHighlighting(carmenHighlightStyle, { fallback: true }),
   search({ top: true }),
   xml(),
-  EditorView.lineWrapping,
+  // ไม่ตัดบรรทัด — บรรทัดยาว (ReportInfo, Expression=…) เลื่อนแนวนอนได้แทน ให้โครงสร้าง XML ตรงตามบรรทัดจริง
   keymap.of([
     ...defaultKeymap,
     ...historyKeymap,
@@ -267,7 +268,11 @@ export const XmlEditor: React.FC<XmlEditorProps> = ({
       )}
       <div
         ref={hostRef}
-        className="rounded-md border border-input bg-background overflow-hidden"
+        // CodeMirror ปล่อย .cm-editor สูงตามเนื้อหา ใส่ max-height ที่ host อย่างเดียวจึงแค่ตัดทิ้ง —
+        // Content XML 95 บรรทัดสูง ~2,600px แต่เห็นแค่ 560px แรกและไม่มี scrollbar
+        // ส่งทั้งสองขอบเขตลงไปที่ .cm-editor แล้ว .cm-scroller จะเลื่อนเองได้
+        // .cm-scroller ต้อง flex-1 เต็มกล่อง ไม่งั้น scrollbar แนวนอนไปลอยใต้บรรทัดสุดท้ายของ XML สั้น ๆ
+        className="rounded-md border border-input bg-background overflow-hidden [&_.cm-editor]:max-h-[inherit] [&_.cm-editor]:min-h-[inherit] [&_.cm-scroller]:flex-1 [&_.cm-scroller]:min-h-0"
         style={{ minHeight, maxHeight }}
         data-placeholder={placeholder}
       />
