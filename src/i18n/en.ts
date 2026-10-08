@@ -3051,6 +3051,14 @@ export const en = {
       // ป้ายฟิลด์บังคับ ป้อนเข้า common.validation.requiredMessage
       fieldLabelReportGroup: 'Report group',
       fieldLabelTemplateType: 'Template type',
+      nameEnLabel: 'Name (EN)',
+      nameThLabel: 'Name (TH)',
+      nameThPlaceholder: 'Thai name (optional)',
+      descriptionEnLabel: 'Description (EN)',
+      descriptionThLabel: 'Description (TH)',
+      descriptionThPlaceholder: 'Thai description (optional)',
+      csvNameTh: 'Name (TH)',
+      csvDescriptionTh: 'Description (TH)',
     },
     // ── slice 9b: SQL Workbench ──
     sqlWorkbench: {

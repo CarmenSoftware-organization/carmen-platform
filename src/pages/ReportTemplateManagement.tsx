@@ -26,6 +26,7 @@ import { AUDIT_RECORDING_STARTED_ON_PHASE_2 } from '../components/activityTrail/
 import { PLATFORM_SCOPED_RECORD } from '../utils/permissions';
 import { auditColumns } from '../components/auditColumns';
 import { useI18n } from '../hooks/useI18n';
+import { pickLocalized, secondaryLocalized } from '../utils/localized';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -58,7 +59,7 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
 const ReportTemplateManagement: React.FC = () => {
   const navigate = useNavigate();
   const activityTrail = useRowActivityTrail();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [templates, setTemplates] = useState<ReportTemplate[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -223,10 +224,17 @@ const ReportTemplateManagement: React.FC = () => {
   };
 
   const handleExport = () => {
-    const rows = templates.map((t) => ({ ...t, ...auditCsvFields(normalizeAudit(t)) }));
+    const rows = templates.map((tpl) => ({
+      ...tpl,
+      name_th: tpl.name_i18n?.th ?? '',
+      description_th: tpl.description_i18n?.th ?? '',
+      ...auditCsvFields(normalizeAudit(tpl)),
+    }));
     const csv = generateCSV(rows, [
       { key: 'name', label: t('common.field.name') },
       { key: 'description', label: t('common.field.description') },
+      { key: 'name_th', label: t('pages.reportTemplates.csvNameTh') },
+      { key: 'description_th', label: t('pages.reportTemplates.csvDescriptionTh') },
       { key: 'report_group', label: t('pages.reportTemplates.columnReportGroup') },
       { key: 'is_standard', label: t('pages.reportTemplates.columnStandard') },
       { key: 'is_active', label: t('common.status.label') },
@@ -250,14 +258,19 @@ const ReportTemplateManagement: React.FC = () => {
             className="text-primary hover:underline whitespace-nowrap"
             title={row.original.name}
           >
-            {row.original.name}
+            {pickLocalized(row.original.name_i18n, row.original.name, lang)}
           </Link>
-          {row.original.description && (
+          {secondaryLocalized(row.original.name_i18n, lang) && (
+            <span className="text-xs text-muted-foreground">
+              {secondaryLocalized(row.original.name_i18n, lang)}
+            </span>
+          )}
+          {pickLocalized(row.original.description_i18n, row.original.description, lang) && (
             <span
               className="text-xs text-muted-foreground truncate max-w-[320px]"
-              title={row.original.description}
+              title={pickLocalized(row.original.description_i18n, row.original.description, lang)}
             >
-              {row.original.description}
+              {pickLocalized(row.original.description_i18n, row.original.description, lang)}
             </span>
           )}
         </div>
@@ -342,7 +355,7 @@ const ReportTemplateManagement: React.FC = () => {
         </DropdownMenu>
       ),
     },
-  ], [navigate, handleDelete, t, activityTrail]);
+  ], [navigate, handleDelete, t, lang, activityTrail]);
 
   return (
     <Layout>
