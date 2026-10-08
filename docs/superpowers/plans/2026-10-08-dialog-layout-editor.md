@@ -1173,7 +1173,6 @@ git commit -m "feat(report-templates): drag to reorder Dialog cells and move the
 
 **Files:**
 - Modify: `src/components/dialogPreview/DialogLayoutEditor.tsx`
-- Modify: `src/components/dialogPreview/CellToolbar.tsx` (no change needed if `select` slot suffices)
 
 **Interfaces:**
 - Consumes: `groupCells`, `ungroup`, `hasHiddenToLabel` (Task 2).
@@ -1189,19 +1188,20 @@ git commit -m "feat(report-templates): drag to reorder Dialog cells and move the
   const selectedHasRange = parsed.cells.some((c) => c.kind === 'range' && selected.includes(c.key));
 ```
 
-Add `import { Checkbox } from '../ui/checkbox';` (confirm the primitive exists: `ls src/components/ui/checkbox.tsx`; if absent, use a native `<input type="checkbox" className="h-3.5 w-3.5 accent-primary">`). Add `groupCells, ungroup, hasHiddenToLabel` to the `dialogXmlEdit` import.
+There is no `ui/checkbox` primitive in this repo (checked) — use a native checkbox, and do not add a primitive (`src/components/ui/` is off limits). Add `groupCells, ungroup, hasHiddenToLabel` to the `dialogXmlEdit` import.
 
 - [ ] **Step 2: Checkbox in the toolbar of top-level field/range cells** — pass `select` to `CellToolbar` for `cell.kind !== 'group'`:
 
 ```tsx
                   select={
-                    <Checkbox
-                      className="mx-1"
+                    <input
+                      type="checkbox"
+                      className="mx-1 h-3.5 w-3.5 accent-primary"
                       checked={selected.includes(cell.key)}
                       disabled={hasHiddenToLabel(cell)}
                       title={hasHiddenToLabel(cell) ? t('components.dialogPreview.editor.hiddenToLabel') : undefined}
                       aria-label={t('components.dialogPreview.editor.selectCell', { label })}
-                      onCheckedChange={() => toggle(cell.key)}
+                      onChange={() => toggle(cell.key)}
                     />
                   }
 ```
