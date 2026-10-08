@@ -12,19 +12,20 @@ export interface DialogField {
   key: string;
   label: string;
   element: Element;
-  labelElement: Element;
+  /** null = ป้ายมาจาก attribute Label บน control เอง ไม่มี <Label> element */
+  labelElement: Element | null;
   layout: DialogLayout;
 }
 
 export type DialogCell =
   | ({ kind: 'field' } & DialogField)
   | { kind: 'range'; key: string; label: string; from: DialogField; to: DialogField; layout: DialogLayout }
-  | { kind: 'group'; key: string; element: Element; layout: DialogLayout; fields: DialogField[] };
+  | { kind: 'group'; key: string; label: string; element: Element; layout: DialogLayout; fields: DialogField[] };
 
 export type DialogWarning =
   | { code: 'colsClamped' | 'colsInvalid'; raw: string; used: number }
   | { code: 'colSpanClamped' | 'colSpanInvalid'; raw: string; used: number; at: string }
-  | { code: 'nestedGroupFlattened' | 'emptyGroup' | 'colSpanOnLabel'; at: string }
+  | { code: 'nestedGroupFlattened' | 'emptyGroup' | 'colSpanOnLabel' | 'emptyLabel'; at: string }
   | { code: 'unknownElement'; at: string; tag: string }
   | { code: 'labelWithoutControl' | 'controlWithoutLabel'; at: string };
 
@@ -36,12 +37,14 @@ export interface DialogParseResult {
   cells: DialogCell[];
   counts: Record<string, number>;
   warnings: DialogWarning[];
+  /** มี <Date>/<Lookup> ที่ใส่ Label ในตัว — ใช้ขึ้น notice เรื่อง rollout ของ inventory */
+  hasLabelAttr: boolean;
 }
 
 // ลำดับของ Label / control หลังตัด element ที่ inventory ไม่รู้จักทิ้ง — เทียบเท่า DialogNode ของ inventory
 type DialogNode =
   | { type: 'label'; text: string; visible: boolean; at: string; element: Element }
-  | { type: 'control'; key: string; tag: string; name: string; element: Element; layout: DialogLayout; at: string };
+  | { type: 'control'; key: string; tag: string; name: string; selfLabel: string | null; element: Element; layout: DialogLayout; at: string };
 
 const INT = /^\s*\d+\s*$/;
 
@@ -53,6 +56,7 @@ const failure = (error: DialogParseResult['error'], errorDetail?: string): Dialo
   cells: [],
   counts: {},
   warnings: [],
+  hasLabelAttr: false,
 });
 
 const describeEl = (el: Element, index: number): string =>
@@ -101,6 +105,7 @@ function toNodes(elements: Element[], cols: number, warnings: DialogWarning[], k
         key: `${keyPrefix}${i}`,
         tag: el.tagName,
         name: el.getAttribute('Name') || '',
+        selfLabel: el.getAttribute('Label'),
         element: el,
         layout: { colSpan: readSpan(el, cols, at, warnings) },
         at,
@@ -131,22 +136,35 @@ const toField = (label: Extract<DialogNode, { type: 'label' }>, c: ControlNode):
   layout: c.layout,
 });
 
+/** control ที่มี Label ในตัว — ค่าว่าง (หลัง trim) แสดง Name แทนและเตือน */
+const selfField = (c: ControlNode, warnings: DialogWarning[]): DialogField => {
+  const text = (c.selfLabel ?? '').trim();
+  if (!text) warnings.push({ code: 'emptyLabel', at: c.at });
+  return { key: c.key, label: text || c.name, element: c.element, labelElement: null, layout: c.layout };
+};
+
 /**
  * กติกาเดียวกับ groupFields ของ inventory ทุกข้อ: cell ต้องเริ่มด้วย Label ที่มองเห็น ตามด้วย control
  * ส่วนที่ inventory ทิ้ง (Label ไม่มี control, control ไม่มี Label) ไม่ถูกวาด แต่ขึ้นคำเตือนแทน
+ * control ที่มี Label ในตัวเป็น cell เดี่ยวเสมอ ไม่หยิบ <Label> ข้างหน้าและไม่จับคู่ช่วง
  */
 function groupNodes(nodes: DialogNode[], pairRanges: boolean, warnings: DialogWarning[]): DialogCell[] {
   const cells: DialogCell[] = [];
   let i = 0;
   while (i < nodes.length) {
     const node = nodes[i];
+    if (isControl(node) && node.selfLabel !== null) {
+      cells.push({ kind: 'field', ...selfField(node, warnings) });
+      i++;
+      continue;
+    }
     if (node.type !== 'label' || !node.visible) {
       if (node.type === 'control') warnings.push({ code: 'controlWithoutLabel', at: node.at });
       i++;
       continue;
     }
     const next = nodes[i + 1];
-    if (!isControl(next)) {
+    if (!isControl(next) || next.selfLabel !== null) {
       warnings.push({ code: 'labelWithoutControl', at: node.text || node.at });
       i++;
       continue;
@@ -154,7 +172,7 @@ function groupNodes(nodes: DialogNode[], pairRanges: boolean, warnings: DialogWa
     const after = nodes[i + 2];
     const to = nodes[i + 3];
     const isPaired = (isToLabel(after) && isControl(to)) || (after?.type === 'label' && isNamedPair(next, to));
-    if (pairRanges && isPaired && isControl(to) && after?.type === 'label') {
+    if (pairRanges && isPaired && isControl(to) && to.selfLabel === null && after?.type === 'label') {
       cells.push({
         kind: 'range',
         key: next.key,
@@ -242,6 +260,7 @@ export function parseDialogDocument(doc: Document): DialogParseResult {
     cells.push({
       kind: 'group',
       key: `g${index}`,
+      label: (el.getAttribute('Label') ?? '').trim(),
       element: el,
       layout: { colSpan: readSpan(el, cols, at, warnings) },
       fields,
@@ -249,5 +268,6 @@ export function parseDialogDocument(doc: Document): DialogParseResult {
   });
   flush();
 
-  return { ok: true, cols, cells, counts: tally(cells), warnings };
+  const hasLabelAttr = Array.from(root.getElementsByTagName('*')).some((e) => CONTROL_TAGS.has(e.tagName) && e.hasAttribute('Label'));
+  return { ok: true, cols, cells, counts: tally(cells), warnings, hasLabelAttr };
 }

@@ -1,0 +1,3 @@
+<Dialog>
+  <Label Text="Vendor"/><Lookup Name="Vendor" Label="Supplier" DataSource="Vendor"/>
+</Dialog>

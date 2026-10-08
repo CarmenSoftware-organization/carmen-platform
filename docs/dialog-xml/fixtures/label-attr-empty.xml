@@ -1,0 +1,4 @@
+<Dialog>
+  <Date Name="AsAt" Label=""/>
+  <Lookup Name="Status" Label="   " Items="ALL" Values="ALL"/>
+</Dialog>

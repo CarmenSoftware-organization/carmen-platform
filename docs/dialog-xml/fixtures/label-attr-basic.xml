@@ -1,0 +1,5 @@
+<Dialog Cols="2">
+  <Date Name="AsAt" Label="As at" Value="@today"/>
+  <Label Text="Location"/><Lookup Name="Location" DataSource="Location"/>
+  <Lookup Name="Status" Label="Status" Items="ALL~Open" Values="ALL~O" ColSpan="2"/>
+</Dialog>

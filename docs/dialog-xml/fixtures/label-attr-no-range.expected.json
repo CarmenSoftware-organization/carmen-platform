@@ -1,0 +1,1 @@
+{"cols":2,"cells":[{"kind":"single","colSpan":1,"names":["DateFrom"],"labels":["Date from"]},{"kind":"single","colSpan":1,"names":["DateTo"],"labels":["to"]},{"kind":"single","colSpan":1,"names":["PeriodFrom"],"labels":["Period"]},{"kind":"single","colSpan":1,"names":["PeriodTo"],"labels":["Period end"]}],"warnings":["labelWithoutControl"]}
