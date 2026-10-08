@@ -23,6 +23,10 @@ four places — keep them in step:
   The value is trimmed; empty → the control's `Name` is shown.
 - Controls: `<Date Name Value/>`, `<Lookup Name DataSource|Items+Values [Multi="true"] [Value]/>`.
   Inventory renders only these two.
+- `DataSource="@…_list"` values the run dialog understands are inventory's
+  `dataSourceMap` (`routes/report/list/parse-report-dialog.ts`). The platform
+  editor suggests the same list from `src/utils/dialogDataSources.ts` — change
+  both together. Other values are passed through unchanged.
 - `ColSpan="n"` on a control or `<Group>`: integer ≥ 1, clamped to `Cols`.
   Never on `<Label>` (no effect).
 - `<Group ColSpan="n">` wraps `Label`+control pairs and lays them side by side.
