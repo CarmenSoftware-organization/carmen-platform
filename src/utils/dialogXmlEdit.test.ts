@@ -9,6 +9,9 @@ import {
   moveCell,
   setColSpan,
   setCols,
+  setControlAttrs,
+  setGroupLabel,
+  setLabelText,
   ungroup,
 } from './dialogXmlEdit';
 
@@ -261,5 +264,61 @@ describe('Label attribute', () => {
     const xml = '<Dialog>\n  <Label Text="B"/><Date Name="B"/>\n  <Label Text="Orphan"/>\n  <Date Name="A" Label="A"/>\n</Dialog>';
     const moved = moveCell(xml, keysOf(xml)[0], { end: 'dialog' });
     expect(moved).toBe('<Dialog>\n  <Label Text="Orphan"/>\n  <Date Name="A" Label="A"/>\n  <Label Text="B"/><Date Name="B"/>\n</Dialog>');
+  });
+});
+
+describe('property ops', () => {
+  const XML = `<Dialog Cols="2">
+  <Label Text="Date"/><Date Name="DateFrom"/>
+  <Label Text="to" Visible="false"/><Date Name="DateTo"/>
+  <Lookup Name="Status" Label="Status" Items="ALL~Open" Values="ALL~O" Tooltip="t"/>
+  <Group Label="P">
+    <Label Text="Vendor"/><Lookup Name="Vendor" DataSource="@vendor_list"/>
+  </Group>
+</Dialog>
+`;
+  const [range, status, group] = cellsOf(XML);
+  const vendorKey = group.kind === 'group' ? group.fields[0].key : '';
+
+  it('setControlAttrs changes only the listed attributes and leaves the rest byte-identical', () => {
+    const out = setControlAttrs(XML, status.key, undefined, { Multi: 'true', Tooltip: null });
+    expect(out).toBe(XML.replace(' Tooltip="t"/>', ' Multi="true"/>'));
+  });
+
+  it('setControlAttrs addresses each side of a range and fields inside a group', () => {
+    const to = setControlAttrs(XML, range.key, 'to', { Value: '@today' });
+    expect(to).toContain('<Date Name="DateTo" Value="@today"/>');
+    expect(setControlAttrs(XML, range.key, undefined, { Value: 'x' })).toBe(XML);
+    const v = setControlAttrs(XML, vendorKey, undefined, { DataSource: null, Items: 'A', Values: 'a' });
+    expect(v).toContain('<Lookup Name="Vendor" Items="A" Values="a"/>');
+  });
+
+  it('setControlAttrs: empty string removes; bad key or broken XML returns the input', () => {
+    expect(setControlAttrs(XML, status.key, undefined, { Items: '', Values: '' })).not.toContain('Items=');
+    expect(setControlAttrs(XML, 'nope', undefined, { Multi: 'true' })).toBe(XML);
+    expect(setControlAttrs('<Dialog>', status.key, undefined, { Multi: 'true' })).toBe('<Dialog>');
+  });
+
+  it('setLabelText edits a classic <Label Text>, a self label in place, and never the To side', () => {
+    expect(setLabelText(XML, range.key, 'from', 'Period')).toContain('<Label Text="Period"/><Date Name="DateFrom"/>');
+    expect(setLabelText(XML, range.key, 'to', 'x')).toBe(XML);
+    expect(setLabelText(XML, status.key, undefined, 'State')).toContain('<Lookup Name="Status" Label="State"');
+  });
+
+  it('clearing a self label keeps Label="" rather than turning the control into a bare one', () => {
+    expect(setLabelText(XML, status.key, undefined, '')).toContain('<Lookup Name="Status" Label=""');
+  });
+
+  it('setGroupLabel sets, and removes when blank', () => {
+    expect(setGroupLabel(XML, group.key, ' Supplier ')).toContain('<Group Label="Supplier">');
+    expect(setGroupLabel(XML, group.key, '  ')).toContain('<Group>');
+    expect(setGroupLabel(XML, status.key, 'x')).toBe(XML);
+  });
+
+  it('quotes, ampersands, angle brackets and Thai survive a round trip', () => {
+    const text = 'ผู้ขาย "A" & <B>';
+    const out = setLabelText(XML, status.key, undefined, text);
+    const c = cellsOf(out)[1];
+    expect(c.kind === 'field' && c.label).toBe(text);
   });
 });

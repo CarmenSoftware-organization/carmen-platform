@@ -231,6 +231,63 @@ export function ungroup(xml: string, groupKey: string): string {
   return save(l);
 }
 
+export type Side = 'from' | 'to' | undefined;
+
+/** control + ป้ายของ cell ที่แผง property กำลังแก้ — range ต้องระบุฝั่ง, field (รวมใน Group) ห้ามระบุ */
+function controlOf(l: Loaded, key: string, side: Side): { control: Element; label: Element | null } | null {
+  for (const c of l.cells) {
+    if (c.key === key) {
+      if (c.kind === 'range') {
+        if (!side) return null;
+        const f = side === 'from' ? c.from : c.to;
+        return { control: f.element, label: f.labelElement };
+      }
+      return c.kind === 'field' && !side ? { control: c.element, label: c.labelElement } : null;
+    }
+    if (c.kind === 'group' && !side) {
+      const f = c.fields.find((x) => x.key === key);
+      if (f) return { control: f.element, label: f.labelElement };
+    }
+  }
+  return null;
+}
+
+/** แก้ attribute ของ control ตรงจุด — null หรือ '' = ลบ attribute; ไม่จัดช่องว่างใหม่ */
+export function setControlAttrs(xml: string, key: string, side: Side, patch: Record<string, string | null>): string {
+  const l = load(xml);
+  const t = l && controlOf(l, key, side);
+  if (!l || !t) return xml;
+  for (const [name, v] of Object.entries(patch)) {
+    if (v === null || v === '') t.control.removeAttribute(name);
+    else t.control.setAttribute(name, v);
+  }
+  return save(l);
+}
+
+/**
+ * แก้ข้อความป้ายที่เดิมของมัน: <Label Text> หรือ Label= บน control — ไม่แปลงรูปแบบ (กฎ rollout ของ Label=)
+ * ป้ายฝั่ง To ของช่วงคือสิ่งที่ทำให้จับคู่ จึงไม่ให้แก้; ป้ายในตัวที่ล้างทิ้งยังเหลือ Label="" — ลบออกจะกลายเป็น control เปล่าที่ inventory ทิ้ง
+ */
+export function setLabelText(xml: string, key: string, side: Side, text: string): string {
+  if (side === 'to') return xml;
+  const l = load(xml);
+  const t = l && controlOf(l, key, side);
+  if (!l || !t) return xml;
+  if (t.label) t.label.setAttribute('Text', text);
+  else t.control.setAttribute('Label', text);
+  return save(l);
+}
+
+export function setGroupLabel(xml: string, groupKey: string, text: string): string {
+  const l = load(xml);
+  const g = l && locate(l, groupKey);
+  if (!l || !g || g.kind !== 'group') return xml;
+  const v = text.trim();
+  if (v) g.nodes[0].setAttribute('Label', v);
+  else g.nodes[0].removeAttribute('Label');
+  return save(l);
+}
+
 export function containerMap(cells: DialogCell[]): ContainerMap {
   const groups: Record<string, string[]> = {};
   for (const c of cells) if (c.kind === 'group') groups[c.key] = c.fields.map((f) => f.key);
