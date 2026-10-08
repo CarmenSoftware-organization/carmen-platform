@@ -1,5 +1,5 @@
 import React from 'react';
-import { Minus, Plus } from 'lucide-react';
+import { Minus, Plus, Trash2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useI18n } from '../../hooks/useI18n';
 
@@ -10,10 +10,11 @@ interface CellToolbarProps {
   onSpan: (n: number) => void;
   handle?: React.ReactNode;
   select?: React.ReactNode;
+  onDelete?: () => void;
 }
 
 /** แถบเครื่องมือมุมขวาบนของ cell — แสดงตอน hover หรือโฟกัสด้วยคีย์บอร์ด */
-export function CellToolbar({ label, span, cols, onSpan, handle, select }: CellToolbarProps) {
+export function CellToolbar({ label, span, cols, onSpan, handle, select, onDelete }: CellToolbarProps) {
   const { t } = useI18n();
   return (
     <div className="absolute right-1 top-1 z-10 flex items-center gap-1 rounded-md border bg-card p-0.5 opacity-0 shadow-sm transition-opacity group-hover/cell:opacity-100 group-focus-within/cell:opacity-100">
@@ -46,6 +47,18 @@ export function CellToolbar({ label, span, cols, onSpan, handle, select }: CellT
             <Plus className="h-3.5 w-3.5" />
           </Button>
         </>
+      )}
+      {onDelete && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 text-muted-foreground hover:text-destructive"
+          aria-label={t('components.dialogPreview.editor.deleteCell', { label })}
+          onClick={onDelete}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
       )}
       {handle}
     </div>
