@@ -72,6 +72,36 @@ export interface ApplicationStatusPayload {
   doc_version?: number;
 }
 
+/** `POST /api-system/applications/:id/secret/rotate` — one of only two responses carrying plaintext. */
+export interface ApplicationSecretRotateResult {
+  id: string;
+  secret: string;
+  last4: string;
+  rotated_at: string;
+  /** When the replaced secret stops working (24 h grace); `null` on first generate. */
+  previous_expires_at: string | null;
+  doc_version?: number;
+}
+
+/** `GET /api-system/applications/:id/secret` — audit-logged on every call. */
+export interface ApplicationSecretRevealResult {
+  id: string;
+  secret: string;
+  last4: string;
+}
+
+/** Body of `PATCH /api-system/applications/:id/secret/enforcement`. */
+export interface ApplicationSecretEnforcementPayload {
+  require_secret: boolean;
+  doc_version?: number;
+}
+
+export interface ApplicationSecretEnforcementResult {
+  id: string;
+  require_secret: boolean;
+  doc_version?: number;
+}
+
 export interface Application {
   id: string;
   name: string;
@@ -85,6 +115,14 @@ export interface Application {
   status_changed_at?: string | null;
   status_changed_by_name?: string | null;
   bypass_users?: ApplicationBypassUser[]; // findOne only
+  // App secret (x-app-secret). Absent on backends that predate it — the edit page renders the
+  // secret card only once `has_secret` arrives as a boolean. Never carries the secret itself.
+  require_secret?: boolean;
+  has_secret?: boolean;
+  secret_last4?: string | null;
+  secret_rotated_at?: string | null;
+  secret_rotated_by_name?: string | null;
+  secret_previous_expires_at?: string | null;
   allow_all?: boolean;
   device?: DeviceType;
   api_names?: string[]; // read model (flat list of api_name strings)
