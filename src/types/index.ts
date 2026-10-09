@@ -890,6 +890,8 @@ export interface ApplicationSummaryData {
   devices: DeviceCount[];
   /** Count per service status. Absent until the backend ships status modes — render `active`/`inactive` then. */
   statuses?: Partial<Record<ApplicationStatus, number>>;
+  /** x-app-secret posture of live apps; sums to full_access + scoped. Absent on backends that predate it — the band drops the segment. */
+  secrets?: { enforced: number; unenforced: number; none: number };
 }
 
 /** Response shape for `GET /api-system/applications` — `ApiListResponse` plus `summary`. */

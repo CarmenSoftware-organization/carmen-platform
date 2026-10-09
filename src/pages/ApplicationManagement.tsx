@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, AppWindow, Download, Copy, Check, History } from "lucide-react";
+import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, AppWindow, Download, Copy, Check, History, KeyRound } from "lucide-react";
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
@@ -321,6 +321,13 @@ const ApplicationManagement: React.FC = () => {
                   </Badge>
                 );
               })()}
+              {/* ข้อยกเว้นของ secret คือแอปที่บังคับใช้ — chip เดียวกับ hero ของหน้า Edit */}
+              {row.original.require_secret === true && (
+                <Badge variant="outline" className="shrink-0 gap-1 text-xs">
+                  <KeyRound className="size-3" aria-hidden="true" />
+                  {t('pages.applications.secret.heroChip')}
+                </Badge>
+              )}
             </div>
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="font-mono text-[11px] text-muted-foreground truncate min-w-0" title={id}>

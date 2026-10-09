@@ -4207,6 +4207,10 @@ export const en = {
       fullAccess: 'Full access',
       scoped: 'Scoped',
       scopeChartAria: '{{full}} full access, {{scoped}} scoped',
+      statusChartAria: '{{running}} running, {{maintenance}} in maintenance, {{readOnly}} read-only, {{disabled}} disabled',
+      secretUnenforced: 'Not required',
+      secretNone: 'No secret',
+      secretChartAria: '{{enforced}} enforced, {{unenforced}} hold a secret that is not required, {{none}} without a secret',
       // ApplicationIdentityHero.accessSummary — เดิมปั้นพหูพจน์ตอนรันจากสองตัวเลข
       fullAccessEndpoints: 'Full access to every endpoint',
       noEndpointsYet: 'No endpoints granted yet',
