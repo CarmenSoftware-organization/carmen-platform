@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
+import { Label } from '../../components/ui/label';
 import { UserMultiSelect } from '../../components/UserMultiSelect';
 import Can from '../../components/Can';
 import applicationService from '../../services/applicationService';
@@ -22,10 +23,12 @@ export interface ApplicationBypassUsersCardProps {
   /** The card re-seeds its draft only when the set of ids changes, not on every new array. */
   users: ApplicationBypassUser[];
   onChanged: () => Promise<void>;
+  /** Reports an unsaved draft so the page's leave-guard covers it. */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 /** Users who keep full access during maintenance and read-only. Own Save — not the page's form. */
-export function ApplicationBypassUsersCard({ appId, users, onChanged }: ApplicationBypassUsersCardProps) {
+export function ApplicationBypassUsersCard({ appId, users, onChanged, onDirtyChange }: ApplicationBypassUsersCardProps) {
   const { t } = useI18n();
   const [value, setValue] = useState<UserOption[]>(() => toOptions(users));
   const [saving, setSaving] = useState(false);
@@ -42,6 +45,10 @@ export function ApplicationBypassUsersCard({ appId, users, onChanged }: Applicat
 
   const saved = toOptions(users);
   const dirty = !sameIds(value, saved);
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -75,13 +82,18 @@ export function ApplicationBypassUsersCard({ appId, users, onChanged }: Applicat
       </CardHeader>
       <CardContent className="space-y-4">
         <Can permission="application.update" fallback={readView}>
-          <UserMultiSelect
-            id="bypass_users"
-            value={value}
-            onChange={setValue}
-            placeholder={t('pages.applications.bypassUsersPlaceholder')}
-            disabled={saving}
-          />
+          <div>
+            <Label htmlFor="bypass_users" className="sr-only">
+              {t('pages.applications.bypassUsers')}
+            </Label>
+            <UserMultiSelect
+              id="bypass_users"
+              value={value}
+              onChange={setValue}
+              placeholder={t('pages.applications.bypassUsersPlaceholder')}
+              disabled={saving}
+            />
+          </div>
           {value.length === 0 && (
             <p className="text-muted-foreground text-xs">{t('pages.applications.bypassUsersNone')}</p>
           )}

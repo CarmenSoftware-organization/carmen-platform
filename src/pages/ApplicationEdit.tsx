@@ -82,6 +82,18 @@ const ApplicationEdit: React.FC = () => {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [apiSearch, setApiSearch] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
+  const unsavedBarRef = useRef<HTMLDivElement>(null);
+  // Unapplied drafts in the status / bypass cards — they have their own Apply/Save, but leaving
+  // the page drops them just the same, so the leave-guard must cover them too.
+  const [statusDirty, setStatusDirty] = useState(false);
+  const [bypassDirty, setBypassDirty] = useState(false);
+  // Read by fetchApplication after its await — the values it closed over may be a render old.
+  const editingRef = useRef(editing);
+  const savedFormDataRef = useRef(savedFormData);
+  useEffect(() => {
+    editingRef.current = editing;
+    savedFormDataRef.current = savedFormData;
+  }, [editing, savedFormData]);
 
   const selectClassName = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring";
 
@@ -121,11 +133,20 @@ const ApplicationEdit: React.FC = () => {
   const grantedAuthority = countAuthority(formData.api_names);
 
   const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
-  useUnsavedChanges(hasChanges);
+  useUnsavedChanges(hasChanges || statusDirty || bypassDirty);
+
+  // Ctrl/⌘+S and Escape belong to the main form. They are window-level, so with focus in the
+  // status / bypass cards (outside the form) or in a dialog portal they would otherwise submit
+  // the form under an open status confirm, or revert form edits from the status textarea.
+  const focusIsOnForm = () => {
+    const el = document.activeElement;
+    if (!el || el === document.body) return true;
+    return Boolean(formRef.current?.contains(el) || unsavedBarRef.current?.contains(el));
+  };
 
   useGlobalShortcuts({
-    onSave: () => { if (editing && !saving) formRef.current?.requestSubmit(); },
-    onCancel: () => { if (editing && !isNew) handleCancelEdit(); },
+    onSave: () => { if (editing && !saving && focusIsOnForm()) formRef.current?.requestSubmit(); },
+    onCancel: () => { if (editing && !isNew && focusIsOnForm()) handleCancelEdit(); },
   });
 
   const handleEditToggle = () => {
@@ -160,12 +181,18 @@ const ApplicationEdit: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // `keepForm`: the status and bypass cards refetch after their own writes. Those never touch
-  // form fields, and the admin may be mid-edit in the form — so only the record (status,
-  // bypass list, doc_version, audit) is refreshed, and no skeleton is flashed.
-  const fetchApplication = async (opts: { keepForm?: boolean } = {}) => {
+  // `keepForm`: the status and bypass cards refetch after their own writes, and the admin may be
+  // mid-edit in the form. No skeleton is flashed. Out of edit mode the form is re-seeded from the
+  // record. In edit mode the form keeps its edits and its doc_version advances only when the
+  // server's form fields still equal `savedFormData` (the base the edits were made on) — otherwise
+  // it keeps the old version so the form's Save gets its 409 and the conflict path, rather than
+  // silently overwriting a change made elsewhere (lost update).
+  // `silent`: a full re-seed without the skeleton — used after the form's own Save / conflict so
+  // the status and bypass cards stay mounted and keep their drafts.
+  const fetchApplication = async (opts: { keepForm?: boolean; silent?: boolean } = {}) => {
+    const quiet = Boolean(opts.keepForm || opts.silent);
     try {
-      if (!opts.keepForm) setLoading(true);
+      if (!quiet) setLoading(true);
       // A prior fetch on this same mounted instance may have gated the shell on
       // not-found (e.g. a client-side nav from a bad id to a valid one) — clear
       // it so a successful fetch here can actually recover the shell.
@@ -186,11 +213,16 @@ const ApplicationEdit: React.FC = () => {
         device: (DEVICE_OPTIONS.includes(app.device) ? app.device : 'web') as DeviceType,
         api_names: Array.isArray(app.api_names) ? app.api_names : [],
       };
-      if (!opts.keepForm) {
+      const recordVersion = getDocVersion(app);
+      if (opts.keepForm && editingRef.current) {
+        if (JSON.stringify(loaded) === JSON.stringify(savedFormDataRef.current)) {
+          setDocVersion(recordVersion);
+        }
+      } else {
         setFormData(loaded);
         setSavedFormData(loaded);
+        setDocVersion(recordVersion);
       }
-      setDocVersion(getDocVersion(app));
       setAppRecord(app);
     } catch (err: unknown) {
       // A bad/deleted id gates the whole shell (see the notFound branch below);
@@ -201,7 +233,7 @@ const ApplicationEdit: React.FC = () => {
         setError(t('pages.applications.loadFailedOne', { detail: getErrorDetail(err, t) }));
       }
     } finally {
-      if (!opts.keepForm) setLoading(false);
+      if (!quiet) setLoading(false);
     }
   };
 
@@ -299,13 +331,13 @@ const ApplicationEdit: React.FC = () => {
       } else {
         await applicationService.update(id!, payload);
         toast.success(t('toast.saved'));
-        await fetchApplication();
+        await fetchApplication({ silent: true });
         setEditing(false);
       }
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
         notifyVersionConflict(t);
-        await fetchApplication();
+        await fetchApplication({ silent: true });
       } else {
         setError(t('pages.applications.saveFailed', { detail: getErrorDetail(err, t) }));
       }
@@ -453,14 +485,22 @@ const ApplicationEdit: React.FC = () => {
           <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
             <ApplicationStatusCard
               appId={id!}
-              appName={formData.name}
+              appName={(appRecord as Application).name}
               status={statusOf(appRecord)}
               statusMessage={(appRecord as Application).status_message}
               statusUntil={(appRecord as Application).status_until}
-              docVersion={docVersion}
+              statusChangedAt={(appRecord as Application).status_changed_at}
+              statusChangedByName={(appRecord as Application).status_changed_by_name}
+              docVersion={getDocVersion(appRecord)}
               onChanged={refreshRecord}
+              onDirtyChange={setStatusDirty}
             />
-            <ApplicationBypassUsersCard appId={id!} users={bypassUsers} onChanged={refreshRecord} />
+            <ApplicationBypassUsersCard
+              appId={id!}
+              users={bypassUsers}
+              onChanged={refreshRecord}
+              onDirtyChange={setBypassDirty}
+            />
           </div>
         )}
 
@@ -901,7 +941,7 @@ const ApplicationEdit: React.FC = () => {
       </div>
 
       {editing && (
-        <div className="unsaved-bar fixed bottom-0 left-0 right-0 md:left-16 lg:left-60 z-40">
+        <div ref={unsavedBarRef} className="unsaved-bar fixed bottom-0 left-0 right-0 md:left-16 lg:left-60 z-40">
           <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3">
             <div className="flex items-center gap-2 text-xs sm:text-sm">
               {hasChanges ? (

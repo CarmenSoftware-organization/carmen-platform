@@ -33,6 +33,10 @@ export const useGlobalShortcuts = (callbacks: {
       }
 
       if (e.key === 'Escape') {
+        // Something nearer the focus already handled this Escape — a Radix dialog/sheet/popover
+        // closing (its DismissableLayer preventDefault()s before dismissing), or an inline field
+        // reverting its own draft. Cancelling the page on top of that discarded unrelated edits.
+        if (e.defaultPrevented) return;
         callbacks.onCancel?.();
       }
 

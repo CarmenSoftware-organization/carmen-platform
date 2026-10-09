@@ -93,12 +93,17 @@ export const fromDatetimeLocal = (local: string): string | undefined => {
   return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
 };
 
-/** Local, human display of `status_until`; '' when absent or invalid. */
-export const formatStatusUntil = (iso?: string | null): string => {
+/**
+ * Local wall-clock display of a status timestamp (`status_until`, `status_changed_at`) as
+ * `YYYY-MM-DD HH:mm`; '' when absent or invalid. Locale-stable on purpose — the shape
+ * `AuditMeta` uses — because `Intl.DateTimeFormat(undefined, …)` follows the browser locale,
+ * which put Buddhist-era years into the English UI on Thai machines.
+ */
+export const formatStatusTime = (iso?: string | null): string => {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(d);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
 /** True when the announced expected-back time has already gone by. */

@@ -37,7 +37,7 @@ import {
   APPLICATION_STATUSES,
   STATUS_BADGE_VARIANT,
   STATUS_LABEL_KEY,
-  formatStatusUntil,
+  formatStatusTime,
   isApplicationStatus,
   isPastUntil,
   statusOf,
@@ -299,7 +299,7 @@ const ApplicationManagement: React.FC = () => {
             <div className="flex min-w-0 items-center gap-2">
               <Link
                 to={`/applications/${row.original.id}/edit`}
-                className="text-primary hover:underline whitespace-nowrap"
+                className="text-primary hover:underline truncate min-w-0"
                 title={row.original.name}
               >
                 {row.original.name}
@@ -313,7 +313,7 @@ const ApplicationManagement: React.FC = () => {
                 const title = isPastUntil(until)
                   ? t('pages.applications.statusUntilPassed', { status: t(STATUS_LABEL_KEY[s]) })
                   : until
-                    ? t('pages.applications.statusUntilShort', { when: formatStatusUntil(until) })
+                    ? t('pages.applications.statusUntilShort', { when: formatStatusTime(until) })
                     : undefined;
                 return (
                   <Badge variant={STATUS_BADGE_VARIANT[s]} className="shrink-0 text-xs" title={title}>

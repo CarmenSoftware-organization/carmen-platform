@@ -243,8 +243,10 @@ describe('ApplicationManagement — report-templates-style table', () => {
 
     const link = await screen.findByRole('link', { name: 'Test App' });
     expect(container.querySelector('table')?.className).toContain('table-auto');
-    expect(link.className).toContain('whitespace-nowrap');
-    expect(link.className).not.toContain('truncate');
+    // `truncate` single-lines it; under table-auto the cell still sizes to the full name on
+    // desktop, so it only clips where a narrow container (390px mobile card) constrains it.
+    expect(link.className).toContain('truncate');
+    expect(link.className).toContain('min-w-0');
     expect(link.className).not.toContain('max-w-');
   });
 
