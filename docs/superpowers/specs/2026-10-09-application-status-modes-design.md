@@ -212,7 +212,7 @@ en + th keys for status names, descriptions, confirm copy, self-lock and bypass 
 
 | State (user not on bypass list) | UI |
 |---|---|
-| `maintenance` | full-screen "Under maintenance" + message + "expected back {until}"; no logout; resumes automatically when polling sees `running` |
+| `maintenance` | full-screen "Under maintenance" + message + "expected back {until}" + a ghost "Sign out" button (user decision); not logged out automatically; resumes automatically when polling sees `running` |
 | `read_only` | top banner "Read-only mode"; Save buttons stay enabled; a blocked write shows a translated toast |
 | `disabled` | full-screen "This application has been disabled" + sign-out button |
 | on bypass list (maintenance/read_only) | small banner "You are using the app during maintenance as an exempt user" |
@@ -242,6 +242,7 @@ en + th keys for status names, descriptions, confirm copy, self-lock and bypass 
 | Gateway instances refresh at different times | Up to 60 s of disagreement; stated in the confirm dialog |
 | Old clients (mobile) get unknown 503/403 | They show a generic error but no longer log the user out — better than today's 401 |
 | Routes without `KeycloakGuard` cannot see bypass users | Documented limitation |
+| ~153 of 1,305 gateway routes have no `AppIdGuard`, so status never applies to them (some calls still work during maintenance) | Accepted for this round (user decision 2026-10-09); covering them is a separate follow-up |
 | Old platform build sends `is_active` | Legacy mapping in micro-cluster (never overwrites maintenance/read_only) |
 
 ## Verification
