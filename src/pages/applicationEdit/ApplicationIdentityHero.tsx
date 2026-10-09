@@ -182,7 +182,7 @@ export function ApplicationIdentityHero({
           )}
         </div>
 
-        {actions && <div className="shrink-0">{actions}</div>}
+        {actions && <div className="flex shrink-0 flex-wrap items-center gap-3">{actions}</div>}
       </div>
     </Card>
   );
