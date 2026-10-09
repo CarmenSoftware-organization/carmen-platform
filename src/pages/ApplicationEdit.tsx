@@ -36,6 +36,7 @@ import type { ApiCatalogGroup, DeviceType } from '../types';
 import { DEVICE_OPTIONS } from '../types';
 import { HIT_SLOP_44 } from '../lib/hitSlop';
 import { useI18n } from '../hooks/useI18n';
+import { statusOf } from '../utils/applicationStatus';
 
 interface ApplicationFormData {
   name: string;
@@ -401,7 +402,7 @@ const ApplicationEdit: React.FC = () => {
               name={formData.name}
               appId={id}
               device={formData.device}
-              isActive={formData.is_active}
+              status={statusOf(appRecord)}
               allowAll={formData.allow_all}
               apiNames={formData.api_names}
               audit={normalizeAudit(appRecord)}

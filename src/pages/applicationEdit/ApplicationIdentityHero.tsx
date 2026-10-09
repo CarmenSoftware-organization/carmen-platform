@@ -10,6 +10,8 @@ import type { NormalizedAudit } from '../../utils/audit';
 import type { TFunction } from '../../i18n/types';
 import { useI18n } from '../../hooks/useI18n';
 import { formatDevice } from '../../utils/device';
+import { STATUS_BADGE_VARIANT, STATUS_LABEL_KEY } from '../../utils/applicationStatus';
+import type { ApplicationStatus } from '../../types';
 
 /** One-line summary of an app's API reach — full access, or the granted endpoint/module count. */
 export function accessSummary(allowAll: boolean, apiNames: string[], t?: TFunction): string {
@@ -70,7 +72,7 @@ interface ApplicationIdentityHeroProps {
   name: string;
   appId?: string; // absent for a new (unsaved) application
   device: string;
-  isActive: boolean;
+  status: ApplicationStatus;
   allowAll: boolean;
   apiNames: string[];
   audit?: NormalizedAudit;
@@ -84,7 +86,7 @@ export function ApplicationIdentityHero({
   name,
   appId,
   device,
-  isActive,
+  status,
   allowAll,
   apiNames,
   audit = {},
@@ -117,7 +119,7 @@ export function ApplicationIdentityHero({
           <h1 className="text-xl font-semibold tracking-tight">{name || t('pages.applications.unnamedApplication')}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
             <Badge variant="secondary">{formatDevice(device || 'web')}</Badge>
-            <Badge variant={isActive ? 'success' : 'secondary'}>{isActive ? t('common.status.active') : t('common.status.inactive')}</Badge>
+            <Badge variant={STATUS_BADGE_VARIANT[status]}>{t(STATUS_LABEL_KEY[status])}</Badge>
             {appId && <AppIdChip appId={appId} />}
           </div>
           {reach.anchored ? (

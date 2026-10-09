@@ -24,7 +24,7 @@ describe('ApplicationIdentityHero', () => {
     name: 'mobile-app',
     appId: 'bad5f6a7-2c4b-4eb6-bcf1-81bf51745c86',
     device: 'mobile',
-    isActive: true,
+    status: 'running' as const,
     allowAll: false,
     apiNames: ['cluster.read', 'report.read'],
   };
@@ -35,7 +35,7 @@ describe('ApplicationIdentityHero', () => {
     // `formatDevice`, not a CSS `capitalize` — the text node itself carries the display form,
     // which is what lets `pos` render as `POS` here and in the registry band by one rule.
     expect(screen.getByText('Mobile')).toBeInTheDocument();
-    expect(screen.getByText('Active')).toBeInTheDocument();
+    expect(screen.getByText('Running')).toBeInTheDocument();
     expect(screen.getByText('2 endpoints across 2 modules')).toBeInTheDocument();
   });
 
