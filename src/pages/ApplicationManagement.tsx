@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, AppWindow, Download, Copy, Check, History, KeyRound } from "lucide-react";
+import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, AppWindow, Download, Copy, Check, History, KeyRound, AlertTriangle } from "lucide-react";
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
@@ -35,7 +35,6 @@ import type { Application, ApplicationStatus, PaginateParams } from '../types';
 import { DEVICE_OPTIONS } from '../types';
 import {
   APPLICATION_STATUSES,
-  STATUS_BADGE_VARIANT,
   STATUS_LABEL_KEY,
   formatStatusTime,
   isApplicationStatus,
@@ -43,6 +42,7 @@ import {
   statusOf,
 } from '../utils/applicationStatus';
 import type { ColumnDef } from '@tanstack/react-table';
+import { cn } from '../lib/utils';
 import { readStoredPerpage } from '../utils/pageRange';
 
 const getStoredJSON = <T,>(key: string, fallback: T): T => {
@@ -52,6 +52,13 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
   } catch {
     return fallback;
   }
+};
+
+const STATUS_DOT: Record<ApplicationStatus, string> = {
+  running: 'bg-success',
+  maintenance: 'bg-warning',
+  read_only: 'bg-info',
+  disabled: 'border border-muted-foreground/70',
 };
 
 const ApplicationManagement: React.FC = () => {
@@ -304,23 +311,6 @@ const ApplicationManagement: React.FC = () => {
               >
                 {row.original.name}
               </Link>
-              {/* วาดเฉพาะข้อยกเว้น — running ไม่มี badge; สถานะอื่นคือสิ่งที่การตรวจสอบตามหา
-                  (แอปที่ปิด/ปิดปรับปรุงอยู่แต่ App ID ยังอยู่ในมือใครสักคน) */}
-              {(() => {
-                const s = statusOf(row.original);
-                if (s === 'running') return null;
-                const until = row.original.status_until;
-                const title = isPastUntil(until)
-                  ? t('pages.applications.statusUntilPassed', { status: t(STATUS_LABEL_KEY[s]) })
-                  : until
-                    ? t('pages.applications.statusUntilShort', { when: formatStatusTime(until) })
-                    : undefined;
-                return (
-                  <Badge variant={STATUS_BADGE_VARIANT[s]} className="shrink-0 text-xs" title={title}>
-                    {t(STATUS_LABEL_KEY[s])}
-                  </Badge>
-                );
-              })()}
               {/* ข้อยกเว้นของ secret คือแอปที่บังคับใช้ — chip เดียวกับ hero ของหน้า Edit */}
               {row.original.require_secret === true && (
                 <Badge variant="outline" className="shrink-0 gap-1 text-xs">
@@ -352,6 +342,41 @@ const ApplicationManagement: React.FC = () => {
               </span>
             )}
           </div>
+        );
+      },
+    },
+    {
+      id: 'status',
+      header: t('common.status.label'),
+      enableSorting: false,
+      meta: { headerClassName: 'w-36', cellClassName: 'w-36', card: 'badge' },
+      // ทุกแถวมีสถานะ แต่ running คือค่าปกติของเกือบทุกแถว — จุดเล็ก + คำจางพอ (แบบเดียวกับ
+      // คอลัมน์ Status ของ ClusterManagement) ส่วนสถานะอื่นตัวเข้ม เพราะคือสิ่งที่การตรวจสอบตามหา
+      // (แอปที่ปิด/ปิดปรับปรุงอยู่แต่ App ID ยังอยู่ในมือใครสักคน) สีไม่ใช่สัญญาณเดียว: มีคำกำกับเสมอ
+      cell: ({ row }) => {
+        const s = statusOf(row.original);
+        const until = row.original.status_until;
+        const title = s === 'running'
+          ? undefined
+          : isPastUntil(until)
+            ? t('pages.applications.statusUntilPassed', { status: t(STATUS_LABEL_KEY[s]) })
+            : until
+              ? t('pages.applications.statusUntilShort', { when: formatStatusTime(until) })
+              : undefined;
+        return (
+          <span
+            className={cn(
+              'inline-flex items-center gap-2 whitespace-nowrap text-xs',
+              s === 'running' ? 'text-muted-foreground' : 'text-foreground font-medium',
+            )}
+            title={title}
+          >
+            <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', STATUS_DOT[s])} />
+            {t(STATUS_LABEL_KEY[s])}
+            {s !== 'running' && isPastUntil(until) && (
+              <AlertTriangle className="text-warning size-3.5 shrink-0" aria-hidden />
+            )}
+          </span>
         );
       },
     },
