@@ -32,7 +32,8 @@ import { ReadOnlyField } from '../components/ReadOnlyField';
 import { groupApiNames, actionOf, isAuthorityAction, countAuthority } from '../utils/apiCatalog';
 import { reachOf } from '../utils/apiReach';
 import { cn } from '../lib/utils';
-import type { ApiCatalogGroup, DeviceType } from '../types';
+import type { ApiCatalogGroup, Application, DeviceType } from '../types';
+import { ApplicationStatusCard } from './applicationEdit/ApplicationStatusCard';
 import { DEVICE_OPTIONS } from '../types';
 import { HIT_SLOP_44 } from '../lib/hitSlop';
 import { useI18n } from '../hooks/useI18n';
@@ -41,7 +42,6 @@ import { statusOf } from '../utils/applicationStatus';
 interface ApplicationFormData {
   name: string;
   description: string;
-  is_active: boolean;
   allow_all: boolean;
   device: DeviceType;
   api_names: string[];
@@ -50,7 +50,6 @@ interface ApplicationFormData {
 const emptyForm: ApplicationFormData = {
   name: '',
   description: '',
-  is_active: true,
   allow_all: false,
   device: 'web',
   api_names: [],
@@ -153,9 +152,12 @@ const ApplicationEdit: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const fetchApplication = async () => {
+  // `keepForm`: the status and bypass cards refetch after their own writes. Those never touch
+  // form fields, and the admin may be mid-edit in the form — so only the record (status,
+  // bypass list, doc_version, audit) is refreshed, and no skeleton is flashed.
+  const fetchApplication = async (opts: { keepForm?: boolean } = {}) => {
     try {
-      setLoading(true);
+      if (!opts.keepForm) setLoading(true);
       // A prior fetch on this same mounted instance may have gated the shell on
       // not-found (e.g. a client-side nav from a bad id to a valid one) — clear
       // it so a successful fetch here can actually recover the shell.
@@ -172,13 +174,14 @@ const ApplicationEdit: React.FC = () => {
       const loaded: ApplicationFormData = {
         name: app.name || '',
         description: app.description || '',
-        is_active: app.is_active ?? true,
         allow_all: app.allow_all ?? false,
         device: (DEVICE_OPTIONS.includes(app.device) ? app.device : 'web') as DeviceType,
         api_names: Array.isArray(app.api_names) ? app.api_names : [],
       };
-      setFormData(loaded);
-      setSavedFormData(loaded);
+      if (!opts.keepForm) {
+        setFormData(loaded);
+        setSavedFormData(loaded);
+      }
       setDocVersion(getDocVersion(app));
       setAppRecord(app);
     } catch (err: unknown) {
@@ -190,9 +193,11 @@ const ApplicationEdit: React.FC = () => {
         setError(t('pages.applications.loadFailedOne', { detail: getErrorDetail(err, t) }));
       }
     } finally {
-      setLoading(false);
+      if (!opts.keepForm) setLoading(false);
     }
   };
+
+  const refreshRecord = () => fetchApplication({ keepForm: true });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -269,7 +274,6 @@ const ApplicationEdit: React.FC = () => {
       const payload = {
         name: formData.name,
         description: formData.description,
-        is_active: formData.is_active,
         allow_all: formData.allow_all,
         device: formData.device,
         api_names: formData.api_names,
@@ -435,6 +439,20 @@ const ApplicationEdit: React.FC = () => {
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
+        )}
+
+        {!isNew && appRecord !== null && (
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+            <ApplicationStatusCard
+              appId={id!}
+              appName={formData.name}
+              status={statusOf(appRecord)}
+              statusMessage={(appRecord as Application).status_message}
+              statusUntil={(appRecord as Application).status_until}
+              docVersion={docVersion}
+              onChanged={refreshRecord}
+            />
+          </div>
         )}
 
         <form ref={formRef} onSubmit={handleSubmit}>
@@ -864,27 +882,6 @@ const ApplicationEdit: React.FC = () => {
                          the field (so entering edit mode changes controls, not the document —
                          #253) but states it quietly. */
                       <ReadOnlyField value={formatDevice(formData.device)} />
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="is_active">{t('common.status.label')}</Label>
-                    {editing ? (
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="is_active"
-                          name="is_active"
-                          checked={formData.is_active}
-                          onChange={handleChange}
-                          className="h-4 w-4 rounded border-input"
-                        />
-                        <span className="text-sm">{t('common.status.active')}</span>
-                      </label>
-                    ) : (
-                      <ReadOnlyField
-                        value={formData.is_active ? t('common.status.active') : t('common.status.inactive')}
-                      />
                     )}
                   </div>
                 </CardContent>
