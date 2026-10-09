@@ -54,11 +54,37 @@ export interface Cluster {
 export type DeviceType = 'mobile' | 'web' | 'desktop' | 'pos';
 export const DEVICE_OPTIONS: DeviceType[] = ['mobile', 'web', 'desktop', 'pos'];
 
+/** Service status of an application — what callers using its App ID get from the gateway. */
+export type ApplicationStatus = 'running' | 'maintenance' | 'read_only' | 'disabled';
+
+/** A user who keeps full access while the application is in maintenance or read-only. */
+export interface ApplicationBypassUser {
+  user_id: string;
+  name?: string;
+  email?: string;
+}
+
+/** Body of `PATCH /api-system/applications/:id/status`. `null` clears message/until. */
+export interface ApplicationStatusPayload {
+  status: ApplicationStatus;
+  status_message?: string | null;
+  status_until?: string | null;
+  doc_version?: number;
+}
+
 export interface Application {
   id: string;
   name: string;
   description?: string;
   is_active?: boolean;
+  // Service status (status modes). Absent on backends that predate it — read through
+  // `statusOf()` (utils/applicationStatus.ts), which falls back to `is_active`.
+  status?: ApplicationStatus;
+  status_message?: string | null;
+  status_until?: string | null; // UTC ISO, display-only — nothing switches back automatically
+  status_changed_at?: string | null;
+  status_changed_by_name?: string | null;
+  bypass_users?: ApplicationBypassUser[]; // findOne only
   allow_all?: boolean;
   device?: DeviceType;
   api_names?: string[]; // read model (flat list of api_name strings)
@@ -82,7 +108,6 @@ export interface ApiCatalogGroup {
 export interface ApplicationWritePayload {
   name: string;
   description?: string;
-  is_active?: boolean;
   allow_all?: boolean;
   device?: DeviceType;
   details?: { add: { api_name: string }[] };
@@ -825,6 +850,8 @@ export interface ApplicationSummaryData {
   /** Restricted to a named api set. */
   scoped: number;
   devices: DeviceCount[];
+  /** Count per service status. Absent until the backend ships status modes — render `active`/`inactive` then. */
+  statuses?: Partial<Record<ApplicationStatus, number>>;
 }
 
 /** Response shape for `GET /api-system/applications` — `ApiListResponse` plus `summary`. */
