@@ -116,6 +116,22 @@ export const isNotFoundError = (err: unknown): boolean =>
   (err as { response?: { status?: number } })?.response?.status === 404;
 
 /**
+ * The backend's machine-readable error code, from a flat `{ code }` body or a nested
+ * `{ error: { code } }` one (the gateway uses both). `undefined` when there is none.
+ */
+export const getErrorCode = (err: unknown): string | undefined => {
+  const data = (err as { response?: { data?: unknown } })?.response?.data;
+  if (!data || typeof data !== 'object') return undefined;
+  const { code, error } = data as { code?: unknown; error?: unknown };
+  if (typeof code === 'string') return code;
+  if (error && typeof error === 'object') {
+    const nested = (error as { code?: unknown }).code;
+    if (typeof nested === 'string') return nested;
+  }
+  return undefined;
+};
+
+/**
  * Conditionally logs errors only in development.
  */
 export const devLog = (label: string, err: unknown) => {

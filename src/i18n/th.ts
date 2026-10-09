@@ -3833,6 +3833,8 @@ export const th: Translations = {
     unexpected: 'เกิดข้อผิดพลาดที่ไม่คาดคิด',
     tryAgainLater: 'กรุณาลองใหม่อีกครั้งภายหลัง',
     unknown: 'ข้อผิดพลาดที่ไม่ทราบสาเหตุ',
+    appSecretInvalidTitle: 'รหัสลับของแอปนี้ถูกปฏิเสธ',
+    appSecretInvalidBody: 'เซิร์ฟเวอร์ไม่ยอมรับรหัสลับของแอปที่ build นี้ส่งไป (ไม่มี ผิด หรือเก่าแล้ว) เข้าสู่ระบบใหม่ไม่ช่วย ต้อง deploy เว็บใหม่พร้อมรหัสลับปัจจุบัน',
   },
   login: {
     accessDeniedPlatform: 'ไม่มีสิทธิ์เข้าถึง คุณไม่ได้รับอนุญาตให้เข้าใช้ platform นี้',

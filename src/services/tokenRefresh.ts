@@ -1,5 +1,9 @@
 import axios from 'axios';
 import type { AxiosError, AxiosRequestConfig } from 'axios';
+import { toast } from 'sonner';
+import { translate } from '../i18n/translate';
+import { DEFAULT_LANG, LANGUAGE_STORAGE_KEY, type Lang } from '../i18n/types';
+import { appSecretHeader, isAppSecretInvalid } from './appIdentity';
 
 const TOKEN_KEY = 'token';
 const REFRESH_KEY = 'refresh_token';
@@ -33,6 +37,7 @@ async function doRefresh(): Promise<string> {
       headers: {
         'Content-Type': 'application/json',
         'x-app-id': import.meta.env.REACT_APP_API_APP_ID,
+        ...appSecretHeader(),
       },
     },
   );
@@ -71,6 +76,29 @@ export function redirectToLogin(): void {
   window.location.href = '/login';
 }
 
+// No React context here, so the language is read the way useI18n.tsx reads it.
+const currentLang = (): Lang => {
+  try {
+    const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    return stored === 'en' || stored === 'th' ? stored : DEFAULT_LANG;
+  } catch {
+    return DEFAULT_LANG;
+  }
+};
+
+/**
+ * The gateway rejected this build's `x-app-secret`. That is a deployment problem, not a session
+ * one — a new token would be rejected the same way — so the session is kept and the user told.
+ * Fixed toast id: a page firing ten requests shows one toast, not ten.
+ */
+export function notifyAppSecretInvalid(): void {
+  const lang = currentLang();
+  toast.error(translate(lang, 'error.appSecretInvalidTitle'), {
+    id: 'app-secret-invalid',
+    description: translate(lang, 'error.appSecretInvalidBody'),
+  });
+}
+
 type RetryConfig = AxiosRequestConfig & { _retry?: boolean };
 
 export async function handleResponseError(
@@ -81,6 +109,14 @@ export async function handleResponseError(
   const status = error.response?.status;
   const url = original.url ?? '';
   const isLoginRequest = url.includes('/auth/login');
+
+  // Before the refresh branch: refreshing cannot fix a rejected app secret, and the refresh call
+  // would be rejected too — which used to end in clearSession() + redirect. The login form shows
+  // its own message for this (AuthContext.login), so no toast there.
+  if (status === 401 && isAppSecretInvalid(error)) {
+    if (!isLoginRequest) notifyAppSecretInvalid();
+    return Promise.reject(error);
+  }
 
   if (status === 401 && !isLoginRequest && !original._retry) {
     original._retry = true;
@@ -93,7 +129,12 @@ export async function handleResponseError(
       original.headers = original.headers ?? {};
       (original.headers as Record<string, unknown>).Authorization = `Bearer ${newToken}`;
       return await retry(original);
-    } catch {
+    } catch (refreshError) {
+      // The access token had expired AND the refresh call hit the secret check — same story.
+      if (isAppSecretInvalid(refreshError)) {
+        notifyAppSecretInvalid();
+        return Promise.reject(error);
+      }
       clearSession();
       redirectToLogin();
       return Promise.reject(error);

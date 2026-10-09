@@ -1,4 +1,5 @@
 import api from './api';
+import { appSecretHeader } from './appIdentity';
 import { refreshAccessToken } from './tokenRefresh';
 import type { PlatformSeedOp, SeedRunEvent } from '../types';
 
@@ -37,6 +38,7 @@ const platformSeedService = {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`,
           'x-app-id': (import.meta.env.REACT_APP_API_APP_ID ?? '') as string,
+          ...appSecretHeader(),
           'Content-Type': 'application/json',
         },
         // ส่ง body เสมอ แม้ไม่มี params — op ที่ประกาศ params ไว้จะได้ 422 กลับมาพร้อมข้อความว่า

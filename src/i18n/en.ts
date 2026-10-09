@@ -4888,6 +4888,8 @@ export const en = {
     unexpected: 'An unexpected error occurred',
     tryAgainLater: 'Please try again later.',
     unknown: 'Unknown error',
+    appSecretInvalidTitle: 'This app\u2019s secret was rejected',
+    appSecretInvalidBody: 'The server refused the app secret this build sends \u2014 it is missing, wrong or out of date. Signing in again will not help; the site needs to be redeployed with the current secret.',
   },
   login: {
     accessDeniedPlatform: 'Access Denied. You are not authorized to access this platform.',

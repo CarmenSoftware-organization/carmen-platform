@@ -1,4 +1,5 @@
 import api from './api';
+import { appSecretHeader } from './appIdentity';
 import type { TenantSeedStatus, SeedProgressEvent, SeedDeploySummary } from '../types';
 
 // Tenant default-data seeding for a single BU. Super-admin only (backend enforces
@@ -34,6 +35,7 @@ const tenantSeedService = {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`,
         'x-app-id': (import.meta.env.REACT_APP_API_APP_ID ?? '') as string,
+        ...appSecretHeader(),
         ...(hasKeys ? { 'Content-Type': 'application/json' } : {}),
       },
       ...(hasKeys ? { body: JSON.stringify({ keys }) } : {}),
