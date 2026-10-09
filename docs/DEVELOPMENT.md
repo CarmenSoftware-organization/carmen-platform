@@ -18,7 +18,7 @@ bun install        # or: npm install
 bun start          # or: npm start
 ```
 
-Dev server runs on `http://localhost:3304` (port set in `vite.config.ts`). `bun start` only needs `.env.localhost`; if you'll also run against the deployed DEV, UAT, or prod backends, copy `.env.example` to `.env.dev` / `.env.uat` / `.env.prod` too — see [Commands](#commands) for which script uses which file, and the `.env.example` header for each mode's URL and app id.
+Dev server runs on `http://localhost:3304` (port set in `vite.config.mts`). `bun start` only needs `.env.localhost`; if you'll also run against the deployed DEV, UAT, or prod backends, copy `.env.example` to `.env.dev` / `.env.uat` / `.env.prod` too — see [Commands](#commands) for which script uses which file, and the `.env.example` header for each mode's URL and app id.
 
 ## Environment variables
 
@@ -71,11 +71,11 @@ bun run generate:mock-preconfig  # node scripts/generate-preconfig-mock.mjs
 
 `vite-plugin-checker` also runs tsc and the same ESLint command during `start`/`build`; `typecheck` + `lint` run them standalone. Pass `CI=true` to treat warnings as errors (and to disable the browser overlay).
 
-The Vite **mode** selects the env file: `--mode localhost` → `.env.localhost`; `--mode dev` → `.env.dev`; `--mode uat` → `.env.uat`; `--mode prod` → `.env.prod`. Vite throws on a mode named `local` (it conflicts with the `.local` suffix), so the local-backend mode is `localhost`. Every script passes `--mode` explicitly — Vite's defaults match no mode file, so a bare `vite` finds no `.env.<mode>` and `vite.config.ts` throws — unless a bare `.env` exists, which Vite loads in **every** mode and would silently satisfy the guard. Never create a bare `.env` or `.env.local` (both load in every mode and leak across all four targets).
+The Vite **mode** selects the env file: `--mode localhost` → `.env.localhost`; `--mode dev` → `.env.dev`; `--mode uat` → `.env.uat`; `--mode prod` → `.env.prod`. Vite throws on a mode named `local` (it conflicts with the `.local` suffix), so the local-backend mode is `localhost`. Every script passes `--mode` explicitly — Vite's defaults match no mode file, so a bare `vite` finds no `.env.<mode>` and `vite.config.mts` throws — unless a bare `.env` exists, which Vite loads in **every** mode and would silently satisfy the guard. Never create a bare `.env` or `.env.local` (both load in every mode and leak across all four targets).
 
 ## Dev proxy
 
-`vite.config.ts` (`server.proxy`) configures `/api` and `/api-system` to proxy to `REACT_APP_API_BASE_URL`:
+`vite.config.mts` (`server.proxy`) configures `/api` and `/api-system` to proxy to `REACT_APP_API_BASE_URL`:
 
 | Path | Target | Flags |
 |---|---|---|
@@ -188,7 +188,7 @@ See [../SITEMAP.md](../SITEMAP.md) for the authoritative route list.
 
 ## Unit & component tests
 
-[Vitest](https://vitest.dev) (jsdom) is the in-repo test runner. Config: `vitest.config.ts` (standalone — does not touch `vite.config.ts`); `vitest.setup.ts` registers jest-dom matchers + `afterEach(cleanup)`; `src/vitest.d.ts` exposes matcher types to tsc.
+[Vitest](https://vitest.dev) (jsdom) is the in-repo test runner. Config: `vitest.config.ts` (standalone — does not touch `vite.config.mts`); `vitest.setup.ts` registers jest-dom matchers + `afterEach(cleanup)`; `src/vitest.d.ts` exposes matcher types to tsc.
 
 - **Run:** `bun run test` (one-shot) · `test:watch` · `test:cov` (v8 coverage).
 - **Location:** co-locate `*.test.ts` / `*.test.tsx` beside the source.
