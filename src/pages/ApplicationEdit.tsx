@@ -18,7 +18,7 @@ import { ChipInput } from '../components/ui/chip-input';
 import { EmptyState } from '../components/EmptyState';
 import { FetchErrorState } from '../components/FetchErrorState';
 import Can from '../components/Can';
-import { Save, Pencil, X, Loader2, Search, ChevronRight, ChevronDown, AlertTriangle, SearchX } from 'lucide-react';
+import { Save, Pencil, X, Loader2, Search, ChevronRight, ChevronDown, AlertTriangle, SearchX, Zap, ListChecks } from 'lucide-react';
 import { BackLink } from '../components/BackLink';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
@@ -36,6 +36,7 @@ import type { ApiCatalogGroup, Application, DeviceType } from '../types';
 import { ApplicationStatusCard } from './applicationEdit/ApplicationStatusCard';
 import { ApplicationBypassUsersCard } from './applicationEdit/ApplicationBypassUsersCard';
 import { ApplicationSecretCard } from './applicationEdit/ApplicationSecretCard';
+import { ZoneHeading } from './applicationEdit/ZoneHeading';
 import { DEVICE_OPTIONS } from '../types';
 import { HIT_SLOP_44 } from '../lib/hitSlop';
 import { useI18n } from '../hooks/useI18n';
@@ -483,48 +484,15 @@ const ApplicationEdit: React.FC = () => {
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
         )}
 
-        {!isNew && appRecord !== null && (
-          <>
-            <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
-              <ApplicationStatusCard
-                appId={id!}
-                appName={(appRecord as Application).name}
-                status={statusOf(appRecord)}
-                statusMessage={(appRecord as Application).status_message}
-                statusUntil={(appRecord as Application).status_until}
-                statusChangedAt={(appRecord as Application).status_changed_at}
-                statusChangedByName={(appRecord as Application).status_changed_by_name}
-                docVersion={getDocVersion(appRecord)}
-                onChanged={refreshRecord}
-                onDirtyChange={setStatusDirty}
-              />
-              <ApplicationBypassUsersCard
-                appId={id!}
-                users={bypassUsers}
-                onChanged={refreshRecord}
-                onDirtyChange={setBypassDirty}
-              />
-            </div>
-            {/* Full-width row under Status/Bypass. Only once the backend ships the secret read
-                model (`has_secret` boolean) — an earlier FE deploy shows no card, not a broken one. */}
-            {typeof (appRecord as Application).has_secret === 'boolean' && (
-              <ApplicationSecretCard
-                appId={id!}
-                appName={(appRecord as Application).name}
-                hasSecret={(appRecord as Application).has_secret === true}
-                last4={(appRecord as Application).secret_last4}
-                requireSecret={(appRecord as Application).require_secret === true}
-                rotatedAt={(appRecord as Application).secret_rotated_at}
-                rotatedByName={(appRecord as Application).secret_rotated_by_name}
-                previousExpiresAt={(appRecord as Application).secret_previous_expires_at}
-                docVersion={getDocVersion(appRecord)}
-                onChanged={refreshRecord}
-              />
-            )}
-          </>
-        )}
-
-        <form ref={formRef} onSubmit={handleSubmit}>
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-3">
+          {!isNew && (
+            <ZoneHeading
+              id="application-access-definition"
+              icon={<ListChecks className="h-4 w-4" />}
+              title={t('pages.applications.accessDefinition')}
+              hint={t('pages.applications.accessDefinitionHint')}
+            />
+          )}
           <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[1fr_minmax(300px,340px)]">
             {/* API access — the app's whole purpose */}
             <div className="min-w-0 space-y-4 sm:space-y-6">
@@ -958,6 +926,62 @@ const ApplicationEdit: React.FC = () => {
             </div>
           </div>
         </form>
+
+        {!isNew && appRecord !== null && (
+          <section aria-labelledby="application-live-controls" className="space-y-3">
+            <ZoneHeading
+              id="application-live-controls"
+              icon={<Zap className="h-4 w-4" />}
+              title={t('pages.applications.liveControls')}
+              hint={t('pages.applications.liveControlsHint')}
+            />
+            {/* Bypass rides inside the Status card: the list only matters for Maintenance and
+                Read-only, and as its own card it stretched to the Status card's height half-empty.
+                The secret card renders only once the backend ships `has_secret` as a boolean — an
+                earlier BE deploy shows no card, not a broken one — and Status then takes the row. */}
+            <div
+              className={cn(
+                'grid grid-cols-1 items-start gap-4 sm:gap-6',
+                typeof (appRecord as Application).has_secret === 'boolean' && 'lg:grid-cols-2',
+              )}
+            >
+              <ApplicationStatusCard
+                appId={id!}
+                appName={(appRecord as Application).name}
+                status={statusOf(appRecord)}
+                statusMessage={(appRecord as Application).status_message}
+                statusUntil={(appRecord as Application).status_until}
+                statusChangedAt={(appRecord as Application).status_changed_at}
+                statusChangedByName={(appRecord as Application).status_changed_by_name}
+                docVersion={getDocVersion(appRecord)}
+                onChanged={refreshRecord}
+                onDirtyChange={setStatusDirty}
+              >
+                <ApplicationBypassUsersCard
+                  embedded
+                  appId={id!}
+                  users={bypassUsers}
+                  onChanged={refreshRecord}
+                  onDirtyChange={setBypassDirty}
+                />
+              </ApplicationStatusCard>
+              {typeof (appRecord as Application).has_secret === 'boolean' && (
+                <ApplicationSecretCard
+                  appId={id!}
+                  appName={(appRecord as Application).name}
+                  hasSecret={(appRecord as Application).has_secret === true}
+                  last4={(appRecord as Application).secret_last4}
+                  requireSecret={(appRecord as Application).require_secret === true}
+                  rotatedAt={(appRecord as Application).secret_rotated_at}
+                  rotatedByName={(appRecord as Application).secret_rotated_by_name}
+                  previousExpiresAt={(appRecord as Application).secret_previous_expires_at}
+                  docVersion={getDocVersion(appRecord)}
+                  onChanged={refreshRecord}
+                />
+              )}
+            </div>
+          </section>
+        )}
       </div>
 
       {editing && (

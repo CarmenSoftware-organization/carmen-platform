@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { AlertTriangle, Loader2, Power } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
@@ -44,6 +44,8 @@ export interface ApplicationStatusCardProps {
   onChanged: () => Promise<void>;
   /** Reports an unapplied draft so the page's leave-guard covers it. */
   onDirtyChange?: (dirty: boolean) => void;
+  /** Rendered under the status controls, divided off — the bypass list lives here. */
+  children?: ReactNode;
 }
 
 /**
@@ -61,6 +63,7 @@ export function ApplicationStatusCard({
   docVersion,
   onChanged,
   onDirtyChange,
+  children,
 }: ApplicationStatusCardProps) {
   const { t } = useI18n();
   const own = isOwnApp(appId);
@@ -279,6 +282,8 @@ export function ApplicationStatusCard({
             </Button>
           </div>
         </Can>
+
+        {children && <div className="border-t pt-4">{children}</div>}
       </CardContent>
 
       <ConfirmDialog
