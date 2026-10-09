@@ -54,6 +54,7 @@ Copy `.env.example` → `.env.localhost` (local backend), `.env.dev` (deployed D
 | `REACT_APP_API_APP_ID`   | Sent as `x-app-id` on every request |
 | `REACT_APP_ENV`          | `development` \| `uat` \| `production` |
 | `REACT_APP_PORT`         | Dev server / preview port (default `3304` if unset) |
+| `REACT_APP_API_APP_SECRET` | **Optional.** Sent as `x-app-secret` when set; needed only once this app's "Require secret" is on. Not in the `vite.config.mts` env guard on purpose. Bundled into the JS — not confidential for an SPA |
 
 `vite.config.mts` (`server.proxy`) configures `/api` and `/api-system` proxying with `secure: false` (self-signed certs OK) — but `src/services/api.ts` gives axios an absolute `baseURL`, so this proxy never fires; every mode calls the backend directly and depends on backend CORS. `server.port`/`preview.port` read `REACT_APP_PORT` (fallback `3304`).
 

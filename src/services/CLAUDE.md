@@ -20,5 +20,5 @@ const xService = {
 ```
 
 - **Base path:** two backends behind one axios instance (absolute `baseURL` — never proxied, see Environment above). `/api-system/...` for the cross-tenant platform registry (clusters, business-units, applications, `platform/*`, report-templates, tenant, `user/clusters`); `/api/...` for tenant/BU-scoped or user-self routes (`auth/*`, `user/profile`, `user/permission/platform`, `news`, `notifications/broadcasts/*`, `config/{buCode}/...`). Both expose a `user/` namespace and they are unrelated — confirm against swagger, never copy the prefix from a neighbouring service file. Full rule: `agent-os/standards/api/base-paths.md`
-- **Headers:** `Content-Type: application/json`, `x-app-id` (env), `Authorization: Bearer <token>` (added by interceptor)
+- **Headers:** `Content-Type: application/json`, `x-app-id` (env), `x-app-secret` (optional — env `REACT_APP_API_APP_SECRET`, sent only when set; spread `appSecretHeader()` from `src/services/appIdentity.ts` into every hand-built header object, including `fetch` streamers), `Authorization: Bearer <token>` (added by interceptor)
 - **Response shape:** `{ data: T | T[], paginate?: { total, page, perpage } }` — unwrap with `response.data.data || response.data`
