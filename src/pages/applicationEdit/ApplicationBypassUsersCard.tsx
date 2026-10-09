@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
@@ -19,7 +19,7 @@ const sameIds = (a: UserOption[], b: UserOption[]) =>
 
 export interface ApplicationBypassUsersCardProps {
   appId: string;
-  /** Must be referentially stable between fetches — the card re-seeds when it changes. */
+  /** The card re-seeds its draft only when the set of ids changes, not on every new array. */
   users: ApplicationBypassUser[];
   onChanged: () => Promise<void>;
 }
@@ -30,9 +30,15 @@ export function ApplicationBypassUsersCard({ appId, users, onChanged }: Applicat
   const [value, setValue] = useState<UserOption[]>(() => toOptions(users));
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
+  // Re-seed only when the server's id-set changes (e.g. after this card's own save). A refetch
+  // triggered by another card (status save) returns the same ids and must not wipe an unsaved draft.
+  // Adjusting state during render keeps exhaustive-deps satisfied without an effect.
+  const serverKey = users.map((u) => u.user_id).sort().join(',');
+  const [seededKey, setSeededKey] = useState(serverKey);
+  if (seededKey !== serverKey) {
+    setSeededKey(serverKey);
     setValue(toOptions(users));
-  }, [users]);
+  }
 
   const saved = toOptions(users);
   const dirty = !sameIds(value, saved);
