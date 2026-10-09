@@ -56,9 +56,9 @@ Users outside this list are rejected at login with an "access denied" message. S
 └────────────────────────────────────────────┘
 ```
 
-- **In development:** `vite.config.ts` (`server.proxy`) proxies `/api` and `/api-system` to the backend (`secure: false` allows self-signed certs).
+- **In development:** `vite.config.mts` (`server.proxy`) configures `/api` and `/api-system` proxies, but they never fire: `src/services/api.ts` gives axios an absolute `baseURL`, so the browser calls the backend directly in every mode and the backend must allow origin `http://localhost:3304` (see `docs/DEVELOPMENT.md` → Dev proxy).
 - **In production:** Cloud CDN + the global HTTPS load balancer serve the static SPA from the GCS bucket; the browser calls the backend directly over HTTPS. CORS is handled by the backend, which must allow the frontend origin.
-- **Auth:** JWT stored in `localStorage`, sent as `Authorization: Bearer <token>` by an axios request interceptor. A response interceptor clears storage and redirects to `/login` on 401/403.
+- **Auth:** JWT stored in `localStorage`, sent as `Authorization: Bearer <token>` by an axios request interceptor. A response interceptor refreshes the token on a 401 (`src/services/tokenRefresh.ts`) and retries the request; only a failed refresh (or a 401 on the retry) clears the session and redirects to `/login`. A 403 is not a session error — it reaches the caller, which shows it via `parseApiError` + toast.
 
 ## Tech stack
 
@@ -119,8 +119,8 @@ src/
 Top-level:
 
 ```
-vite.config.ts            # Vite config: React plugin, proxy, envPrefix, outDir
-vitest.config.ts          # Vitest (jsdom) config — standalone from vite.config.ts
+vite.config.mts           # Vite config: React plugin, proxy, envPrefix, outDir
+vitest.config.ts          # Vitest (jsdom) config — standalone from vite.config.mts
 vitest.setup.ts           # jest-dom matchers + RTL afterEach(cleanup)
 src/vite-env.d.ts         # import.meta.env type declarations
 src/vitest.d.ts           # jest-dom matcher types for tsc

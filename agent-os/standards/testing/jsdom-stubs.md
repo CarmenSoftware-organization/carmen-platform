@@ -1,6 +1,6 @@
 # jsdom Stubs & Setup
 
-Config is standalone: `vitest.config.ts` (jsdom, `include: src/**/*.test.{ts,tsx}`) and `vitest.setup.ts`. Neither touches `vite.config.ts` or `tsconfig.json` — keep it that way. Matcher types live in `src/vitest.d.ts`.
+Config is standalone: `vitest.config.ts` (jsdom, `include: src/**/*.test.{ts,tsx}`) and `vitest.setup.ts`. Neither touches `vite.config.mts` or `tsconfig.json` — keep it that way. Matcher types live in `src/vitest.d.ts`.
 
 ## No globals
 
