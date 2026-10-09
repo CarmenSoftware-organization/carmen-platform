@@ -7,6 +7,7 @@ import type { User, LoginCredentials, LoginResult, LoginResponse, AuthContextVal
 import { checkPermission, checkPlatformAuthority } from '../utils/permissions';
 import { clearListViewState } from '../utils/clearListViewState';
 import { useI18n } from '../hooks/useI18n';
+import { isAppSecretInvalid } from '../services/appIdentity';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -242,7 +243,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Production: generic messages only
       let errorMessage = t('login.unableToLogin');
-      if (err.response?.status === 401) {
+      if (isAppSecretInvalid(error)) {
+        // A rejected app secret is also a 401 — it must not read as a wrong password.
+        errorMessage = t('error.appSecretInvalidTitle');
+      } else if (err.response?.status === 401) {
         errorMessage = t('login.invalidCredentials');
       } else if (err.response?.status === 429) {
         errorMessage = t('login.tooManyAttempts');

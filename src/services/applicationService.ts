@@ -1,6 +1,18 @@
 import api from './api';
 import { buildQuery } from '../utils/buildQuery';
-import type { PaginateParams, ApplicationWritePayload, ApplicationsResponse, ApiCatalogGroup, ApplicationSummaryData, DeviceType, ApplicationStatusPayload } from '../types';
+import type {
+  PaginateParams,
+  ApplicationWritePayload,
+  ApplicationsResponse,
+  ApiCatalogGroup,
+  ApplicationSummaryData,
+  DeviceType,
+  ApplicationStatusPayload,
+  ApplicationSecretRotateResult,
+  ApplicationSecretRevealResult,
+  ApplicationSecretEnforcementPayload,
+  ApplicationSecretEnforcementResult,
+} from '../types';
 import { groupApiNames } from '../utils/apiCatalog';
 
 const defaultSearchFields = ['name', 'description'];
@@ -40,6 +52,16 @@ const isApiCatalogGroup = (g: unknown): g is ApiCatalogGroup =>
   typeof (g as ApiCatalogGroup).module === 'string' &&
   Array.isArray((g as ApiCatalogGroup).api_names) &&
   (g as ApiCatalogGroup).api_names.every((n: unknown) => typeof n === 'string');
+
+// Secret responses are unwrapped here (envelope or bare) and checked before use: a response
+// without a string `secret` must fail loudly, never render "undefined" in the key field.
+const unwrapSecret = <T extends { secret: string }>(body: unknown): T => {
+  const data = (body as { data?: unknown } | null)?.data ?? body;
+  if (!data || typeof (data as { secret?: unknown }).secret !== 'string') {
+    throw new Error('Malformed app secret response');
+  }
+  return data as T;
+};
 
 const applicationService = {
   getAll: async (paginate: PaginateParams = {}): Promise<ApplicationsResponse> => {
@@ -108,6 +130,27 @@ const applicationService = {
   setBypassUsers: async (id: string, userIds: string[]) => {
     const response = await api.put(`/api-system/applications/${id}/bypass-users`, { user_ids: userIds });
     return response.data;
+  },
+
+  /** Generate (first time) or rotate. The previous secret stays valid for 24 h. Bumps doc_version. */
+  rotateSecret: async (id: string): Promise<ApplicationSecretRotateResult> => {
+    const response = await api.post(`/api-system/applications/${id}/secret/rotate`, {});
+    return unwrapSecret<ApplicationSecretRotateResult>(response.data);
+  },
+
+  /** Decrypt and return the current secret. 404 when the app has none. Audit-logged server-side. */
+  revealSecret: async (id: string): Promise<ApplicationSecretRevealResult> => {
+    const response = await api.get(`/api-system/applications/${id}/secret`);
+    return unwrapSecret<ApplicationSecretRevealResult>(response.data);
+  },
+
+  /** Turn the per-app `require_secret` switch on/off. 400 APP_SECRET_MISSING, 409 APP_SECRET_SELF_LOCK. */
+  setSecretEnforcement: async (
+    id: string,
+    payload: ApplicationSecretEnforcementPayload,
+  ): Promise<ApplicationSecretEnforcementResult> => {
+    const response = await api.patch(`/api-system/applications/${id}/secret/enforcement`, payload);
+    return response.data?.data ?? response.data;
   },
 
   delete: async (id: string) => {

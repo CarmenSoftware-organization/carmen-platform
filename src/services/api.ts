@@ -1,11 +1,13 @@
 import axios from "axios";
 import { handleResponseError } from "./tokenRefresh";
+import { appSecretHeader } from "./appIdentity";
 
 const api = axios.create({
   baseURL: import.meta.env.REACT_APP_API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
     "x-app-id": import.meta.env.REACT_APP_API_APP_ID,
+    ...appSecretHeader(),
   },
   // Disable SSL verification for development (not recommended for production)
   httpsAgent: import.meta.env.DEV

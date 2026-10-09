@@ -1,4 +1,5 @@
 import api from './api';
+import { appSecretHeader } from './appIdentity';
 import { refreshAccessToken } from './tokenRefresh';
 import type {
   PreconfigCheckReport,
@@ -84,6 +85,7 @@ const preconfigImportService = {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`,
         'x-app-id': (import.meta.env.REACT_APP_API_APP_ID ?? '') as string,
+        ...appSecretHeader(),
       },
       body: formOf(file, options),
       signal,

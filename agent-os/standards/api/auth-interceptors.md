@@ -6,6 +6,7 @@ All auth lives in two files: `src/services/api.ts` (interceptor wiring) and `src
 
 | Status | Behaviour |
 |---|---|
+| **401 `APP_SECRET_INVALID`** (any request, incl. the refresh call) | **no refresh, no teardown** — `notifyAppSecretInvalid()` toast (id-deduped; skipped for `/auth/login`, whose form shows its own message) and reject. A new token would be rejected the same way; logging out would only lose unsaved work. |
 | **401** (non-login, first time) | single-flight refresh → retry the original request transparently |
 | **401** (refresh failed, or `_retry` already set) | `clearSession()` + `redirectToLogin()` |
 | **403** | **propagates untouched** — caller handles it with `parseApiError` + `toast.error` |
