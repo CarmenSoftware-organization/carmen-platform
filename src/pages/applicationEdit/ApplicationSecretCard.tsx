@@ -74,6 +74,12 @@ export function ApplicationSecretCard({
   const remaskTimer = useRef<number | undefined>(undefined);
   const frame = useRef<number | undefined>(undefined);
   const copiedTimer = useRef<number | undefined>(undefined);
+  // The route `/applications/:id/edit` is unkeyed, so this instance is reused across A → B.
+  // Every await checks these before acting: a late response for A must never show A's
+  // plaintext on B's card, reach the clipboard, toast, refetch, or re-arm timers after unmount.
+  const currentIdRef = useRef(appId);
+  const mountedRef = useRef(false);
+  const isStale = (requestedId: string): boolean => !mountedRef.current || currentIdRef.current !== requestedId;
 
   const clearTimers = useCallback(() => {
     if (remaskTimer.current !== undefined) window.clearTimeout(remaskTimer.current);
@@ -106,7 +112,16 @@ export function ApplicationSecretCard({
 
   // Plaintext never outlives the record it belongs to: dropped when the route moves to another
   // app (same component instance) and on unmount.
-  useEffect(() => () => hide(), [appId, hide]);
+  useEffect(() => {
+    currentIdRef.current = appId;
+    return () => hide();
+  }, [appId, hide]);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   useEffect(
     () => () => {
       if (copiedTimer.current !== undefined) window.clearTimeout(copiedTimer.current);
@@ -136,36 +151,45 @@ export function ApplicationSecretCard({
   };
 
   /** Generate or rotate; the new secret is shown at once — the admin's moment to copy it. */
-  const rotate = async () => {
+  const rotate = async (failKey: TKey) => {
+    const requestedId = appId;
     const first = !hasSecret;
-    const result = await applicationService.rotateSecret(appId);
-    show(result.secret);
-    toast.success(
-      t(first ? 'pages.applications.secret.generated' : 'pages.applications.secret.rotated'),
-      requireSecret && result.previous_expires_at
-        ? { description: t('pages.applications.secret.graceUntil', { when: formatStatusTime(result.previous_expires_at) }) }
-        : undefined,
-    );
-    await onChanged();
+    try {
+      const result = await applicationService.rotateSecret(requestedId);
+      if (isStale(requestedId)) return;
+      show(result.secret);
+      toast.success(
+        t(first ? 'pages.applications.secret.generated' : 'pages.applications.secret.rotated'),
+        requireSecret && result.previous_expires_at
+          ? { description: t('pages.applications.secret.graceUntil', { when: formatStatusTime(result.previous_expires_at) }) }
+          : undefined,
+      );
+      await onChanged();
+    } catch (err: unknown) {
+      if (isStale(requestedId)) return;
+      await reportError(err, failKey);
+    }
   };
 
   const handleGenerate = async () => {
     setBusy('generate');
     try {
-      await rotate();
-    } catch (err: unknown) {
-      await reportError(err, 'pages.applications.secret.generateFailed');
+      await rotate('pages.applications.secret.generateFailed');
     } finally {
       setBusy(null);
     }
   };
 
+  /** The plaintext, or null on failure — and null when the answer arrives for another app. */
   const fetchPlain = async (): Promise<string | null> => {
+    const requestedId = appId;
     try {
-      const result = await applicationService.revealSecret(appId);
+      const result = await applicationService.revealSecret(requestedId);
+      if (isStale(requestedId)) return null;
       show(result.secret);
       return result.secret;
     } catch (err: unknown) {
+      if (isStale(requestedId)) return null;
       await reportError(err, 'pages.applications.secret.revealFailed');
       return null;
     }
@@ -186,16 +210,19 @@ export function ApplicationSecretCard({
 
   // Copying dots is useless, so Copy reveals first when masked.
   const handleCopy = async () => {
+    const requestedId = appId;
     setBusy('copy');
     try {
       const value = plain ?? (await fetchPlain());
-      if (!value) return;
+      if (!value || isStale(requestedId)) return;
       try {
         await navigator.clipboard.writeText(value);
+        if (isStale(requestedId)) return;
         setCopied(true);
         if (copiedTimer.current !== undefined) window.clearTimeout(copiedTimer.current);
         copiedTimer.current = window.setTimeout(() => setCopied(false), 2000);
       } catch {
+        if (isStale(requestedId)) return;
         // Clipboard refused (e.g. user activation lost across the reveal await) — the secret is
         // on screen and selectable, so the admin can still copy it by hand.
         toast.error(t('common.action.copyFailed'));
@@ -208,26 +235,24 @@ export function ApplicationSecretCard({
   const handleConfirm = async () => {
     const { kind } = confirm;
     if (kind === 'rotate') {
-      try {
-        await rotate();
-        setConfirm((c) => ({ ...c, open: false }));
-      } catch (err: unknown) {
-        setConfirm((c) => ({ ...c, open: false }));
-        await reportError(err, 'pages.applications.secret.rotateFailed');
-      }
+      await rotate('pages.applications.secret.rotateFailed');
+      setConfirm((c) => ({ ...c, open: false }));
       return;
     }
     const next = kind === 'enable';
+    const requestedId = appId;
     try {
-      await applicationService.setSecretEnforcement(appId, {
+      await applicationService.setSecretEnforcement(requestedId, {
         require_secret: next,
         ...(docVersion != null ? { doc_version: docVersion } : {}),
       });
       setConfirm((c) => ({ ...c, open: false }));
+      if (isStale(requestedId)) return;
       toast.success(t(next ? 'pages.applications.secret.enforcementOn' : 'pages.applications.secret.enforcementOff'));
       await onChanged();
     } catch (err: unknown) {
       setConfirm((c) => ({ ...c, open: false }));
+      if (isStale(requestedId)) return;
       await reportError(err, 'pages.applications.secret.enforcementFailed');
     }
   };
@@ -336,7 +361,8 @@ export function ApplicationSecretCard({
                 <span id={autoHideId} className="sr-only">{t('pages.applications.secret.autoHide')}</span>
               </div>
 
-              {canReveal && (
+              {/* Hide must stay reachable for a manage-only user who just generated/rotated. */}
+              {(canReveal || plain) && (
                 <Button
                   type="button"
                   variant="outline"
