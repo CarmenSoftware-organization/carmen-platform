@@ -41,7 +41,7 @@ Verify during implementation that the gateway exception filter produces exactly 
 shape for the new exceptions.
 
 ```json
-{ "error": { "code": "APP_MAINTENANCE", "message": "…", "until": "2026-10-09T07:00:00.000Z" } }
+{ "error": { "code": "APP_MAINTENANCE", "message": "…" }, "until": "2026-10-09T07:00:00.000Z" }
 ```
 
 | Status | Request outcome | Response when blocked |
@@ -52,7 +52,7 @@ shape for the new exceptions.
 | `disabled` | always blocked (bypass list and login included) | **403** `APP_DISABLED` |
 | unknown app / api not allowed | unchanged | **401** (unchanged) |
 
-- `until` is present only when `status_until` is set. A 503 carries `Retry-After`
+- `until` sits at the **top level** of the body (the gateway exception filter keeps only catalog keys inside `error`) and is present only when `status_until` is set. A 503 carries `Retry-After`
   (seconds until `status_until`, minimum 60) only when `status_until` is in the future.
 - `message` is `status_message` when set, otherwise a default English sentence; clients
   show their own translated text and use `message` as the admin's extra note.
