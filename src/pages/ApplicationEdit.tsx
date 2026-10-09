@@ -32,15 +32,17 @@ import { ReadOnlyField } from '../components/ReadOnlyField';
 import { groupApiNames, actionOf, isAuthorityAction, countAuthority } from '../utils/apiCatalog';
 import { reachOf } from '../utils/apiReach';
 import { cn } from '../lib/utils';
-import type { ApiCatalogGroup, DeviceType } from '../types';
+import type { ApiCatalogGroup, Application, DeviceType } from '../types';
+import { ApplicationStatusCard } from './applicationEdit/ApplicationStatusCard';
+import { ApplicationBypassUsersCard } from './applicationEdit/ApplicationBypassUsersCard';
 import { DEVICE_OPTIONS } from '../types';
 import { HIT_SLOP_44 } from '../lib/hitSlop';
 import { useI18n } from '../hooks/useI18n';
+import { statusOf } from '../utils/applicationStatus';
 
 interface ApplicationFormData {
   name: string;
   description: string;
-  is_active: boolean;
   allow_all: boolean;
   device: DeviceType;
   api_names: string[];
@@ -49,7 +51,6 @@ interface ApplicationFormData {
 const emptyForm: ApplicationFormData = {
   name: '',
   description: '',
-  is_active: true,
   allow_all: false,
   device: 'web',
   api_names: [],
@@ -81,6 +82,18 @@ const ApplicationEdit: React.FC = () => {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [apiSearch, setApiSearch] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
+  const unsavedBarRef = useRef<HTMLDivElement>(null);
+  // Unapplied drafts in the status / bypass cards — they have their own Apply/Save, but leaving
+  // the page drops them just the same, so the leave-guard must cover them too.
+  const [statusDirty, setStatusDirty] = useState(false);
+  const [bypassDirty, setBypassDirty] = useState(false);
+  // Read by fetchApplication after its await — the values it closed over may be a render old.
+  const editingRef = useRef(editing);
+  const savedFormDataRef = useRef(savedFormData);
+  useEffect(() => {
+    editingRef.current = editing;
+    savedFormDataRef.current = savedFormData;
+  }, [editing, savedFormData]);
 
   const selectClassName = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring";
 
@@ -99,6 +112,13 @@ const ApplicationEdit: React.FC = () => {
     [catalogGroups],
   );
 
+  // Memoised on the record, not `?? []` inline: a fresh empty array every render would make the
+  // bypass card's re-seed effect fire every render and wipe what the admin is picking.
+  const bypassUsers = useMemo(
+    () => (appRecord as Application | null)?.bypass_users ?? [],
+    [appRecord],
+  );
+
   /** Every api_name the catalog currently defines — the set a grant is measured against. */
   const catalogNames = useMemo(
     () => new Set(catalogGroups.flatMap((g) => g.api_names)),
@@ -113,11 +133,20 @@ const ApplicationEdit: React.FC = () => {
   const grantedAuthority = countAuthority(formData.api_names);
 
   const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
-  useUnsavedChanges(hasChanges);
+  useUnsavedChanges(hasChanges || statusDirty || bypassDirty);
+
+  // Ctrl/⌘+S and Escape belong to the main form. They are window-level, so with focus in the
+  // status / bypass cards (outside the form) or in a dialog portal they would otherwise submit
+  // the form under an open status confirm, or revert form edits from the status textarea.
+  const focusIsOnForm = () => {
+    const el = document.activeElement;
+    if (!el || el === document.body) return true;
+    return Boolean(formRef.current?.contains(el) || unsavedBarRef.current?.contains(el));
+  };
 
   useGlobalShortcuts({
-    onSave: () => { if (editing && !saving) formRef.current?.requestSubmit(); },
-    onCancel: () => { if (editing && !isNew) handleCancelEdit(); },
+    onSave: () => { if (editing && !saving && focusIsOnForm()) formRef.current?.requestSubmit(); },
+    onCancel: () => { if (editing && !isNew && focusIsOnForm()) handleCancelEdit(); },
   });
 
   const handleEditToggle = () => {
@@ -152,9 +181,18 @@ const ApplicationEdit: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const fetchApplication = async () => {
+  // `keepForm`: the status and bypass cards refetch after their own writes, and the admin may be
+  // mid-edit in the form. No skeleton is flashed. Out of edit mode the form is re-seeded from the
+  // record. In edit mode the form keeps its edits and its doc_version advances only when the
+  // server's form fields still equal `savedFormData` (the base the edits were made on) — otherwise
+  // it keeps the old version so the form's Save gets its 409 and the conflict path, rather than
+  // silently overwriting a change made elsewhere (lost update).
+  // `silent`: a full re-seed without the skeleton — used after the form's own Save / conflict so
+  // the status and bypass cards stay mounted and keep their drafts.
+  const fetchApplication = async (opts: { keepForm?: boolean; silent?: boolean } = {}) => {
+    const quiet = Boolean(opts.keepForm || opts.silent);
     try {
-      setLoading(true);
+      if (!quiet) setLoading(true);
       // A prior fetch on this same mounted instance may have gated the shell on
       // not-found (e.g. a client-side nav from a bad id to a valid one) — clear
       // it so a successful fetch here can actually recover the shell.
@@ -171,14 +209,20 @@ const ApplicationEdit: React.FC = () => {
       const loaded: ApplicationFormData = {
         name: app.name || '',
         description: app.description || '',
-        is_active: app.is_active ?? true,
         allow_all: app.allow_all ?? false,
         device: (DEVICE_OPTIONS.includes(app.device) ? app.device : 'web') as DeviceType,
         api_names: Array.isArray(app.api_names) ? app.api_names : [],
       };
-      setFormData(loaded);
-      setSavedFormData(loaded);
-      setDocVersion(getDocVersion(app));
+      const recordVersion = getDocVersion(app);
+      if (opts.keepForm && editingRef.current) {
+        if (JSON.stringify(loaded) === JSON.stringify(savedFormDataRef.current)) {
+          setDocVersion(recordVersion);
+        }
+      } else {
+        setFormData(loaded);
+        setSavedFormData(loaded);
+        setDocVersion(recordVersion);
+      }
       setAppRecord(app);
     } catch (err: unknown) {
       // A bad/deleted id gates the whole shell (see the notFound branch below);
@@ -189,9 +233,11 @@ const ApplicationEdit: React.FC = () => {
         setError(t('pages.applications.loadFailedOne', { detail: getErrorDetail(err, t) }));
       }
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   };
+
+  const refreshRecord = () => fetchApplication({ keepForm: true });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -268,7 +314,6 @@ const ApplicationEdit: React.FC = () => {
       const payload = {
         name: formData.name,
         description: formData.description,
-        is_active: formData.is_active,
         allow_all: formData.allow_all,
         device: formData.device,
         api_names: formData.api_names,
@@ -286,13 +331,13 @@ const ApplicationEdit: React.FC = () => {
       } else {
         await applicationService.update(id!, payload);
         toast.success(t('toast.saved'));
-        await fetchApplication();
+        await fetchApplication({ silent: true });
         setEditing(false);
       }
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
         notifyVersionConflict(t);
-        await fetchApplication();
+        await fetchApplication({ silent: true });
       } else {
         setError(t('pages.applications.saveFailed', { detail: getErrorDetail(err, t) }));
       }
@@ -401,7 +446,7 @@ const ApplicationEdit: React.FC = () => {
               name={formData.name}
               appId={id}
               device={formData.device}
-              isActive={formData.is_active}
+              status={statusOf(appRecord)}
               allowAll={formData.allow_all}
               apiNames={formData.api_names}
               audit={normalizeAudit(appRecord)}
@@ -434,6 +479,29 @@ const ApplicationEdit: React.FC = () => {
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
+        )}
+
+        {!isNew && appRecord !== null && (
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+            <ApplicationStatusCard
+              appId={id!}
+              appName={(appRecord as Application).name}
+              status={statusOf(appRecord)}
+              statusMessage={(appRecord as Application).status_message}
+              statusUntil={(appRecord as Application).status_until}
+              statusChangedAt={(appRecord as Application).status_changed_at}
+              statusChangedByName={(appRecord as Application).status_changed_by_name}
+              docVersion={getDocVersion(appRecord)}
+              onChanged={refreshRecord}
+              onDirtyChange={setStatusDirty}
+            />
+            <ApplicationBypassUsersCard
+              appId={id!}
+              users={bypassUsers}
+              onChanged={refreshRecord}
+              onDirtyChange={setBypassDirty}
+            />
+          </div>
         )}
 
         <form ref={formRef} onSubmit={handleSubmit}>
@@ -865,27 +933,6 @@ const ApplicationEdit: React.FC = () => {
                       <ReadOnlyField value={formatDevice(formData.device)} />
                     )}
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="is_active">{t('common.status.label')}</Label>
-                    {editing ? (
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="is_active"
-                          name="is_active"
-                          checked={formData.is_active}
-                          onChange={handleChange}
-                          className="h-4 w-4 rounded border-input"
-                        />
-                        <span className="text-sm">{t('common.status.active')}</span>
-                      </label>
-                    ) : (
-                      <ReadOnlyField
-                        value={formData.is_active ? t('common.status.active') : t('common.status.inactive')}
-                      />
-                    )}
-                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -894,7 +941,7 @@ const ApplicationEdit: React.FC = () => {
       </div>
 
       {editing && (
-        <div className="unsaved-bar fixed bottom-0 left-0 right-0 md:left-16 lg:left-60 z-40">
+        <div ref={unsavedBarRef} className="unsaved-bar fixed bottom-0 left-0 right-0 md:left-16 lg:left-60 z-40">
           <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3">
             <div className="flex items-center gap-2 text-xs sm:text-sm">
               {hasChanges ? (

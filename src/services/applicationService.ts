@@ -1,16 +1,17 @@
 import api from './api';
 import { buildQuery } from '../utils/buildQuery';
-import type { PaginateParams, ApplicationWritePayload, ApplicationsResponse, ApiCatalogGroup, ApplicationSummaryData, DeviceType } from '../types';
+import type { PaginateParams, ApplicationWritePayload, ApplicationsResponse, ApiCatalogGroup, ApplicationSummaryData, DeviceType, ApplicationStatusPayload } from '../types';
 import { groupApiNames } from '../utils/apiCatalog';
 
 const defaultSearchFields = ['name', 'description'];
 
 // Build the write payload from flat form data. `api_names` (string[]) is translated
 // into the backend's details.add[] shape. Empty/whitespace entries are dropped.
+// `is_active` is deliberately absent: status moved to its own endpoint (`updateStatus`) so a
+// form save can never take an application down as a side effect.
 const toWritePayload = (data: {
   name: string;
   description?: string;
-  is_active?: boolean;
   allow_all?: boolean;
   device?: DeviceType;
   api_names?: string[];
@@ -19,7 +20,6 @@ const toWritePayload = (data: {
   const payload: ApplicationWritePayload = {
     name: data.name,
     description: data.description,
-    is_active: data.is_active,
     allow_all: data.allow_all,
     device: data.device,
   };
@@ -95,6 +95,18 @@ const applicationService = {
 
   update: async (id: string, data: Parameters<typeof toWritePayload>[0]) => {
     const response = await api.put(`/api-system/applications/${id}`, toWritePayload(data));
+    return response.data;
+  },
+
+  /** `PATCH /api-system/applications/:id/status` — the only way to change service status. */
+  updateStatus: async (id: string, payload: ApplicationStatusPayload) => {
+    const response = await api.patch(`/api-system/applications/${id}/status`, payload);
+    return response.data;
+  },
+
+  /** `PUT /api-system/applications/:id/bypass-users` — replace semantics: send the full desired set. */
+  setBypassUsers: async (id: string, userIds: string[]) => {
+    const response = await api.put(`/api-system/applications/${id}/bypass-users`, { user_ids: userIds });
     return response.data;
   },
 

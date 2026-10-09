@@ -31,8 +31,17 @@ import { PLATFORM_SCOPED_RECORD } from '../utils/permissions';
 import { auditColumns } from '../components/auditColumns';
 import { useI18n } from '../hooks/useI18n';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
-import type { Application, PaginateParams } from '../types';
+import type { Application, ApplicationStatus, PaginateParams } from '../types';
 import { DEVICE_OPTIONS } from '../types';
+import {
+  APPLICATION_STATUSES,
+  STATUS_BADGE_VARIANT,
+  STATUS_LABEL_KEY,
+  formatStatusTime,
+  isApplicationStatus,
+  isPastUntil,
+  statusOf,
+} from '../utils/applicationStatus';
 import type { ColumnDef } from '@tanstack/react-table';
 import { readStoredPerpage } from '../utils/pageRange';
 
@@ -62,22 +71,26 @@ const ApplicationManagement: React.FC = () => {
   const [catalogSize, setCatalogSize] = useState(0);
 
   const storedSearch = localStorage.getItem('search_applications') || '';
-  const storedFilters = getStoredJSON<string[]>('filters_applications', []);
+  // Sanitised: builds before status modes stored "true"/"false" (is_active) under this key.
+  const storedFilters = getStoredJSON<unknown>('filters_applications', []);
+  const storedStatuses: ApplicationStatus[] = Array.isArray(storedFilters)
+    ? storedFilters.filter(isApplicationStatus)
+    : [];
   const storedDevice = localStorage.getItem('devicefilter_applications') || '';
   const storedPage = Number(localStorage.getItem('page_applications')) || 1;
   const storedSort = localStorage.getItem('sort_applications') || 'name:asc';
 
   const [searchTerm, setSearchTerm] = useState(storedSearch);
-  const [statusFilter, setStatusFilter] = useState<string[]>(storedFilters);
+  const [statusFilter, setStatusFilter] = useState<ApplicationStatus[]>(storedStatuses);
   const [deviceFilter, setDeviceFilter] = useState<string>(storedDevice);
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
 
   const selectClassName = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring";
 
-  const buildAdvance = (filters: string[], device: string) => {
+  const buildAdvance = (statuses: ApplicationStatus[], device: string) => {
     const where: Record<string, unknown> = {};
-    if (filters.length === 1) where.is_active = filters[0] === 'true';
+    if (statuses.length > 0) where.status = { in: statuses };
     if (device) where.device = device;
     return Object.keys(where).length ? JSON.stringify({ where }) : '';
   };
@@ -87,7 +100,7 @@ const ApplicationManagement: React.FC = () => {
     perpage: readStoredPerpage('perpage_applications', 10),
     search: storedSearch,
     sort: storedSort,
-    advance: buildAdvance(storedFilters, storedDevice),
+    advance: buildAdvance(storedStatuses, storedDevice),
     filter: {},
   });
 
@@ -179,7 +192,7 @@ const ApplicationManagement: React.FC = () => {
     setPaginate(prev => ({ ...prev, page, perpage }));
   };
 
-  const handleStatusFilter = (status: string) => {
+  const handleStatusFilter = (status: ApplicationStatus) => {
     const next = statusFilter.includes(status)
       ? statusFilter.filter((s) => s !== status)
       : [...statusFilter, status];
@@ -253,7 +266,8 @@ const ApplicationManagement: React.FC = () => {
         access: a.allow_all
           ? t('pages.applications.allApis')
           : t('pages.applications.nApis', { count: a.api_names?.length ?? 0 }),
-        is_active: a.is_active ? t('common.status.active') : t('common.status.inactive'),
+        status: t(STATUS_LABEL_KEY[statusOf(a)]),
+        status_until: a.status_until ?? '',
         ...auditCsvFields(normalizeAudit(a)),
       })),
       [
@@ -261,7 +275,8 @@ const ApplicationManagement: React.FC = () => {
         { key: 'app_id', label: t('pages.applications.appId') },
         { key: 'description', label: t('common.field.description') },
         { key: 'access', label: t('pages.applications.columnAccess') },
-        { key: 'is_active', label: t('common.status.label') },
+        { key: 'status', label: t('common.status.label') },
+        { key: 'status_until', label: t('pages.applications.statusUntil') },
         { key: 'created_at', label: t('common.audit.createdAt') },
         { key: 'created_by', label: t('common.audit.createdBy') },
         { key: 'updated_at', label: t('common.audit.updatedAt') },
@@ -284,17 +299,28 @@ const ApplicationManagement: React.FC = () => {
             <div className="flex min-w-0 items-center gap-2">
               <Link
                 to={`/applications/${row.original.id}/edit`}
-                className="text-primary hover:underline whitespace-nowrap"
+                className="text-primary hover:underline truncate min-w-0"
                 title={row.original.name}
               >
                 {row.original.name}
               </Link>
-              {/* วาดเฉพาะข้อยกเว้น — คอลัมน์ Status เดิมทาสีเขียวให้กรณีปกติทุกแถว
-                  กรณีที่การตรวจสอบตามหาคือแอปที่ปิดใช้งานแล้วแต่ App ID ยังอยู่ในมือใครสักคน
-                  (เหตุผลเดียวกับ UserPlatformManagement) */}
-              {!row.original.is_active && (
-                <Badge variant="warning" className="shrink-0 text-xs">{t('common.status.inactive')}</Badge>
-              )}
+              {/* วาดเฉพาะข้อยกเว้น — running ไม่มี badge; สถานะอื่นคือสิ่งที่การตรวจสอบตามหา
+                  (แอปที่ปิด/ปิดปรับปรุงอยู่แต่ App ID ยังอยู่ในมือใครสักคน) */}
+              {(() => {
+                const s = statusOf(row.original);
+                if (s === 'running') return null;
+                const until = row.original.status_until;
+                const title = isPastUntil(until)
+                  ? t('pages.applications.statusUntilPassed', { status: t(STATUS_LABEL_KEY[s]) })
+                  : until
+                    ? t('pages.applications.statusUntilShort', { when: formatStatusTime(until) })
+                    : undefined;
+                return (
+                  <Badge variant={STATUS_BADGE_VARIANT[s]} className="shrink-0 text-xs" title={title}>
+                    {t(STATUS_LABEL_KEY[s])}
+                  </Badge>
+                );
+              })()}
             </div>
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="font-mono text-[11px] text-muted-foreground truncate min-w-0" title={id}>
@@ -453,22 +479,17 @@ const ApplicationManagement: React.FC = () => {
                         )}
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        <Button
-                          variant={statusFilter.includes('true') ? 'default' : 'outline'}
-                          size="sm"
-                          className="h-7 text-xs"
-                          onClick={() => handleStatusFilter('true')}
-                        >
-                          {t('common.status.active')}
-                        </Button>
-                        <Button
-                          variant={statusFilter.includes('false') ? 'default' : 'outline'}
-                          size="sm"
-                          className="h-7 text-xs"
-                          onClick={() => handleStatusFilter('false')}
-                        >
-                          {t('common.status.inactive')}
-                        </Button>
+                        {APPLICATION_STATUSES.map((s) => (
+                          <Button
+                            key={s}
+                            variant={statusFilter.includes(s) ? 'default' : 'outline'}
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => handleStatusFilter(s)}
+                          >
+                            {t(STATUS_LABEL_KEY[s])}
+                          </Button>
+                        ))}
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -493,7 +514,7 @@ const ApplicationManagement: React.FC = () => {
                 <span className="text-xs text-muted-foreground">{t('common.action.filtersLabel')}</span>
                 {statusFilter.map((s) => (
                   <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
-                    {s === 'true' ? t('common.status.active') : t('common.status.inactive')}
+                    {t(STATUS_LABEL_KEY[s])}
                     <button onClick={() => handleStatusFilter(s)} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>

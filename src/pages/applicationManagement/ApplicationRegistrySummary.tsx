@@ -6,6 +6,7 @@ import { cn } from '../../lib/utils';
 import type { ApplicationSummaryData, DeviceCount } from '../../types';
 import { useI18n } from '../../hooks/useI18n';
 import { formatDevice } from '../../utils/device';
+import { APPLICATION_STATUSES, STATUS_COUNT_KEY } from '../../utils/applicationStatus';
 
 const DEVICE_ORDER = ['web', 'mobile', 'desktop', 'pos'];
 const rank = (d: string) => {
@@ -72,8 +73,15 @@ export function ApplicationRegistrySummary({ summary, loading, error = false, on
               <div className="font-mono text-4xl font-semibold tabular-nums tracking-tight">{summary.total}</div>
               <div className="text-muted-foreground mt-1 text-[11px] font-medium uppercase tracking-[0.1em]">{t('pages.applications.applicationsLower')}</div>
               <div className="text-foreground/80 mt-0.5 text-xs">
-                {t('pages.applications.activeCount', { count: summary.active })}
-                {summary.inactive > 0 ? ` · ${t('pages.applications.inactiveCount', { count: summary.inactive })}` : ''}
+                {summary.statuses
+                  ? // วาดเฉพาะข้อยกเว้น: running เสมอ ส่วนสถานะอื่นเฉพาะที่มีจริง
+                    APPLICATION_STATUSES.filter((s) => s === 'running' || (summary.statuses?.[s] ?? 0) > 0)
+                      .map((s) => t(STATUS_COUNT_KEY[s], { count: summary.statuses?.[s] ?? 0 }))
+                      .join(' · ')
+                  : <>
+                      {t('pages.applications.activeCount', { count: summary.active })}
+                      {summary.inactive > 0 ? ` · ${t('pages.applications.inactiveCount', { count: summary.inactive })}` : ''}
+                    </>}
               </div>
             </div>
 
