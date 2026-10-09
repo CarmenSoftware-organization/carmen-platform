@@ -133,7 +133,7 @@ export async function handleResponseError(
       // The access token had expired AND the refresh call hit the secret check — same story.
       if (isAppSecretInvalid(refreshError)) {
         notifyAppSecretInvalid();
-        return Promise.reject(error);
+        return Promise.reject(refreshError);
       }
       clearSession();
       redirectToLogin();

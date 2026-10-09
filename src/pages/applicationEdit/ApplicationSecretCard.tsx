@@ -7,7 +7,7 @@ import { Badge } from '../../components/ui/badge';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 import { useAuth } from '../../context/AuthContext';
 import applicationService from '../../services/applicationService';
-import { hasAppSecret } from '../../services/appIdentity';
+import { hasAppSecret, isAppSecretInvalid } from '../../services/appIdentity';
 import { APP_SECRET_ERROR, REMASK_MS, maskedSecret, secretErrorCode } from '../../utils/applicationSecret';
 import { formatStatusTime, isOwnApp, isPastUntil } from '../../utils/applicationStatus';
 import { isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
@@ -131,6 +131,8 @@ export function ApplicationSecretCard({
 
   /** One routing for every failure. SELF_LOCK is a 409 too — it goes before the version check. */
   const reportError = async (err: unknown, titleKey: TKey) => {
+    // The axios interceptor already showed its (deduped) toast for this code.
+    if (isAppSecretInvalid(err)) return;
     const code = secretErrorCode(err);
     if (code === APP_SECRET_ERROR.SELF_LOCK) {
       toast.error(t('pages.applications.secret.selfLock'));
@@ -278,7 +280,8 @@ export function ApplicationSecretCard({
         ? t('pages.applications.secret.requireHintOn')
         : t('pages.applications.secret.requireHintOff');
 
-  const rotateBodyKey: TKey = isOwnApp(appId)
+  const ownEnforced = isOwnApp(appId) && requireSecret;
+  const rotateBodyKey: TKey = ownEnforced
     ? 'pages.applications.secret.rotateBodyOwn'
     : requireSecret
       ? 'pages.applications.secret.rotateBodyEnforced'
@@ -289,7 +292,7 @@ export function ApplicationSecretCard({
       title: t('pages.applications.secret.rotateTitle', { name: appName }),
       body: t(rotateBodyKey),
       confirmText: t('pages.applications.secret.rotate'),
-      destructive: requireSecret || isOwnApp(appId),
+      destructive: requireSecret,
     },
     enable: {
       title: t('pages.applications.secret.enableTitle', { name: appName }),
