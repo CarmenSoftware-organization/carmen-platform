@@ -1,5 +1,10 @@
 # `doc_version` Optimistic Locking — End-to-End Contract (as-built)
 
+> **Historical record, June 2026.** This is the contract as first built. Which pages are
+> wired today, and the frontend rules, live in
+> **`agent-os/standards/api/doc-version-locking.md`** and **`src/utils/docVersion.ts`**,
+> not here. The backend contract below still describes how the lock works.
+
 **Status:** Implemented & verified (frontend on `main` via PR #6; backend reads + guards on `main` of `carmen-turborepo-backend-v2`; e2e conflict test green).
 **Repos:** `carmen-platform` (frontend) · `carmen-turborepo-backend-v2` (backend) · `carmen-platform-e2e` (Playwright).
 **Design doc:** `docs/superpowers/specs/2026-06-26-doc-version-optimistic-locking-design.md`.
@@ -62,7 +67,7 @@ The gateway runs a global `ZodValidationPipe`. For `@Body()` typed as a `createZ
 ### Helper — `src/utils/docVersion.ts`
 - `getDocVersion(record): number | undefined`
 - `isVersionConflict(err): boolean` — `status === 409` **and** (`code === 'DOC_VERSION_CONFLICT'` **or** message matches `/modified by another request|doc_version/i`). The message branch is the real discriminator (see above).
-- `notifyVersionConflict(): void` — the single conflict toast (`"This record was changed by someone else"`).
+- `notifyVersionConflict(t?): void` — the single conflict toast. Pass the page's `t` for the translated text (`common.state.versionConflictTitle` / `versionConflictBody`); without it the original English text is used.
 
 ### Per Edit page (reference: `ClusterEdit.tsx`)
 1. `const [docVersion, setDocVersion] = useState<number>()` — **never** in `formData`.
@@ -77,16 +82,10 @@ Services with **custom write payloads** forward it explicitly: `applicationServi
 
 ## Entity coverage
 
-| Edit page | Frontend route | Backend update service | Read exposes? | Locked? |
-|---|---|---|---|---|
-| Cluster | `/api-system/clusters` | `micro-cluster cluster.service` | yes | ✅ |
-| BusinessUnit | `/api-system/business-units` | `micro-cluster business-unit.service` | yes | ✅ |
-| ReportTemplate | `/api-system/report-templates` | `micro-cluster report-template.service` | yes | ✅ |
-| News | `/api/news` | `micro-cluster news.service` | yes | ✅ |
-| Application | `/api-system/applications` | `micro-cluster application.service` | yes | ✅ |
-| User | `/api-system/user` | `micro-cluster user.service` | yes | ✅ |
-| Role | `/api-system/platform/roles` | `micro-business **platform_role**.service` | yes | ✅ |
-| PrintTemplateMapping | `/api-system/print-template-mapping` | (read not exposed) | no | no-op until wired |
+The June table listed 8 entities. More than 20 pages and dialogs now handle a
+version conflict. To see the current set, search for `isVersionConflict` under
+`src/pages`. Services that build their own write payload carry `doc_version` (search
+`src/services`). The rule list is in `agent-os/standards/api/doc-version-locking.md`.
 
 **Gotcha — two role systems:** the admin "Role" page edits **platform roles** (`/api-system/platform/roles` → `platform_role` service, returns `permission_count`/`audit`), **not** application-roles (`/api-system/roles` → `role.service`/`ApplicationRoleService`). Guard/read changes for the admin role page go in `platform_role.service`. (application-roles also has the guard, as a consistent bonus.)
 
