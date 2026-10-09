@@ -34,6 +34,7 @@ import { reachOf } from '../utils/apiReach';
 import { cn } from '../lib/utils';
 import type { ApiCatalogGroup, Application, DeviceType } from '../types';
 import { ApplicationStatusCard } from './applicationEdit/ApplicationStatusCard';
+import { ApplicationBypassUsersCard } from './applicationEdit/ApplicationBypassUsersCard';
 import { DEVICE_OPTIONS } from '../types';
 import { HIT_SLOP_44 } from '../lib/hitSlop';
 import { useI18n } from '../hooks/useI18n';
@@ -97,6 +98,13 @@ const ApplicationEdit: React.FC = () => {
   const catalogSizeByModule = useMemo(
     () => new Map(catalogGroups.map((g) => [g.module, g.api_names.length])),
     [catalogGroups],
+  );
+
+  // Memoised on the record, not `?? []` inline: a fresh empty array every render would make the
+  // bypass card's re-seed effect fire every render and wipe what the admin is picking.
+  const bypassUsers = useMemo(
+    () => (appRecord as Application | null)?.bypass_users ?? [],
+    [appRecord],
   );
 
   /** Every api_name the catalog currently defines — the set a grant is measured against. */
@@ -452,6 +460,7 @@ const ApplicationEdit: React.FC = () => {
               docVersion={docVersion}
               onChanged={refreshRecord}
             />
+            <ApplicationBypassUsersCard appId={id!} users={bypassUsers} onChanged={refreshRecord} />
           </div>
         )}
 
