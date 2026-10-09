@@ -25,10 +25,13 @@ export interface ApplicationBypassUsersCardProps {
   onChanged: () => Promise<void>;
   /** Reports an unsaved draft so the page's leave-guard covers it. */
   onDirtyChange?: (dirty: boolean) => void;
+  /** Render as a section inside the Status card rather than a card of its own — the list only
+   *  matters for Maintenance/Read-only, so it reads as part of that choice. */
+  embedded?: boolean;
 }
 
 /** Users who keep full access during maintenance and read-only. Own Save — not the page's form. */
-export function ApplicationBypassUsersCard({ appId, users, onChanged, onDirtyChange }: ApplicationBypassUsersCardProps) {
+export function ApplicationBypassUsersCard({ appId, users, onChanged, onDirtyChange, embedded = false }: ApplicationBypassUsersCardProps) {
   const { t } = useI18n();
   const [value, setValue] = useState<UserOption[]>(() => toOptions(users));
   const [saving, setSaving] = useState(false);
@@ -74,37 +77,53 @@ export function ApplicationBypassUsersCard({ appId, users, onChanged, onDirtyCha
       </div>
     );
 
+  const body = (
+    <Can permission="application.update" fallback={readView}>
+      <div>
+        <Label htmlFor="bypass_users" className="sr-only">
+          {t('pages.applications.bypassUsers')}
+        </Label>
+        <UserMultiSelect
+          id="bypass_users"
+          value={value}
+          onChange={setValue}
+          placeholder={t('pages.applications.bypassUsersPlaceholder')}
+          disabled={saving}
+        />
+      </div>
+      {value.length === 0 && (
+        <p className="text-muted-foreground text-xs">{t('pages.applications.bypassUsersNone')}</p>
+      )}
+      <div className="flex justify-end">
+        <Button type="button" size="sm" disabled={!dirty || saving} onClick={handleSave}>
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          {saving ? t('common.busy.saving') : t('pages.applications.bypassUsersSave')}
+        </Button>
+      </div>
+    </Can>
+  );
+
+  if (embedded) {
+    return (
+      <section aria-labelledby="application-bypass-users-heading" className="space-y-3">
+        <div>
+          <h4 id="application-bypass-users-heading" className="text-sm font-semibold">
+            {t('pages.applications.bypassUsers')}
+          </h4>
+          <p className="text-muted-foreground mt-0.5 text-xs">{t('pages.applications.bypassUsersDescription')}</p>
+        </div>
+        {body}
+      </section>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>{t('pages.applications.bypassUsers')}</CardTitle>
         <CardDescription>{t('pages.applications.bypassUsersDescription')}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <Can permission="application.update" fallback={readView}>
-          <div>
-            <Label htmlFor="bypass_users" className="sr-only">
-              {t('pages.applications.bypassUsers')}
-            </Label>
-            <UserMultiSelect
-              id="bypass_users"
-              value={value}
-              onChange={setValue}
-              placeholder={t('pages.applications.bypassUsersPlaceholder')}
-              disabled={saving}
-            />
-          </div>
-          {value.length === 0 && (
-            <p className="text-muted-foreground text-xs">{t('pages.applications.bypassUsersNone')}</p>
-          )}
-          <div className="flex justify-end">
-            <Button type="button" size="sm" disabled={!dirty || saving} onClick={handleSave}>
-              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              {saving ? t('common.busy.saving') : t('pages.applications.bypassUsersSave')}
-            </Button>
-          </div>
-        </Can>
-      </CardContent>
+      <CardContent className="space-y-4">{body}</CardContent>
     </Card>
   );
 }
