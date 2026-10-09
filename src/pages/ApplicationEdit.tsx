@@ -448,6 +448,7 @@ const ApplicationEdit: React.FC = () => {
               appId={id}
               device={formData.device}
               status={statusOf(appRecord)}
+              requireSecret={(appRecord as Application | null)?.require_secret === true}
               allowAll={formData.allow_all}
               apiNames={formData.api_names}
               audit={normalizeAudit(appRecord)}

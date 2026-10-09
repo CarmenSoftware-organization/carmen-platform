@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AppWindow, Copy, Check, AlertTriangle } from 'lucide-react';
+import { AppWindow, Copy, Check, AlertTriangle, KeyRound } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { moduleOf, countAuthority } from '../../utils/apiCatalog';
@@ -73,6 +73,8 @@ interface ApplicationIdentityHeroProps {
   appId?: string; // absent for a new (unsaved) application
   device: string;
   status: ApplicationStatus;
+  /** The app rejects calls without its x-app-secret — worth seeing without scrolling to the card. */
+  requireSecret?: boolean;
   allowAll: boolean;
   apiNames: string[];
   audit?: NormalizedAudit;
@@ -87,6 +89,7 @@ export function ApplicationIdentityHero({
   appId,
   device,
   status,
+  requireSecret = false,
   allowAll,
   apiNames,
   audit = {},
@@ -120,6 +123,12 @@ export function ApplicationIdentityHero({
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
             <Badge variant="secondary">{formatDevice(device || 'web')}</Badge>
             <Badge variant={STATUS_BADGE_VARIANT[status]}>{t(STATUS_LABEL_KEY[status])}</Badge>
+            {requireSecret && (
+              <Badge variant="outline" className="gap-1">
+                <KeyRound className="size-3" aria-hidden="true" />
+                {t('pages.applications.secret.heroChip')}
+              </Badge>
+            )}
             {appId && <AppIdChip appId={appId} />}
           </div>
           {reach.anchored ? (
