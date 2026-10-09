@@ -30,7 +30,7 @@ Per the user's standing rule these are **not** added as automated tests; each li
 1. **Backend not deployed yet** — `GET /api/app-status` returns 404 → app behaves exactly as today: no banner, no full screen, no toast. [Task 5, Step 3]
 2. **Real outage, not maintenance** — a 503 *without* an app-status code (nginx/gateway down) keeps today's behaviour: one query retry, "server down" toast, store untouched. [Task 5, Step 4]
 3. **Maintenance lifted while the user sits on the full screen** — within one poll (≤ 60 s) or on "Check again", the shell comes back without a page reload and previously failed queries refetch. [Task 5, Step 6]
-4. **Disabled while the access token has expired** — gateway answers 401 (KeycloakGuard runs before AppIdGuard) → refresh → 403 `APP_DISABLED` → session cleared → login page; the login attempt must then say "application disabled", not "wrong password". [Task 5, Step 9]
+4. **Disabled while the access token has expired** — gateway answers 401 (KeycloakGuard runs before AppIdGuard) → refresh succeeds (the refresh-token endpoint is never status-gated) → retry gets 403 `APP_DISABLED` → disabled full screen, user still signed in (not `/login`); a separate login attempt while disabled must say "application disabled", not "wrong password". [Task 5, Step 9]
 5. **Garbage from the status endpoint** (`status: "paused"`, missing fields, non-JSON) → treated as `running`; the app never locks itself on bad data. [Task 5, Step 3 — use a devtools response override]
 
 ## File Structure
@@ -1009,7 +1009,7 @@ Block the backend host in devtools (or override a list call to 503 with an empty
 
 - [ ] **Step 5: read_only**
 
-Set test app to `read_only` with message + until. Within ≤ 60 s (or on focus): A sees the read-only banner with the time and message; lists still load; saving any form → 503 → toast "The system is in read-only mode — your changes were not saved." (and Thai text after switching locale); network shows **no** retry of the 503. B (bypass) sees the exempt banner and can save.
+Set test app to `read_only` with message + until. Within ≤ 60 s (or on focus): A sees the read-only banner with the time and message; lists still load; saving any form → 503 → toast "The system is in read-only mode — this action isn't available right now." (and Thai text after switching locale); network shows **no** retry of the 503. B (bypass) sees the exempt banner and can save.
 
 - [ ] **Step 6: maintenance + Review Focus 3**
 
@@ -1017,7 +1017,7 @@ Set `maintenance` with message + until. A: full-screen maintenance page (no side
 
 - [ ] **Step 7: Instant switch from a write**
 
-With A on a form in `running`, flip to `maintenance` and save immediately (before the next poll) → the full screen appears right away and **no** toast is shown.
+With A on a form in `running`, flip to `maintenance` and save immediately (before the next poll) → the full screen appears right away. Pages that rely on the global error toaster show **no** toast. Pages that call `useErrorToast` directly show **one** translated toast over the screen — `schedule-component.tsx:49`, `create-schedule-dialog.tsx:133`, `pc-entry-component.tsx:276`, `pc-entry-notes-dialog.tsx:77`, `sc-entry-component.tsx:166`, `from-pr-content.tsx:99,141`, `use-print-document.ts:55`. Test one global-toast page and one direct-toast page. (In `read_only` those direct-toast pages show two identical toasts — the pre-existing double-toast pattern, not introduced here.)
 
 - [ ] **Step 8: disabled mid-session**
 
@@ -1025,7 +1025,7 @@ Set `disabled`. A and B both get the full-screen "This application has been disa
 
 - [ ] **Step 9: disabled at login + Review Focus 4**
 
-Still `disabled`: logging in shows "This application has been disabled. Contact your administrator." (not "Email or password is incorrect"). Also: sign in while `running`, wait for the access token to expire (or delete it from memory by reloading with the refresh token removed from localStorage), flip to `disabled`, act → lands on `/login`, and the next login attempt shows the disabled message.
+Still `disabled`: logging in shows "This application has been disabled. Contact your administrator." (not "Email or password is incorrect"). Also: sign in while `running`, wait for the access token to expire (or delete it from memory by reloading with the refresh token removed from localStorage), flip to `disabled`, act → the 401 triggers a refresh that succeeds (the refresh-token endpoint is not status-gated) → the retry gets 403 `APP_DISABLED` → the disabled full screen appears and the user is **still signed in** (does **not** land on `/login`).
 
 - [ ] **Step 10: 390 px**
 
