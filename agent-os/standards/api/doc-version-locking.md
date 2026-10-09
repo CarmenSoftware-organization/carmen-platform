@@ -14,7 +14,7 @@ await service.update(id, {                                // on update only — 
   ...(docVersion != null ? { doc_version: docVersion } : {}),
 });
 
-if (isVersionConflict(err)) { notifyVersionConflict(); await fetchX(); }
+if (isVersionConflict(err)) { notifyVersionConflict(t); await fetchX(); }
 else { /* existing parseApiError + toast, unchanged */ }
 ```
 
